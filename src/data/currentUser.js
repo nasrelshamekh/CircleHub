@@ -1,0 +1,50 @@
+const currentUser = {
+  id: 1,
+  name: "Nasr Elshamekh",
+  username: "nasr.dev",
+  gender: "male",
+  dateOfBirth: "1997-05-16",
+  email: "nasrelshamekh@gmail.com",
+  role: "Full-stack Developer",
+  avatar: "https://i.pravatar.cc/150?img=11",
+  coverImage: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3",
+  bio: "Full-stack developer building modern React apps and learning scalable UI architecture.",
+  location: "Alexandria, Egypt",
+  followersCount: 1240,
+  followingCount: 315,
+  postsCount: 28,
+  joinedAt: "January, 2026",
+  website: "circlehub.dev/nasr.dev",
+  mutualConnections: [
+    {
+      id: 2,
+      name: "Elena Rodriguez",
+      username: "elena.designs",
+      avatar: "https://i.pravatar.cc/150?img=5",
+      role: "Product Designer",
+    },
+    {
+      id: 3,
+      name: "David Chen",
+      username: "davidcodes",
+      avatar: "https://i.pravatar.cc/150?img=12",
+      role: "Frontend Engineer",
+    },
+    {
+      id: 4,
+      name: "Maya Hassan",
+      username: "maya.creates",
+      avatar: "https://i.pravatar.cc/150?img=47",
+      role: "Content Creator",
+    },
+    {
+      id: 5,
+      name: "Omar Khaled",
+      username: "omar.ui",
+      avatar: "https://i.pravatar.cc/150?img=15",
+      role: "UI/UX Designer",
+    },
+  ],
+};
+
+export default currentUser;

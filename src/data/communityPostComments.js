@@ -1,0 +1,151 @@
+import users from "./users";
+
+const communityPostCommentRows = [
+  {
+    id: 1001,
+    postId: 101,
+    authorUsername: "nasr.dev",
+    content: "I usually start by naming each state around the UI moment it represents.",
+    createdAt: "18 minutes ago",
+  },
+  {
+    id: 1002,
+    postId: 101,
+    authorUsername: "davidcodes",
+    content: "Reducers help when the screen has several related transitions.",
+    createdAt: "9 minutes ago",
+  },
+  {
+    id: 1003,
+    postId: 102,
+    authorUsername: "alex.components",
+    content: "Clear event names make custom hooks much easier to reuse.",
+    createdAt: "1 hour ago",
+  },
+  {
+    id: 1004,
+    postId: 103,
+    authorUsername: "omar.ui",
+    content: "Action placement is what usually makes compact cards succeed or fail.",
+    createdAt: "44 minutes ago",
+  },
+  {
+    id: 1005,
+    postId: 103,
+    authorUsername: "lina.accessible",
+    content: "Hierarchy matters even more when space is tight.",
+    createdAt: "31 minutes ago",
+  },
+  {
+    id: 1006,
+    postId: 104,
+    authorUsername: "youssef.codes",
+    content: "Finishing the first version is underrated. It gives you something real to improve.",
+    createdAt: "2 hours ago",
+  },
+  {
+    id: 1007,
+    postId: 105,
+    authorUsername: "james.portfolio",
+    content: "One sharp question keeps the MVP from turning into a wishlist.",
+    createdAt: "4 hours ago",
+  },
+  {
+    id: 1008,
+    postId: 106,
+    authorUsername: "priya.systems",
+    content: "Intent-based variables make refactors way calmer.",
+    createdAt: "5 hours ago",
+  },
+  {
+    id: 1009,
+    postId: 107,
+    authorUsername: "nasr.dev",
+    content: "This is exactly why I want my mock data shaped like the future API.",
+    createdAt: "6 hours ago",
+  },
+  {
+    id: 1010,
+    postId: 108,
+    authorUsername: "lina.accessible",
+    content: "A newcomer should know what to do next without asking permission.",
+    createdAt: "7 hours ago",
+  },
+  {
+    id: 1011,
+    postId: 109,
+    authorUsername: "ava.product",
+    content: "Problem and result first makes the whole case study easier to trust.",
+    createdAt: "8 hours ago",
+  },
+  {
+    id: 1012,
+    postId: 110,
+    authorUsername: "sophialee.dev",
+    content: "Shared layout state is a perfect use case for a small context.",
+    createdAt: "9 hours ago",
+  },
+  {
+    id: 1013,
+    postId: 110,
+    authorUsername: "ethan.react",
+    content: "Feature-local state keeps the mental model smaller too.",
+    createdAt: "8 hours ago",
+  },
+  {
+    id: 1014,
+    postId: 111,
+    authorUsername: "karim.builds",
+    content: "This saves pain when replacing localStorage with real API calls later.",
+    createdAt: "10 hours ago",
+  },
+  {
+    id: 1015,
+    postId: 111,
+    authorUsername: "davidcodes",
+    content: "Yep. The less reshaping in components, the better.",
+    createdAt: "9 hours ago",
+  },
+  {
+    id: 1016,
+    postId: 112,
+    authorUsername: "elena.designs",
+    content: "Exactly. Empty states still have a job to do.",
+    createdAt: "12 hours ago",
+  },
+  {
+    id: 1017,
+    postId: 113,
+    authorUsername: "ryan.beta",
+    content: "The second pass is where the patterns finally click.",
+    createdAt: "13 hours ago",
+  },
+  {
+    id: 1018,
+    postId: 114,
+    authorUsername: "olivia.darkmode",
+    content: "Dark mode becomes so much simpler with semantic tokens.",
+    createdAt: "14 hours ago",
+  },
+  {
+    id: 1019,
+    postId: 115,
+    authorUsername: "priya.systems",
+    content: "Expected outcome is the part people forget most often.",
+    createdAt: "15 hours ago",
+  },
+  {
+    id: 1020,
+    postId: 116,
+    authorUsername: "james.portfolio",
+    content: "That structure also helps reviewers give better feedback.",
+    createdAt: "17 hours ago",
+  },
+];
+
+const communityPostComments = communityPostCommentRows.map((comment) => ({
+  ...comment,
+  author: users.find((user) => user.username === comment.authorUsername),
+}));
+
+export default communityPostComments;

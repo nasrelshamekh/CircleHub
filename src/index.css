@@ -1,0 +1,656 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+/* =========================
+   DESIGN TOKENS
+   Light mode from updated design.md
+========================= */
+
+:root {
+  /* =========================
+     BRAND COLORS
+  ========================= */
+  --button-gradient-text: #ffffff;
+  --primary: #4648d4;
+  --on-primary: #ffffff;
+  --primary-container: #6063ee;
+  --on-primary-container: #fffbff;
+  --inverse-primary: #c0c1ff;
+
+  --secondary: #6b38d4;
+  --on-secondary: #ffffff;
+  --secondary-container: #8455ef;
+  --on-secondary-container: #fffbff;
+
+  --tertiary: #006577;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #008096;
+  --on-tertiary-container: #f9fdff;
+
+  /* Brand gradient from design notes */
+  --primary-gradient-start: #6366f1;
+  --primary-gradient-end: #8b5cf6;
+
+  /* =========================
+     SURFACES
+  ========================= */
+
+  --background: #faf8ff;
+  --on-background: #131b2e;
+
+  --surface: #faf8ff;
+  --surface-dim: #d2d9f4;
+  --surface-bright: #faf8ff;
+
+  --surface-lowest: #ffffff;
+  --surface-low: #f2f3ff;
+  --surface-container: #eaedff;
+  --surface-high: #e2e7ff;
+  --surface-highest: #dae2fd;
+  --surface-variant: #dae2fd;
+
+  --inverse-surface: #283044;
+  --inverse-on-surface: #eef0ff;
+  --surface-tint: #494bd6;
+
+  /* =========================
+     TEXT
+  ========================= */
+
+  --text-primary: #131b2e;
+  --text-secondary: #464554;
+
+  /* =========================
+     BORDERS / OUTLINES
+  ========================= */
+
+  --outline: #767586;
+  --border: #cdcbda;
+
+  /* =========================
+     ERROR
+  ========================= */
+
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+
+  /* =========================
+     FIXED / SOFT COLORS
+  ========================= */
+
+  --primary-soft: #e1e0ff;
+  --primary-soft-dim: #c0c1ff;
+  --on-primary-soft: #07006c;
+  --on-primary-soft-variant: #2f2ebe;
+
+  --secondary-soft: #e9ddff;
+  --secondary-soft-dim: #d0bcff;
+  --on-secondary-soft: #23005c;
+  --on-secondary-soft-variant: #5516be;
+
+  --tertiary-soft: #acedff;
+  --tertiary-soft-dim: #4cd7f6;
+  --on-tertiary-soft: #001f26;
+  --on-tertiary-soft-variant: #004e5c;
+
+  /* =========================
+     INTERACTION TOKENS
+     Derived from design notes
+  ========================= */
+
+  --hover: rgba(99, 102, 241, 0.06);
+  --active: rgba(99, 102, 241, 0.12);
+  --focus-ring: rgba(99, 102, 241, 0.35);
+
+  /* =========================
+     SHADOWS
+     Derived from elevation notes
+  ========================= */
+
+  --shadow-sm: 0 2px 8px rgba(99, 102, 241, 0.04);
+
+  --shadow-md:
+    0 10px 15px -3px rgba(0, 0, 0, 0.08),
+    0 4px 6px -2px rgba(0, 0, 0, 0.04);
+
+  --shadow-lg:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* =========================
+     RADIUS
+     From design file
+  ========================= */
+
+  --radius-sm: 0.25rem;
+  --radius-base: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* =========================
+     TYPOGRAPHY
+     From updated design file
+  ========================= */
+
+  --font-sans: "Inter Variable", Inter, system-ui, sans-serif;
+
+  --text-display-lg: 48px;
+  --text-headline-lg: 32px;
+  --text-headline-lg-mobile: 28px;
+  --text-headline-md: 24px;
+  --text-title-lg: 20px;
+  --text-body-lg: 18px;
+  --text-body-md: 16px;
+  --text-body-sm: 14px;
+  --text-label-md: 14px;
+  --text-label-sm: 12px;
+
+  --leading-display-lg: 56px;
+  --leading-headline-lg: 40px;
+  --leading-headline-lg-mobile: 36px;
+  --leading-headline-md: 32px;
+  --leading-title-lg: 28px;
+  --leading-body-lg: 28px;
+  --leading-body-md: 24px;
+  --leading-body-sm: 20px;
+  --leading-label-md: 20px;
+  --leading-label-sm: 16px;
+}
+
+/* =========================
+   DARK MODE TOKENS
+   From dark mode design.md
+========================= */
+
+.dark {
+  /* =========================
+     BRAND COLORS
+  ========================= */
+  --button-gradient-text: #0b1326;
+  --primary: #bdc2ff;
+  --on-primary: #131e8c;
+  --primary-container: #818cf8;
+  --on-primary-container: #101b8a;
+  --inverse-primary: #4953bc;
+
+  --secondary: #cebdff;
+  --on-secondary: #381385;
+  --secondary-container: #4f319c;
+  --on-secondary-container: #bea8ff;
+
+  --tertiary: #f7bd3e;
+  --on-tertiary: #402d00;
+  --tertiary-container: #c08d00;
+  --on-tertiary-container: #3e2b00;
+
+  /* Dark gradient derived from dark accent direction */
+  --primary-gradient-start: #818cf8;
+  --primary-gradient-end: #a78bfa;
+
+  /* =========================
+     SURFACES
+  ========================= */
+
+  --background: #0b1326;
+  --on-background: #dae2fd;
+
+  --surface: #0b1326;
+  --surface-dim: #0b1326;
+  --surface-bright: #31394d;
+
+  --surface-lowest: #060e20;
+  --surface-low: #131b2e;
+  --surface-container: #171f33;
+  --surface-high: #222a3d;
+  --surface-highest: #2d3449;
+  --surface-variant: #2d3449;
+
+  --inverse-surface: #dae2fd;
+  --inverse-on-surface: #283044;
+  --surface-tint: #bdc2ff;
+
+  /* =========================
+     TEXT
+  ========================= */
+
+  --text-primary: #dae2fd;
+  --text-secondary: #c6c5d5;
+
+  /* =========================
+     BORDERS / OUTLINES
+  ========================= */
+
+  --outline: #908f9e;
+  --border: #fafafd;
+
+  /* =========================
+     ERROR
+  ========================= */
+
+  --error: #ffb4ab;
+  --on-error: #690005;
+  --error-container: #93000a;
+  --on-error-container: #ffdad6;
+
+  /* =========================
+     FIXED / SOFT COLORS
+  ========================= */
+
+  --primary-soft: #e0e0ff;
+  --primary-soft-dim: #bdc2ff;
+  --on-primary-soft: #000767;
+  --on-primary-soft-variant: #2f3aa3;
+
+  --secondary-soft: #e8ddff;
+  --secondary-soft-dim: #cebdff;
+  --on-secondary-soft: #21005e;
+  --on-secondary-soft-variant: #4f319c;
+
+  --tertiary-soft: #ffdea3;
+  --tertiary-soft-dim: #f7bd3e;
+  --on-tertiary-soft: #261900;
+  --on-tertiary-soft-variant: #5d4200;
+
+  /* =========================
+     INTERACTION TOKENS
+     Derived from dark design notes
+  ========================= */
+
+  --hover: rgba(129, 140, 248, 0.12);
+  --active: rgba(129, 140, 248, 0.18);
+  --focus-ring: rgba(129, 140, 248, 0.2);
+
+  /* =========================
+     SHADOWS
+     Dark mode relies on tonal layering
+  ========================= */
+
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+/* =========================
+   BASE
+========================= */
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  background: var(--surface-low);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* =========================
+   DEFAULT ELEMENTS
+========================= */
+
+button,
+input,
+textarea {
+  font-family: inherit;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* =========================
+   REUSABLE UTILITIES
+========================= */
+
+.gradient-primary {
+  background: linear-gradient(135deg,
+      var(--primary-gradient-start),
+      var(--primary-gradient-end));
+}
+
+.button-primary {
+  background: linear-gradient(135deg,
+      var(--primary-gradient-start),
+      var(--primary-gradient-end));
+  transition: 0.3s;
+  cursor: pointer;
+  color: var(--button-gradient-text);
+  border-radius: var(--radius-xl);
+  font-weight: 500;
+}
+
+.button-primary:hover {
+  opacity: 0.9;
+}
+
+.content-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  width: 100%;
+  margin-inline: auto;
+  margin-bottom: 5rem;
+}
+
+@media (width >= 64rem) {
+  .content-stack {
+    margin-bottom: 0;
+  }
+}
+
+.content-card,
+.card {
+  background: var(--surface-lowest);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.content-card-padded {
+  background: var(--surface-lowest);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.surface-panel {
+  background: var(--surface-low);
+  border: 1px solid var(--border);
+}
+
+.avatar-md {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.avatar-lg {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.type-display-lg {
+  font-size: var(--text-display-lg);
+  font-weight: 800;
+  line-height: var(--leading-display-lg);
+  letter-spacing: -0.02em;
+}
+
+.type-headline-lg {
+  font-size: var(--text-headline-lg);
+  font-weight: 700;
+  line-height: var(--leading-headline-lg);
+  letter-spacing: -0.01em;
+}
+
+.type-headline-responsive {
+  font-size: var(--text-headline-lg-mobile);
+  font-weight: 700;
+  line-height: var(--leading-headline-lg-mobile);
+  letter-spacing: -0.01em;
+}
+
+@media (width >= 48rem) {
+  .type-headline-responsive {
+    font-size: var(--text-headline-lg);
+    line-height: var(--leading-headline-lg);
+  }
+}
+
+.type-headline-md {
+  font-size: var(--text-headline-md);
+  font-weight: 600;
+  line-height: var(--leading-headline-md);
+}
+
+.type-title-lg {
+  font-size: var(--text-title-lg);
+  font-weight: 600;
+  line-height: var(--leading-title-lg);
+}
+
+.type-body-lg {
+  font-size: var(--text-body-lg);
+  font-weight: 400;
+  line-height: var(--leading-body-lg);
+}
+
+.type-body-md {
+  font-size: var(--text-body-md);
+  font-weight: 400;
+  line-height: var(--leading-body-md);
+}
+
+.type-body-sm {
+  font-size: var(--text-body-sm);
+  font-weight: 400;
+  line-height: var(--leading-body-sm);
+}
+
+.type-body-sm-readable {
+  font-size: var(--text-body-sm);
+  font-weight: 400;
+  line-height: var(--leading-body-md);
+}
+
+.type-label-md {
+  font-size: var(--text-label-md);
+  font-weight: 600;
+  line-height: var(--leading-label-md);
+}
+
+.type-label-sm {
+  font-size: var(--text-label-sm);
+  font-weight: 500;
+  line-height: var(--leading-label-sm);
+}
+
+.type-button {
+  font-size: var(--text-label-md);
+  font-weight: 600;
+  line-height: var(--leading-label-md);
+}
+
+.icon-button {
+  cursor: pointer;
+  transition: 0.2s ease;
+  color: var(--text-primary);
+}
+
+.icon-button:hover {
+  color: var(--primary);
+}
+
+.icon-button-soft {
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  transition: 0.2s ease;
+}
+
+.icon-button-soft:hover {
+  background: var(--hover);
+}
+
+.input-surface {
+  background: var(--surface-low);
+  color: var(--text-primary);
+  outline: none;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.input-surface::placeholder {
+  color: var(--text-secondary);
+}
+
+.input-surface:focus,
+.input-surface:focus-visible {
+  border-color: var(--border);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.sidebar-item {
+  transition: 0.2s ease;
+}
+
+.sidebar-item:hover {
+  background: var(--hover);
+}
+
+.sidebar-item.active {
+  background: var(--active);
+  color: var(--primary);
+}
+
+.post-action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  cursor: pointer;
+
+  padding: 0.75rem 1rem;
+
+  border-radius: var(--radius-full);
+
+  color: var(--text-secondary);
+
+  transition: 0.2s ease;
+}
+
+.post-action-button:hover {
+  background: var(--hover);
+  color: var(--primary);
+}
+
+.focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* =========================
+   SONNER TOASTS
+========================= */
+
+[data-sonner-toaster].toaster {
+  font-family: var(--font-sans);
+}
+
+.circlehub-toast[data-sonner-toast][data-styled="true"] {
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--surface-lowest);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+}
+
+.circlehub-toast[data-sonner-toast][data-type="success"] {
+  border-left-color: var(--primary);
+}
+
+.circlehub-toast[data-sonner-toast][data-type="info"] {
+  border-left-color: var(--tertiary);
+}
+
+.circlehub-toast[data-sonner-toast][data-type="warning"] {
+  border-left-color: var(--tertiary-container);
+}
+
+.circlehub-toast[data-sonner-toast][data-type="error"] {
+  border-left-color: var(--error);
+}
+
+.circlehub-toast-icon[data-icon] {
+  margin-top: 0.125rem;
+  color: var(--primary);
+}
+
+.circlehub-toast[data-type="info"] .circlehub-toast-icon[data-icon] {
+  color: var(--tertiary);
+}
+
+.circlehub-toast[data-type="warning"] .circlehub-toast-icon[data-icon] {
+  color: var(--tertiary-container);
+}
+
+.circlehub-toast[data-type="error"] .circlehub-toast-icon[data-icon] {
+  color: var(--error);
+}
+
+.circlehub-toast-title[data-title] {
+  font-size: var(--text-label-md);
+  font-weight: 600;
+  line-height: var(--leading-label-md);
+  color: var(--text-primary);
+}
+
+.circlehub-toast-description[data-description] {
+  font-size: var(--text-label-sm);
+  font-weight: 400;
+  line-height: var(--leading-label-sm);
+  color: var(--text-secondary);
+}
+
+.circlehub-toast-close[data-close-button] {
+  background: var(--surface-lowest);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.circlehub-toast-close[data-close-button]:hover {
+  background: var(--hover);
+  border-color: var(--border);
+  color: var(--primary);
+}
+
+.circlehub-toast-action[data-button] {
+  background: linear-gradient(135deg,
+      var(--primary-gradient-start),
+      var(--primary-gradient-end));
+  border-radius: var(--radius-full);
+  color: var(--button-gradient-text);
+}
+
+.circlehub-toast-cancel[data-cancel] {
+  background: var(--surface-low);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+}
