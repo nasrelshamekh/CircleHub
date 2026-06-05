@@ -1,5 +1,6 @@
 import { Check, Clock, FileText, Hash, Lock, ShieldUser, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCommunityPosts } from "@/hooks/useCommunityPosts";
 
 export default function CommunityCardItem({
     community,
@@ -11,6 +12,8 @@ export default function CommunityCardItem({
     const isRequested = community.membershipStatus === "requested";
     const isPrivate = community.visibility === "private";
     const membersCount = community.members.length;
+    const { communityPosts } = useCommunityPosts();
+    const postsCount = communityPosts.filter((post) => post.communitySlug === community.slug).length;
 
     return (
         <article className="flex min-w-0 flex-col overflow-hidden rounded-lg bg-(--surface-low)">
@@ -64,7 +67,7 @@ export default function CommunityCardItem({
 
                     <span className="flex items-center gap-1.5">
                         <FileText size={15} />
-                        {community.postsCount} posts today
+                        {postsCount} posts
                     </span>
 
                     <span className="flex items-center gap-1.5">

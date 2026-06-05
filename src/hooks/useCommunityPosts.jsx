@@ -1,6 +1,6 @@
 import { useContext } from "react";
 
-import { communityPostsContext } from "@/context/CommunityPostsContext";
+import { communityPostsContext } from "@/context/CommunityPostsContext.jsx";
 
 export function useCommunityPosts() {
     const context = useContext(communityPostsContext);

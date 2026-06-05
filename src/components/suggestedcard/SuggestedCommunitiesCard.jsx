@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useCommunityPosts } from "@/hooks/useCommunityPosts";
 import { useCommunities } from "@/hooks/useCommunities";
 
 export default function SuggestedCommunitiesCard() {
     const { communities, setCommunities } = useCommunities();
     const { userData } = useAuth();
+    const { communityPosts } = useCommunityPosts();
     const suggestedCommunities = communities
         .filter((community) => community.membershipStatus === "not_joined")
         .slice(0, 3);
@@ -66,6 +68,7 @@ export default function SuggestedCommunitiesCard() {
                 {suggestedCommunities.map((community) => {
                     const isPrivate = community.visibility === "private";
                     const membersCount = community.members.length;
+                    const postsCount = communityPosts.filter((post) => post.communitySlug === community.slug).length;
 
                     return (
                         <article key={community.id} className="rounded-xl p-2 transition hover:bg-(--hover)">
@@ -95,7 +98,7 @@ export default function SuggestedCommunitiesCard() {
 
                                 <span className="flex items-center gap-1">
                                     <FileText size={14} />
-                                    {community.postsCount}
+                                    {postsCount}
                                 </span>
 
                                 {isPrivate && (

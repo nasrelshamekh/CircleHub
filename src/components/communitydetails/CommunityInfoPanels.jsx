@@ -25,7 +25,7 @@ export default function CommunityInfoPanels({ community, members, membersCount, 
 
                     <p className="flex items-center gap-2">
                         <FileText size={18} />
-                        {community.postsCount} posts today
+                        {posts.length} posts
                     </p>
 
                     {community.visibility === "private" ? (

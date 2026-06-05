@@ -9,7 +9,7 @@ import { CirclePlus, Images, X } from "lucide-react"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 
-export function CreatePostModal({ onCreatePost, open, onOpenChange, user, previewUrl, handlePhotoSelect, handleRemovePhoto}) {
+export function CreatePostModal({ onCreatePost, open, onOpenChange, user, previewUrl, handlePhotoSelect, handleRemovePhoto, community }) {
 
     const [content, setContent] = useState("");
 
@@ -22,6 +22,7 @@ export function CreatePostModal({ onCreatePost, open, onOpenChange, user, previe
 
             const newPost = {
                 id: Date.now(),
+                communitySlug: community?.slug,
                 authorUsername: user.username,
                 author: user,
                 content: content.trim(),
@@ -39,7 +40,7 @@ export function CreatePostModal({ onCreatePost, open, onOpenChange, user, previe
             handleRemovePhoto();
             onOpenChange(false);
 
-            toast.success("Post created successfully.");
+            toast.success(community ? "Community post created successfully." : "Post created successfully.");
         } catch (error) {
             console.error(error);
             toast.error("Something went wrong while creating your post.");
@@ -62,19 +63,23 @@ export function CreatePostModal({ onCreatePost, open, onOpenChange, user, previe
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="content-card max-h-[calc(100vh-2rem)] overflow-y-auto text-primary">
                 <DialogHeader>
-                    <DialogTitle>Create Post</DialogTitle>
+                    <DialogTitle>{community ? `Post in ${community.name}` : "Create Post"}</DialogTitle>
                     <DialogDescription>
-                        Share an update, thought, or photo with your CircleHub community.
+                        {community
+                            ? `Share an update, thought, or photo with ${community.name}.`
+                            : "Share an update, thought, or photo with your CircleHub community."}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex items-center gap-3">
                     <img src={user.avatar} alt={user.name} className="avatar-md" />
                     <div>
                         <h3 className="type-label-md">{user.name}</h3>
-                        <p className="type-label-sm text-secondary">Posting publicly</p>
+                        <p className="type-label-sm text-secondary">
+                            {community ? `Posting in ${community.name}` : "Posting publicly"}
+                        </p>
                     </div>
                 </div>
-                <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder={`What's on your mind, ${user.name.split(" ")[0]}?`} className="input-surface type-body-sm min-h-36 w-full resize-none rounded-xl p-3" />
+                <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder={community ? `Share something with ${community.name}` : `What's on your mind, ${user.name.split(" ")[0]}?`} className="input-surface type-body-sm min-h-36 w-full resize-none rounded-xl p-3" />
                 {previewUrl &&
                     <>
                         <div className="relative overflow-hidden rounded-xl">

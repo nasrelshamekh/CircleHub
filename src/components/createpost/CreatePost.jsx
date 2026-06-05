@@ -4,7 +4,7 @@ import { useRef, useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { toast } from "sonner";
 
-export default function CreatePost({ onCreatePost }) {
+export default function CreatePost({ onCreatePost, community }) {
 
     const [open, setOpen] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -60,9 +60,11 @@ export default function CreatePost({ onCreatePost }) {
                 <img src={userData.avatar} alt={userData.name} className="avatar-lg" />
 
                 <button type="button" onClick={() => setOpen(true)} className="input-surface type-body-sm flex-1 rounded-full px-4 py-3 text-left transition hover:bg-(--hover) cursor-pointer">
-                    What's on your mind, {userData.name.split(" ")[0]}?
+                    {community
+                        ? `Share something with ${community.name}`
+                        : `What's on your mind, ${userData.name.split(" ")[0]}?`}
                 </button>
-                <CreatePostModal onCreatePost={onCreatePost} open={open} onOpenChange={handleOpenChange} user={userData} previewUrl={previewUrl} handlePhotoSelect={handlePhotoSelect} handleRemovePhoto={handleRemovePhoto} />
+                <CreatePostModal onCreatePost={onCreatePost} open={open} onOpenChange={handleOpenChange} user={userData} previewUrl={previewUrl} handlePhotoSelect={handlePhotoSelect} handleRemovePhoto={handleRemovePhoto} community={community} />
                 <button
                     type="button"
                     onClick={openFileInput}

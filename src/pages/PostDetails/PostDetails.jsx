@@ -15,6 +15,8 @@ export default function PostDetails() {
     const navigate = useNavigate()
     const post = posts.find((post) => post.id === Number(id));
     const isFeedPost = feedPosts.some((feedPost) => feedPost.id === post?.id);
+    const backPath = post?.communitySlug ? `/communities/${post.communitySlug}` : "/feed";
+    const backLabel = post?.communitySlug ? "Back To Community" : "Back To Feed";
 
     function handleDeletePost(postId) {
         const postExists = feedPosts.some((feedPost) => feedPost.id === postId);
@@ -107,9 +109,9 @@ export default function PostDetails() {
             <div className="content-stack gap-4 max-w-5xl">
 
                 {post ? (<>
-                    <button type="button" onClick={() => navigate("/feed")} className="button-primary type-button flex gap-1 justify-center p-1 w-35 items-center rounded-full">
+                    <button type="button" onClick={() => navigate(backPath)} className="button-primary type-button inline-flex w-fit self-start items-center justify-center gap-1 rounded-full px-3 py-1">
                         <MoveLeft className="size-5 lg:size-6" />
-                        Back To Feed
+                        {backLabel}
                     </button>
                     <PostCard
                         post={post}

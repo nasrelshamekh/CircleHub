@@ -1,6 +1,6 @@
 import { useContext } from "react";
 
-import { CommunitiesContext } from "@/context/CommunitiesContext";
+import { CommunitiesContext } from "@/context/CommunitiesContext.jsx";
 
 export function useCommunities() {
     const context = useContext(CommunitiesContext);

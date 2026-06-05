@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Check, Clock, FileText, Hash, Lock, Settings, ShieldUser, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useCommunityPosts } from "@/hooks/useCommunityPosts";
 
 export default function CommunityResultCard({ community, onMembershipChange }) {
   const { userData } = useAuth();
@@ -11,6 +12,8 @@ export default function CommunityResultCard({ community, onMembershipChange }) {
   const displayAdmin = isAdmin ? userData : community.admin;
   const actionLabel = isAdmin ? "Manage" : isJoined ? "Leave" : isRequested ? "Requested" : isPrivate ? "Request" : "Join";
   const membersCount = community.members.length;
+  const { communityPosts } = useCommunityPosts();
+  const postsCount = communityPosts.filter((post) => post.communitySlug === community.slug).length;
 
   return (
     <div className="content-card-padded flex min-w-0 flex-col gap-4 overflow-hidden">
@@ -56,7 +59,7 @@ export default function CommunityResultCard({ community, onMembershipChange }) {
 
         <span className="flex items-center gap-1.5">
           <FileText size={15} />
-          {community.postsCount} posts today
+          {postsCount} posts
         </span>
 
         <span className="flex items-center gap-1.5">

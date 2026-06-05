@@ -1,4 +1,4 @@
-import { themeContext } from '@/context/ThemeContext';
+import { themeContext } from '@/context/ThemeContext.jsx';
 import { useContext } from 'react'
 
 export function useTheme() {

@@ -1,6 +1,7 @@
 import { FileText, Image, Info, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import CreatePost from "@/components/createpost/CreatePost";
 import PostCard from "@/components/post/Post";
 import {
     Tabs,
@@ -39,6 +40,8 @@ export default function CommunityTabs({
     userData,
     canManagePosts,
     onDeletePost,
+    canCreatePost,
+    onCreatePost,
 }) {
     const mediaPosts = posts.filter((post) => post.image);
 
@@ -60,6 +63,10 @@ export default function CommunityTabs({
             </div>
 
             <TabsContent value="posts" className="space-y-5">
+                {canCreatePost && (
+                    <CreatePost onCreatePost={onCreatePost} community={community} />
+                )}
+
                 {posts.length > 0 ? (
                     posts.map((post) => (
                         <PostCard

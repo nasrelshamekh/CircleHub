@@ -11,8 +11,8 @@ const communityPostRows = [
     image: null,
     createdAt: "25 minutes ago",
     commentsCount: 14,
-    likesCount: 86,
-    likedBy: ["sophialee.dev", "alex.components", "davidcodes"],
+    likesCount: 0,
+    likedBy: [],
   },
   {
     id: 102,
@@ -23,8 +23,8 @@ const communityPostRows = [
     image: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6",
     createdAt: "2 hours ago",
     commentsCount: 9,
-    likesCount: 54,
-    likedBy: ["ethan.react", "leo.frontend", "nasr.dev"],
+    likesCount: 1,
+    likedBy: ["maya.creates"],
   },
   {
     id: 103,
@@ -35,8 +35,8 @@ const communityPostRows = [
     image: "https://images.unsplash.com/photo-1561070791-2526d30994b5",
     createdAt: "1 hour ago",
     commentsCount: 11,
-    likesCount: 72,
-    likedBy: ["sarah.design", "omar.ui", "lina.accessible"],
+    likesCount: 2,
+    likedBy: ["karim.builds", "ava.product"],
   },
   {
     id: 104,
@@ -47,8 +47,8 @@ const communityPostRows = [
     image: null,
     createdAt: "3 hours ago",
     commentsCount: 18,
-    likesCount: 93,
-    likedBy: ["maya.creates", "karim.builds", "nasr.dev"],
+    likesCount: 3,
+    likedBy: ["alex.components", "natalie.tokens", "priya.systems"],
   },
   {
     id: 105,
@@ -59,8 +59,8 @@ const communityPostRows = [
     image: "https://images.unsplash.com/photo-1559136555-9303baea8ebd",
     createdAt: "5 hours ago",
     commentsCount: 7,
-    likesCount: 61,
-    likedBy: ["james.portfolio", "ryan.beta", "daniel.community"],
+    likesCount: 4,
+    likedBy: ["leo.frontend", "youssef.codes", "lina.accessible", "ethan.react"],
   },
   {
     id: 106,
@@ -71,8 +71,8 @@ const communityPostRows = [
     image: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4",
     createdAt: "6 hours ago",
     commentsCount: 13,
-    likesCount: 77,
-    likedBy: ["natalie.tokens", "priya.systems", "olivia.darkmode"],
+    likesCount: 5,
+    likedBy: ["ethan.react", "nasr.dev", "elena.designs", "davidcodes", "maya.creates"],
   },
   {
     id: 107,
@@ -83,8 +83,8 @@ const communityPostRows = [
     image: null,
     createdAt: "7 hours ago",
     commentsCount: 10,
-    likesCount: 65,
-    likedBy: ["davidcodes", "youssef.codes", "sophialee.dev"],
+    likesCount: 6,
+    likedBy: ["davidcodes", "maya.creates", "omar.ui", "sophialee.dev", "karim.builds", "ava.product"],
   },
   {
     id: 108,
@@ -95,8 +95,8 @@ const communityPostRows = [
     image: "https://images.unsplash.com/photo-1556075798-4825dfaaf498",
     createdAt: "8 hours ago",
     commentsCount: 15,
-    likesCount: 84,
-    likedBy: ["daniel.community", "ethan.react", "lina.accessible"],
+    likesCount: 2,
+    likedBy: ["sophialee.dev", "karim.builds"],
   },
   {
     id: 109,
@@ -107,8 +107,8 @@ const communityPostRows = [
     image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085",
     createdAt: "9 hours ago",
     commentsCount: 12,
-    likesCount: 69,
-    likedBy: ["ava.product", "sarah.design", "maya.creates"],
+    likesCount: 5,
+    likedBy: ["sarah.design", "alex.components", "natalie.tokens", "priya.systems", "leo.frontend"],
   },
   {
     id: 110,
@@ -119,8 +119,8 @@ const communityPostRows = [
     image: null,
     createdAt: "10 hours ago",
     commentsCount: 0,
-    likesCount: 48,
-    likedBy: ["nasr.dev", "sophialee.dev", "ethan.react"],
+    likesCount: 1,
+    likedBy: ["priya.systems"],
   },
   {
     id: 111,
@@ -131,8 +131,8 @@ const communityPostRows = [
     image: null,
     createdAt: "11 hours ago",
     commentsCount: 0,
-    likesCount: 57,
-    likedBy: ["davidcodes", "karim.builds", "youssef.codes"],
+    likesCount: 4,
+    likedBy: ["lina.accessible", "ethan.react", "nasr.dev", "elena.designs"],
   },
   {
     id: 112,
@@ -143,8 +143,8 @@ const communityPostRows = [
     image: "https://images.unsplash.com/photo-1558655146-d09347e92766",
     createdAt: "13 hours ago",
     commentsCount: 0,
-    likesCount: 64,
-    likedBy: ["elena.designs", "omar.ui", "lina.accessible"],
+    likesCount: 0,
+    likedBy: [],
   },
   {
     id: 113,
@@ -155,8 +155,8 @@ const communityPostRows = [
     image: null,
     createdAt: "14 hours ago",
     commentsCount: 0,
-    likesCount: 88,
-    likedBy: ["nasr.dev", "ryan.beta", "karim.builds"],
+    likesCount: 6,
+    likedBy: ["omar.ui", "sophialee.dev", "karim.builds", "ava.product", "sarah.design", "alex.components"],
   },
   {
     id: 114,
@@ -167,8 +167,8 @@ const communityPostRows = [
     image: null,
     createdAt: "15 hours ago",
     commentsCount: 0,
-    likesCount: 71,
-    likedBy: ["alex.components", "priya.systems", "olivia.darkmode"],
+    likesCount: 3,
+    likedBy: ["ava.product", "sarah.design", "alex.components"],
   },
   {
     id: 115,
@@ -179,8 +179,8 @@ const communityPostRows = [
     image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952",
     createdAt: "16 hours ago",
     commentsCount: 0,
-    likesCount: 79,
-    likedBy: ["priya.systems", "ethan.react", "leo.frontend"],
+    likesCount: 2,
+    likedBy: ["natalie.tokens", "priya.systems"],
   },
   {
     id: 116,
@@ -191,8 +191,8 @@ const communityPostRows = [
     image: null,
     createdAt: "18 hours ago",
     commentsCount: 0,
-    likesCount: 52,
-    likedBy: ["james.portfolio", "elena.designs", "maya.creates"],
+    likesCount: 5,
+    likedBy: ["youssef.codes", "lina.accessible", "ethan.react", "nasr.dev", "elena.designs"],
   },
 ];
 
@@ -204,7 +204,10 @@ const communityPosts = communityPostRows.map((post) => {
     author: users.find((user) => user.username === post.authorUsername),
     comments,
     commentsCount: comments.length,
+    likedBy: post.likedBy || [],
+    likesCount: (post.likedBy || []).length,
   };
 });
 
 export default communityPosts;
+

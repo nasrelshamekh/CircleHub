@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 
 
 export default function CommentForm({ user, postId, onAddComment }) {
@@ -6,6 +7,12 @@ export default function CommentForm({ user, postId, onAddComment }) {
 
     function handleSubmit(event) {
         event.preventDefault();
+
+        if (!commentText.trim()) {
+            toast.error("Please write a comment first.");
+            return;
+        }
+
         const newComment = {
             id: Date.now(),
             postId,

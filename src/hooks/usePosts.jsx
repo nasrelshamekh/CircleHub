@@ -1,6 +1,6 @@
 import { useContext } from "react";
 
-import { postsContext } from "@/context/PostsContext";
+import { postsContext } from "@/context/PostsContext.jsx";
 
 export function usePosts() {
     const context = useContext(postsContext);

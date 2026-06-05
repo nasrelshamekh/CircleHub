@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, FileText, Hash, Lock, Plus, ShieldUser, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useCommunityPosts } from "@/hooks/useCommunityPosts";
 
 export default function SuggestedCommunityItem({ community, onMembershipChange }) {
     const { userData } = useAuth();
@@ -10,6 +11,8 @@ export default function SuggestedCommunityItem({ community, onMembershipChange }
     const isPrivate = community.visibility === "private";
     const displayAdmin = community.admin.id === userData.id ? userData : community.admin;
     const membersCount = community.members.length;
+    const { communityPosts } = useCommunityPosts();
+    const postsCount = communityPosts.filter((post) => post.communitySlug === community.slug).length;
 
     return (
         <article className="rounded-lg bg-(--surface-low) p-3">
@@ -124,7 +127,7 @@ export default function SuggestedCommunityItem({ community, onMembershipChange }
                                     <FileText size={14} className="mt-0.5 shrink-0 text-(--primary)" />
                                     <div className="min-w-0">
                                         <p className="type-label-sm text-primary">Posts</p>
-                                        <p className="type-body-sm-readable wrap-break-word text-secondary">{community.postsCount} posts today</p>
+                                        <p className="type-body-sm-readable wrap-break-word text-secondary">{postsCount} posts</p>
                                     </div>
                                 </div>
 

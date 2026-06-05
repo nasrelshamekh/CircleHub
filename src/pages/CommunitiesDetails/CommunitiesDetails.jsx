@@ -94,6 +94,10 @@ export default function CommunitiesDetails() {
         toast.success("Community post deleted successfully");
     }
 
+    function handleCreateCommunityPost(newPost) {
+        setCommunityPosts((currentPosts) => [newPost, ...currentPosts]);
+    }
+
     if (!community) {
         return (
             <section className="content-stack max-w-4xl">
@@ -113,6 +117,7 @@ export default function CommunitiesDetails() {
     const isAdmin = community.admin.id === userData.id;
     const currentUserMember = members.find((member) => member.id === userData.id);
     const isModerator = currentUserMember?.communityRole === "moderator";
+    const isCommunityMember = Boolean(currentUserMember) || isAdmin;
     const canManagePosts = isAdmin || isModerator;
 
     return (
@@ -134,6 +139,8 @@ export default function CommunitiesDetails() {
                         userData={userData}
                         canManagePosts={canManagePosts}
                         onDeletePost={handleDeleteCommunityPost}
+                        canCreatePost={isCommunityMember}
+                        onCreatePost={handleCreateCommunityPost}
                     />
                 </div>
 
