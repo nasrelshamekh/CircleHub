@@ -57,15 +57,20 @@ export default function PostDetails() {
     function handleAddComment(postId, newComment) {
         if (isFeedPost) {
             setPosts((currentPosts) =>
-                currentPosts.map((currentPost) =>
-                    currentPost.id === postId
-                        ? {
-                            ...currentPost,
-                            comments: [newComment, ...(currentPost.comments || [])],
-                            commentsCount: currentPost.commentsCount + 1,
-                        }
-                        : currentPost
-                )
+                currentPosts.map((currentPost) => {
+                    if (currentPost.id !== postId) return currentPost;
+
+                    const updatedComments = [
+                        newComment,
+                        ...(currentPost.comments || []),
+                    ];
+
+                    return {
+                        ...currentPost,
+                        comments: updatedComments,
+                        commentsCount: updatedComments.length,
+                    };
+                })
             );
 
             toast.success("Comment added successfully");
@@ -73,15 +78,20 @@ export default function PostDetails() {
         }
 
         setCommunityPosts((currentPosts) =>
-            currentPosts.map((currentPost) =>
-                currentPost.id === postId
-                    ? {
-                        ...currentPost,
-                        comments: [newComment, ...(currentPost.comments || [])],
-                        commentsCount: currentPost.commentsCount + 1,
-                    }
-                    : currentPost
-            )
+            currentPosts.map((currentPost) => {
+                if (currentPost.id !== postId) return currentPost;
+
+                const updatedComments = [
+                    newComment,
+                    ...(currentPost.comments || []),
+                ];
+
+                return {
+                    ...currentPost,
+                    comments: updatedComments,
+                    commentsCount: updatedComments.length,
+                };
+            })
         );
 
         toast.success("Comment added successfully");

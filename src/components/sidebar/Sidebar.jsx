@@ -1,5 +1,5 @@
 import SidebarNav from './SidebarNav'
-import { ArrowLeftToLine, ArrowRightToLine, CirclePlus } from 'lucide-react'
+import { ArrowLeftToLine, CirclePlus } from 'lucide-react'
 import { useState } from 'react'
 import { CreatePostModal } from '../createpost/CreatePostModal'
 import { useAuth } from '@/hooks/useAuth'
@@ -69,7 +69,13 @@ export default function Sidebar() {
                     aria-label={isSidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
                     aria-expanded={isSidebarExpanded}
                     title={isSidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}>
-                    {isSidebarExpanded ? <ArrowLeftToLine size={20} /> : <ArrowRightToLine size={20} />}
+                    <motion.span
+                        className="block"
+                        animate={{ rotate: isSidebarExpanded ? 0 : 180 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                    >
+                        <ArrowLeftToLine size={20} />
+                    </motion.span>
                 </button>
 
                 <div className="mt-10 space-y-6">

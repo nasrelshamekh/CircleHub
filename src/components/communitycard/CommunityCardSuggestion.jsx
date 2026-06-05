@@ -1,15 +1,11 @@
 import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { ArrowDownFromLine, ArrowUpToLine } from "lucide-react";
+import { motion } from "motion/react";
+import { ArrowDownFromLine } from "lucide-react";
 
 import SuggestedCommunityItem from "./SuggestedCommunityItem";
 
 export default function CommunityCardSuggestion({ communities, onMembershipChange }) {
     const [isSuggestionsExpanded, setIsSuggestionsExpanded] = useState(false);
-
-    const visibleCommunities = isSuggestionsExpanded
-        ? communities
-        : [];
 
     return (
         <aside className="content-card-padded lg:top-24">
@@ -23,11 +19,13 @@ export default function CommunityCardSuggestion({ communities, onMembershipChang
                         aria-label={isSuggestionsExpanded ? "Show fewer suggestions" : "View more suggestions"}
                         onClick={() => setIsSuggestionsExpanded((current) => !current)}
                     >
-                                {isSuggestionsExpanded ? (
-                                    <ArrowUpToLine size={22} />
-                                ) : (
-                                    <ArrowDownFromLine size={22} />
-                                )}
+                        <motion.span
+                            className="block"
+                            animate={{ rotate: isSuggestionsExpanded ? 180 : 0 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                        >
+                            <ArrowDownFromLine size={22} />
+                        </motion.span>
                     </button>
                 </div>
 
@@ -36,34 +34,28 @@ export default function CommunityCardSuggestion({ communities, onMembershipChang
                 </p>
             </div>
 
-            <motion.div layout className="space-y-3">
-                <AnimatePresence initial={false}>
-                    {visibleCommunities.map((community) => (
-                        <motion.div
-                            key={community.id}
-                            layout
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.16, ease: "easeOut" }}
-                        >
+            <motion.div
+                initial={false}
+                animate={{
+                    gridTemplateRows: isSuggestionsExpanded ? "1fr" : "0fr",
+                    opacity: isSuggestionsExpanded ? 1 : 0,
+                }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className={`grid ${isSuggestionsExpanded ? "" : "pointer-events-none"}`}
+                aria-hidden={!isSuggestionsExpanded}
+            >
+                <div className="overflow-hidden">
+                    <div className="space-y-3">
+                        {communities.map((community) => (
                             <SuggestedCommunityItem
+                                key={community.id}
                                 community={community}
                                 onMembershipChange={onMembershipChange}
                             />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
+                        ))}
+                    </div>
+                </div>
             </motion.div>
-            {/* <div className="flex justify-center">
-            <button
-                type="button"
-                className="mt-4 text-center cursor-pointer text-sm font-medium underline transition-opacity hover:opacity-80"
-                onClick={() => setIsSuggestionsExpanded((current) => !current)}
-            >
-                {isSuggestionsExpanded ? "Show fewer" : `View all ${communities.length}`}
-            </button>
-            </div> */}
         </aside>
     );
 }

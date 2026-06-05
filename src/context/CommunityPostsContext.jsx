@@ -15,8 +15,7 @@ export default function CommunityPostsContextProvider({ children }) {
 
         try {
             return JSON.parse(savedCommunityPosts).map((post) => {
-                const mockPost = initialCommunityPosts.find((initialPost) => initialPost.id === post.id);
-                const likedBy = mockPost ? mockPost.likedBy : post.likedBy || [];
+                const likedBy = post.likedBy || [];
 
                 return {
                     ...post,
