@@ -1,60 +1,17 @@
 import { FileText, Lock, Plus, Users } from "lucide-react";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useCommunityMembership } from "@/hooks/useCommunityMembership";
 import { useCommunityPosts } from "@/hooks/useCommunityPosts";
 import { useCommunities } from "@/hooks/useCommunities";
 
 export default function SuggestedCommunitiesCard() {
-    const { communities, setCommunities } = useCommunities();
-    const { userData } = useAuth();
+    const { communities } = useCommunities();
     const { communityPosts } = useCommunityPosts();
+    const { handleCommunityMembershipChange } = useCommunityMembership();
     const suggestedCommunities = communities
         .filter((community) => community.membershipStatus === "not_joined")
         .slice(0, 3);
-
-    function handleCommunityMembershipChange(communityId) {
-        const selectedCommunity = communities.find((community) => community.id === communityId);
-        if (!selectedCommunity) return;
-
-        setCommunities((currentCommunities) =>
-            currentCommunities.map((community) =>
-                community.id === communityId
-                    ? {
-                        ...community,
-                        membershipStatus: community.visibility === "private" ? "requested" : "joined",
-                        members: community.visibility === "private"
-                            ? community.members
-                            : [
-                                ...community.members,
-                                {
-                                    ...userData,
-                                    communityRole: "member",
-                                },
-                            ],
-                        requests: community.visibility === "private"
-                            ? [
-                                ...community.requests,
-                                {
-                                    id: Date.now(),
-                                    user: userData,
-                                    requestedAt: "Just now",
-                                    note: "Requested to join this community.",
-                                },
-                            ]
-                            : community.requests,
-                    }
-                    : community
-            )
-        );
-
-        toast.success(
-            selectedCommunity.visibility === "private"
-                ? `Request sent to ${selectedCommunity.name}`
-                : `Joined ${selectedCommunity.name}`
-        );
-    }
 
     if (suggestedCommunities.length === 0) return null;
 

@@ -8,12 +8,12 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export default function ProfileHeader({ user, isCurrentUser }) {
+export default function ProfileHeader({ user, isCurrentUser, postsCount }) {
     const networkPath = `/followers/${user.username}`;
     const stats = [
         {
             label: "Posts",
-            value: user.postsCount,
+            value: postsCount,
         },
         {
             label: "Followers",

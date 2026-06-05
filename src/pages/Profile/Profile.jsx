@@ -18,6 +18,9 @@ export default function Profile() {
             ? { ...post, author: userData, authorUsername: userData.username }
             : post
     );
+    const userPostsCount = user
+        ? profilePosts.filter((post) => post.author.id === user.id).length
+        : 0;
 
     if (!user) {
         return (
@@ -35,7 +38,7 @@ export default function Profile() {
     return (
         <>
             <section className="w-full pb-20 lg:pb-0">
-                <ProfileHeader user={user} isCurrentUser={isCurrentUser} />
+                <ProfileHeader user={user} isCurrentUser={isCurrentUser} postsCount={userPostsCount} />
 
                 <div className="mx-auto grid w-full max-w-7xl grid-cols-4 gap-6 p-6">
                     <div className="order-2 lg:order-1 col-span-4 lg:col-span-3">

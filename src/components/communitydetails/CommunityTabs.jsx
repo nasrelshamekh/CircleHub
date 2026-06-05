@@ -68,14 +68,19 @@ export default function CommunityTabs({
                 )}
 
                 {posts.length > 0 ? (
-                    posts.map((post) => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            onDelete={canManagePosts ? onDeletePost : undefined}
-                            canDelete={canManagePosts}
-                        />
-                    ))
+                    posts.map((post) => {
+                        const isPostOwner = post.author.id === userData.id;
+                        const canDeletePost = canManagePosts || isPostOwner;
+
+                        return (
+                            <PostCard
+                                key={post.id}
+                                post={post}
+                                onDelete={canDeletePost ? onDeletePost : undefined}
+                                canDelete={canDeletePost}
+                            />
+                        );
+                    })
                 ) : (
                     <div className="content-card-padded flex flex-col items-center justify-center py-10 text-center">
                         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">

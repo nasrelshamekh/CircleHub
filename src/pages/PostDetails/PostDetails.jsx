@@ -2,36 +2,56 @@ import PostCard from '@/components/post/Post'
 import { MoveLeft, SearchX } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import CommentList from "@/components/comment/CommentList"
+import { useAuth } from "@/hooks/useAuth"
 import { useCommunityPosts } from "@/hooks/useCommunityPosts"
+import { useCommunities } from "@/hooks/useCommunities"
 import { usePosts } from "@/hooks/usePosts"
 import { toast } from "sonner"
 
 export default function PostDetails() {
     const { posts: feedPosts, setPosts } = usePosts();
     const { communityPosts, setCommunityPosts } = useCommunityPosts();
+    const { communities } = useCommunities();
+    const { userData } = useAuth();
     const posts = [...feedPosts, ...communityPosts];
 
     const { id } = useParams()
     const navigate = useNavigate()
     const post = posts.find((post) => post.id === Number(id));
     const isFeedPost = feedPosts.some((feedPost) => feedPost.id === post?.id);
+    const community = communities.find((community) => community.slug === post?.communitySlug);
+    const currentUserMember = community?.members.find((member) => member.id === userData.id);
+    const isCommunityAdmin = community?.admin.id === userData.id;
+    const isCommunityModerator = currentUserMember?.communityRole === "moderator";
+    const isPostOwner = post?.author.id === userData.id;
+    const canDeleteCommunityPost =
+        Boolean(post?.communitySlug) &&
+        (isPostOwner || isCommunityAdmin || isCommunityModerator);
     const backPath = post?.communitySlug ? `/communities/${post.communitySlug}` : "/feed";
     const backLabel = post?.communitySlug ? "Back To Community" : "Back To Feed";
 
     function handleDeletePost(postId) {
-        const postExists = feedPosts.some((feedPost) => feedPost.id === postId);
+        if (isFeedPost) {
+            setPosts((currentPosts) =>
+                currentPosts.filter((currentPost) => currentPost.id !== postId)
+            );
 
-        if (!postExists) {
-            toast.error("Post not found");
+            toast.success("Post deleted successfully");
+            navigate("/feed");
             return;
         }
 
-        setPosts((currentPosts) =>
+        if (!canDeleteCommunityPost) {
+            toast.error("You do not have permission to delete this post");
+            return;
+        }
+
+        setCommunityPosts((currentPosts) =>
             currentPosts.filter((currentPost) => currentPost.id !== postId)
         );
 
-        toast.success("Post deleted successfully");
-        navigate("/feed");
+        toast.success("Community post deleted successfully");
+        navigate(backPath);
     }
 
     function handleAddComment(postId, newComment) {
@@ -70,17 +90,19 @@ export default function PostDetails() {
     function handleDeleteComment(postId, commentId) {
         if (isFeedPost) {
             setPosts((currentPosts) =>
-                currentPosts.map((currentPost) =>
-                    currentPost.id === postId
-                        ? {
-                            ...currentPost,
-                            comments: (currentPost.comments || []).filter(
-                                (comment) => comment.id !== commentId
-                            ),
-                            commentsCount: currentPost.commentsCount - 1,
-                        }
-                        : currentPost
-                )
+                currentPosts.map((currentPost) => {
+                    if (currentPost.id !== postId) return currentPost;
+
+                    const remainingComments = (currentPost.comments || []).filter(
+                        (comment) => comment.id !== commentId
+                    );
+
+                    return {
+                        ...currentPost,
+                        comments: remainingComments,
+                        commentsCount: remainingComments.length,
+                    };
+                })
             );
 
             toast.success("Comment has been deleted");
@@ -88,17 +110,19 @@ export default function PostDetails() {
         }
 
         setCommunityPosts((currentPosts) =>
-            currentPosts.map((currentPost) =>
-                currentPost.id === postId
-                    ? {
-                        ...currentPost,
-                        comments: (currentPost.comments || []).filter(
-                            (comment) => comment.id !== commentId
-                        ),
-                        commentsCount: currentPost.commentsCount - 1,
-                    }
-                    : currentPost
-            )
+            currentPosts.map((currentPost) => {
+                if (currentPost.id !== postId) return currentPost;
+
+                const remainingComments = (currentPost.comments || []).filter(
+                    (comment) => comment.id !== commentId
+                );
+
+                return {
+                    ...currentPost,
+                    comments: remainingComments,
+                    commentsCount: remainingComments.length,
+                };
+            })
         );
 
         toast.success("Comment has been deleted");
@@ -115,7 +139,8 @@ export default function PostDetails() {
                     </button>
                     <PostCard
                         post={post}
-                        onDelete={isFeedPost ? handleDeletePost : undefined}
+                        onDelete={isFeedPost || canDeleteCommunityPost ? handleDeletePost : undefined}
+                        canDelete={isFeedPost ? undefined : canDeleteCommunityPost}
                     />
                     <CommentList onDeleteComment={handleDeleteComment} onAddComment={handleAddComment} post={post} />
                 </>) : (
