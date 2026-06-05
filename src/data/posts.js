@@ -22,7 +22,7 @@ const postRows = [
     createdAt: "1 hour ago",
     commentsCount: 9,
     likesCount: 1,
-    likedBy: ["maya.creates"],
+    likedBy: [4],
   },
   {
     id: 3,
@@ -33,7 +33,7 @@ const postRows = [
     createdAt: "2 hours ago",
     commentsCount: 5,
     likesCount: 2,
-    likedBy: ["karim.builds", "ava.product"],
+    likedBy: [7, 18],
   },
   {
     id: 4,
@@ -44,7 +44,7 @@ const postRows = [
     createdAt: "1 day ago",
     commentsCount: 3,
     likesCount: 3,
-    likedBy: ["alex.components", "natalie.tokens", "priya.systems"],
+    likedBy: [15, 16, 22],
   },
   {
     id: 5,
@@ -55,7 +55,7 @@ const postRows = [
     createdAt: "3 hours ago",
     commentsCount: 12,
     likesCount: 4,
-    likedBy: ["leo.frontend", "youssef.codes", "lina.accessible", "ethan.react"],
+    likedBy: [21, 19, 24, 25],
   },
   {
     id: 6,
@@ -66,7 +66,7 @@ const postRows = [
     createdAt: "2 days ago",
     commentsCount: 7,
     likesCount: 5,
-    likedBy: ["ethan.react", "nasr.dev", "elena.designs", "davidcodes", "maya.creates"],
+    likedBy: [25, 1, 2, 3, 4],
   },
   {
     id: 7,
@@ -77,7 +77,7 @@ const postRows = [
     createdAt: "4 hours ago",
     commentsCount: 8,
     likesCount: 6,
-    likedBy: ["davidcodes", "maya.creates", "omar.ui", "sophialee.dev", "karim.builds", "ava.product"],
+    likedBy: [3, 4, 5, 6, 7, 18],
   },
   {
     id: 8,
@@ -88,7 +88,7 @@ const postRows = [
     createdAt: "2 days ago",
     commentsCount: 10,
     likesCount: 2,
-    likedBy: ["sophialee.dev", "karim.builds"],
+    likedBy: [6, 7],
   },
   {
     id: 9,
@@ -99,7 +99,7 @@ const postRows = [
     createdAt: "5 hours ago",
     commentsCount: 6,
     likesCount: 5,
-    likedBy: ["sarah.design", "alex.components", "natalie.tokens", "priya.systems", "leo.frontend"],
+    likedBy: [8, 15, 16, 22, 21],
   },
   {
     id: 10,
@@ -110,7 +110,7 @@ const postRows = [
     createdAt: "3 days ago",
     commentsCount: 4,
     likesCount: 1,
-    likedBy: ["priya.systems"],
+    likedBy: [22],
   },
   {
     id: 11,
@@ -121,7 +121,7 @@ const postRows = [
     createdAt: "6 hours ago",
     commentsCount: 9,
     likesCount: 4,
-    likedBy: ["lina.accessible", "ethan.react", "nasr.dev", "elena.designs"],
+    likedBy: [24, 25, 1, 2],
   },
   {
     id: 12,
@@ -143,7 +143,7 @@ const postRows = [
     createdAt: "8 hours ago",
     commentsCount: 5,
     likesCount: 6,
-    likedBy: ["omar.ui", "sophialee.dev", "karim.builds", "ava.product", "sarah.design", "alex.components"],
+    likedBy: [5, 6, 7, 18, 8, 15],
   },
   {
     id: 14,
@@ -154,7 +154,7 @@ const postRows = [
     createdAt: "4 days ago",
     commentsCount: 7,
     likesCount: 3,
-    likedBy: ["ava.product", "sarah.design", "alex.components"],
+    likedBy: [18, 8, 15],
   },
   {
     id: 15,
@@ -165,7 +165,7 @@ const postRows = [
     createdAt: "9 hours ago",
     commentsCount: 8,
     likesCount: 2,
-    likedBy: ["natalie.tokens", "priya.systems"],
+    likedBy: [16, 22],
   },
   {
     id: 16,
@@ -176,7 +176,7 @@ const postRows = [
     createdAt: "4 days ago",
     commentsCount: 5,
     likesCount: 5,
-    likedBy: ["youssef.codes", "lina.accessible", "ethan.react", "nasr.dev", "elena.designs"],
+    likedBy: [19, 24, 25, 1, 2],
   },
   {
     id: 17,
@@ -198,7 +198,7 @@ const postRows = [
     createdAt: "5 days ago",
     commentsCount: 6,
     likesCount: 1,
-    likedBy: ["maya.creates"],
+    likedBy: [4],
   },
   {
     id: 19,
@@ -209,7 +209,7 @@ const postRows = [
     createdAt: "11 hours ago",
     commentsCount: 15,
     likesCount: 2,
-    likedBy: ["karim.builds", "ava.product"],
+    likedBy: [7, 18],
   },
   {
     id: 20,
@@ -220,7 +220,7 @@ const postRows = [
     createdAt: "5 days ago",
     commentsCount: 4,
     likesCount: 3,
-    likedBy: ["alex.components", "natalie.tokens", "priya.systems"],
+    likedBy: [15, 16, 22],
   },
   {
     id: 21,
@@ -231,7 +231,7 @@ const postRows = [
     createdAt: "12 hours ago",
     commentsCount: 21,
     likesCount: 4,
-    likedBy: ["leo.frontend", "youssef.codes", "lina.accessible", "ethan.react"],
+    likedBy: [21, 19, 24, 25],
   },
   {
     id: 22,
@@ -242,7 +242,7 @@ const postRows = [
     createdAt: "6 days ago",
     commentsCount: 9,
     likesCount: 5,
-    likedBy: ["ethan.react", "nasr.dev", "elena.designs", "davidcodes", "maya.creates"],
+    likedBy: [25, 1, 2, 3, 4],
   },
   {
     id: 23,
@@ -253,7 +253,7 @@ const postRows = [
     createdAt: "13 hours ago",
     commentsCount: 5,
     likesCount: 6,
-    likedBy: ["davidcodes", "maya.creates", "omar.ui", "sophialee.dev", "karim.builds", "ava.product"],
+    likedBy: [3, 4, 5, 6, 7, 18],
   },
   {
     id: 24,
@@ -264,7 +264,7 @@ const postRows = [
     createdAt: "6 days ago",
     commentsCount: 7,
     likesCount: 2,
-    likedBy: ["sophialee.dev", "karim.builds"],
+    likedBy: [6, 7],
   },
   {
     id: 25,
@@ -275,7 +275,7 @@ const postRows = [
     createdAt: "14 hours ago",
     commentsCount: 18,
     likesCount: 5,
-    likedBy: ["sarah.design", "alex.components", "natalie.tokens", "priya.systems", "leo.frontend"],
+    likedBy: [8, 15, 16, 22, 21],
   },
   {
     id: 26,
@@ -286,7 +286,7 @@ const postRows = [
     createdAt: "1 week ago",
     commentsCount: 6,
     likesCount: 1,
-    likedBy: ["priya.systems"],
+    likedBy: [22],
   },
   {
     id: 27,
@@ -297,7 +297,7 @@ const postRows = [
     createdAt: "15 hours ago",
     commentsCount: 26,
     likesCount: 4,
-    likedBy: ["lina.accessible", "ethan.react", "nasr.dev", "elena.designs"],
+    likedBy: [24, 25, 1, 2],
   },
   {
     id: 28,
@@ -319,7 +319,7 @@ const postRows = [
     createdAt: "16 hours ago",
     commentsCount: 9,
     likesCount: 6,
-    likedBy: ["omar.ui", "sophialee.dev", "karim.builds", "ava.product", "sarah.design", "alex.components"],
+    likedBy: [5, 6, 7, 18, 8, 15],
   },
   {
     id: 30,
@@ -330,7 +330,7 @@ const postRows = [
     createdAt: "1 week ago",
     commentsCount: 5,
     likesCount: 3,
-    likedBy: ["ava.product", "sarah.design", "alex.components"],
+    likedBy: [18, 8, 15],
   },
   {
     id: 31,
@@ -341,7 +341,7 @@ const postRows = [
     createdAt: "17 hours ago",
     commentsCount: 7,
     likesCount: 2,
-    likedBy: ["natalie.tokens", "priya.systems"],
+    likedBy: [16, 22],
   },
   {
     id: 32,
@@ -352,7 +352,7 @@ const postRows = [
     createdAt: "8 days ago",
     commentsCount: 4,
     likesCount: 5,
-    likedBy: ["youssef.codes", "lina.accessible", "ethan.react", "nasr.dev", "elena.designs"],
+    likedBy: [19, 24, 25, 1, 2],
   },
   {
     id: 33,
@@ -374,7 +374,7 @@ const postRows = [
     createdAt: "8 days ago",
     commentsCount: 11,
     likesCount: 1,
-    likedBy: ["maya.creates"],
+    likedBy: [4],
   },
   {
     id: 35,
@@ -385,7 +385,7 @@ const postRows = [
     createdAt: "19 hours ago",
     commentsCount: 10,
     likesCount: 2,
-    likedBy: ["karim.builds", "ava.product"],
+    likedBy: [7, 18],
   },
   {
     id: 36,
@@ -396,7 +396,7 @@ const postRows = [
     createdAt: "9 days ago",
     commentsCount: 6,
     likesCount: 3,
-    likedBy: ["alex.components", "natalie.tokens", "priya.systems"],
+    likedBy: [15, 16, 22],
   },
   {
     id: 37,
@@ -407,7 +407,7 @@ const postRows = [
     createdAt: "20 hours ago",
     commentsCount: 4,
     likesCount: 4,
-    likedBy: ["leo.frontend", "youssef.codes", "lina.accessible", "ethan.react"],
+    likedBy: [21, 19, 24, 25],
   },
   {
     id: 38,
@@ -418,7 +418,7 @@ const postRows = [
     createdAt: "9 days ago",
     commentsCount: 3,
     likesCount: 5,
-    likedBy: ["ethan.react", "nasr.dev", "elena.designs", "davidcodes", "maya.creates"],
+    likedBy: [25, 1, 2, 3, 4],
   },
   {
     id: 39,
@@ -429,7 +429,7 @@ const postRows = [
     createdAt: "21 hours ago",
     commentsCount: 8,
     likesCount: 6,
-    likedBy: ["davidcodes", "maya.creates", "omar.ui", "sophialee.dev", "karim.builds", "ava.product"],
+    likedBy: [3, 4, 5, 6, 7, 18],
   },
   {
     id: 40,
@@ -440,7 +440,7 @@ const postRows = [
     createdAt: "10 days ago",
     commentsCount: 5,
     likesCount: 2,
-    likedBy: ["sophialee.dev", "karim.builds"],
+    likedBy: [6, 7],
   },
   {
     id: 41,
@@ -451,7 +451,7 @@ const postRows = [
     createdAt: "22 hours ago",
     commentsCount: 6,
     likesCount: 5,
-    likedBy: ["sarah.design", "alex.components", "natalie.tokens", "priya.systems", "leo.frontend"],
+    likedBy: [8, 15, 16, 22, 21],
   },
   {
     id: 42,
@@ -462,7 +462,7 @@ const postRows = [
     createdAt: "10 days ago",
     commentsCount: 7,
     likesCount: 1,
-    likedBy: ["priya.systems"],
+    likedBy: [22],
   },
   {
     id: 43,
@@ -473,7 +473,7 @@ const postRows = [
     createdAt: "23 hours ago",
     commentsCount: 13,
     likesCount: 4,
-    likedBy: ["lina.accessible", "ethan.react", "nasr.dev", "elena.designs"],
+    likedBy: [24, 25, 1, 2],
   },
   {
     id: 44,
@@ -495,7 +495,7 @@ const postRows = [
     createdAt: "1 day ago",
     commentsCount: 5,
     likesCount: 6,
-    likedBy: ["omar.ui", "sophialee.dev", "karim.builds", "ava.product", "sarah.design", "alex.components"],
+    likedBy: [5, 6, 7, 18, 8, 15],
   },
   {
     id: 46,
@@ -506,7 +506,7 @@ const postRows = [
     createdAt: "11 days ago",
     commentsCount: 4,
     likesCount: 3,
-    likedBy: ["ava.product", "sarah.design", "alex.components"],
+    likedBy: [18, 8, 15],
   },
   {
     id: 47,
@@ -517,7 +517,7 @@ const postRows = [
     createdAt: "1 day ago",
     commentsCount: 9,
     likesCount: 2,
-    likedBy: ["natalie.tokens", "priya.systems"],
+    likedBy: [16, 22],
   },
   {
     id: 48,
@@ -528,7 +528,7 @@ const postRows = [
     createdAt: "12 days ago",
     commentsCount: 7,
     likesCount: 5,
-    likedBy: ["youssef.codes", "lina.accessible", "ethan.react", "nasr.dev", "elena.designs"],
+    likedBy: [19, 24, 25, 1, 2],
   },
   {
     id: 49,
@@ -550,7 +550,7 @@ const postRows = [
     createdAt: "12 days ago",
     commentsCount: 6,
     likesCount: 1,
-    likedBy: ["maya.creates"],
+    likedBy: [4],
   },
 ];
 

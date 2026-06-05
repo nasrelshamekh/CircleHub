@@ -1,6 +1,6 @@
 const networks = [
   {
-    username: "nasr.dev",
+    userId: 1,
     followers: [
       {
         id: 2,
@@ -117,7 +117,7 @@ const networks = [
     ],
   },
   {
-    username: "elena.designs",
+    userId: 2,
     followers: [
       {
         id: 1,
@@ -168,7 +168,7 @@ const networks = [
     ],
   },
   {
-    username: "davidcodes",
+    userId: 3,
     followers: [
       {
         id: 1,

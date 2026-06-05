@@ -60,10 +60,11 @@ export default function ProfileSettingsForm() {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="flex flex-col gap-2">
-                        <label className="type-body-sm text-(--primary)">
+                        <label htmlFor="profile-visibility" className="type-body-sm cursor-pointer text-(--primary)">
                             Profile Visibility
                         </label>
                         <ThemedDropdownSelect
+                            id="profile-visibility"
                             value={settings.profileVisibility}
                             options={profileVisibilityOptions}
                             ariaLabel="Select profile visibility"
@@ -72,10 +73,11 @@ export default function ProfileSettingsForm() {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <label className="type-body-sm text-(--primary)">
+                        <label htmlFor="messages-from" className="type-body-sm cursor-pointer text-(--primary)">
                             Messages From
                         </label>
                         <ThemedDropdownSelect
+                            id="messages-from"
                             value={settings.messagesFrom}
                             options={messageOptions}
                             ariaLabel="Select who can message you"

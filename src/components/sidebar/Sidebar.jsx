@@ -71,6 +71,7 @@ export default function Sidebar() {
                     title={isSidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}>
                     <motion.span
                         className="block"
+                        initial={false}
                         animate={{ rotate: isSidebarExpanded ? 0 : 180 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
                     >

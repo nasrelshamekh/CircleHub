@@ -30,7 +30,11 @@ export default function FollowUserCard({ user }) {
                     </div>
                 </Link>
 
-                <button type="button" className="icon-button-soft flex h-10 w-10 shrink-0 items-center justify-center bg-(--surface-low) text-(--primary)">
+                <button
+                    type="button"
+                    className="icon-button-soft flex h-10 w-10 shrink-0 items-center justify-center bg-(--surface-low) text-(--primary)"
+                    aria-label={user.isFollowing ? `Following ${user.name}` : `Follow ${user.name}`}
+                >
                     {user.isFollowing ? <Check size={18} /> : <UserPlus size={18} />}
                 </button>
             </div>

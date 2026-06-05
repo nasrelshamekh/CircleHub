@@ -24,7 +24,7 @@ const communityPostRows = [
     createdAt: "2 hours ago",
     commentsCount: 9,
     likesCount: 1,
-    likedBy: ["maya.creates"],
+    likedBy: [4],
   },
   {
     id: 103,
@@ -36,7 +36,7 @@ const communityPostRows = [
     createdAt: "1 hour ago",
     commentsCount: 11,
     likesCount: 2,
-    likedBy: ["karim.builds", "ava.product"],
+    likedBy: [7, 18],
   },
   {
     id: 104,
@@ -48,7 +48,7 @@ const communityPostRows = [
     createdAt: "3 hours ago",
     commentsCount: 18,
     likesCount: 3,
-    likedBy: ["alex.components", "natalie.tokens", "priya.systems"],
+    likedBy: [15, 16, 22],
   },
   {
     id: 105,
@@ -60,7 +60,7 @@ const communityPostRows = [
     createdAt: "5 hours ago",
     commentsCount: 7,
     likesCount: 4,
-    likedBy: ["leo.frontend", "youssef.codes", "lina.accessible", "ethan.react"],
+    likedBy: [21, 19, 24, 25],
   },
   {
     id: 106,
@@ -72,7 +72,7 @@ const communityPostRows = [
     createdAt: "6 hours ago",
     commentsCount: 13,
     likesCount: 5,
-    likedBy: ["ethan.react", "nasr.dev", "elena.designs", "davidcodes", "maya.creates"],
+    likedBy: [25, 1, 2, 3, 4],
   },
   {
     id: 107,
@@ -84,7 +84,7 @@ const communityPostRows = [
     createdAt: "7 hours ago",
     commentsCount: 10,
     likesCount: 6,
-    likedBy: ["davidcodes", "maya.creates", "omar.ui", "sophialee.dev", "karim.builds", "ava.product"],
+    likedBy: [3, 4, 5, 6, 7, 18],
   },
   {
     id: 108,
@@ -96,7 +96,7 @@ const communityPostRows = [
     createdAt: "8 hours ago",
     commentsCount: 15,
     likesCount: 2,
-    likedBy: ["sophialee.dev", "karim.builds"],
+    likedBy: [6, 7],
   },
   {
     id: 109,
@@ -108,7 +108,7 @@ const communityPostRows = [
     createdAt: "9 hours ago",
     commentsCount: 12,
     likesCount: 5,
-    likedBy: ["sarah.design", "alex.components", "natalie.tokens", "priya.systems", "leo.frontend"],
+    likedBy: [8, 15, 16, 22, 21],
   },
   {
     id: 110,
@@ -120,7 +120,7 @@ const communityPostRows = [
     createdAt: "10 hours ago",
     commentsCount: 0,
     likesCount: 1,
-    likedBy: ["priya.systems"],
+    likedBy: [22],
   },
   {
     id: 111,
@@ -132,7 +132,7 @@ const communityPostRows = [
     createdAt: "11 hours ago",
     commentsCount: 0,
     likesCount: 4,
-    likedBy: ["lina.accessible", "ethan.react", "nasr.dev", "elena.designs"],
+    likedBy: [24, 25, 1, 2],
   },
   {
     id: 112,
@@ -156,7 +156,7 @@ const communityPostRows = [
     createdAt: "14 hours ago",
     commentsCount: 0,
     likesCount: 6,
-    likedBy: ["omar.ui", "sophialee.dev", "karim.builds", "ava.product", "sarah.design", "alex.components"],
+    likedBy: [5, 6, 7, 18, 8, 15],
   },
   {
     id: 114,
@@ -168,7 +168,7 @@ const communityPostRows = [
     createdAt: "15 hours ago",
     commentsCount: 0,
     likesCount: 3,
-    likedBy: ["ava.product", "sarah.design", "alex.components"],
+    likedBy: [18, 8, 15],
   },
   {
     id: 115,
@@ -180,7 +180,7 @@ const communityPostRows = [
     createdAt: "16 hours ago",
     commentsCount: 0,
     likesCount: 2,
-    likedBy: ["natalie.tokens", "priya.systems"],
+    likedBy: [16, 22],
   },
   {
     id: 116,
@@ -192,7 +192,7 @@ const communityPostRows = [
     createdAt: "18 hours ago",
     commentsCount: 0,
     likesCount: 5,
-    likedBy: ["youssef.codes", "lina.accessible", "ethan.react", "nasr.dev", "elena.designs"],
+    likedBy: [19, 24, 25, 1, 2],
   },
 ];
 

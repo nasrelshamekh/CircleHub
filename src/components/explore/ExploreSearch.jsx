@@ -11,7 +11,7 @@ export default function ExploreSearch({ searchQuery, setSearchQuery }) {
         className="input-surface type-body-sm flex-1 bg-transparent text-primary outline-none placeholder:text-(--text-secondary) gap-3 rounded-lg px-4 py-3 "/>
 
         {searchQuery && (
-          <button type="button" onClick={() => setSearchQuery("")} className="icon-button-soft flex h-8 w-8 items-center justify-center">
+          <button type="button" onClick={() => setSearchQuery("")} className="icon-button-soft flex h-8 w-8 items-center justify-center" aria-label="Clear search">
             <X size={16} />
           </button>
         )}

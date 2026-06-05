@@ -35,7 +35,7 @@ const tabs = [
 export default function ProfileTabs({ user, posts }) {
     const userPosts = posts.filter((post) => post.author.id === user.id);
     const mediaPosts = posts.filter((post) => post.author.id === user.id && post.image);
-    const likedPosts = posts.filter((post) => post.likedBy?.includes(user.username));
+    const likedPosts = posts.filter((post) => post.likedBy?.includes(user.id));
 
     return (
         <Tabs defaultValue="posts" className="min-w-0">

@@ -91,6 +91,7 @@ export function CreatePostModal({ onCreatePost, open, onOpenChange, user, previe
                             <button
                                 type="button"
                                 onClick={handleRemovePhoto}
+                                aria-label="Remove selected photo"
                                 className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-(--primary) transition hover:bg-(--background) cursor-pointer"
                             >
                                 <X size={18} />

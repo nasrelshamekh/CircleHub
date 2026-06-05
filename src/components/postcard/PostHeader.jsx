@@ -32,7 +32,7 @@ export default function PostHeader({ post, onDelete, canDelete }) {
 
                 {canDeletePost && onDelete && (
                     <DropdownMenu>
-                        <DropdownMenuTrigger type="button" className="icon-button-soft border-0 bg-transparent p-2 outline-none">
+                        <DropdownMenuTrigger type="button" className="icon-button-soft border-0 bg-transparent p-2 outline-none" aria-label="Open post actions">
                             <MoreHorizontal size={18} />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-20" align="center">

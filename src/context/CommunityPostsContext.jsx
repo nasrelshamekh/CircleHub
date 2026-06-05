@@ -2,6 +2,7 @@
 import { createContext, useEffect, useState } from "react";
 
 import initialCommunityPosts from "@/data/communityPosts";
+import users from "@/data/users";
 
 export const communityPostsContext = createContext(null);
 
@@ -15,7 +16,13 @@ export default function CommunityPostsContextProvider({ children }) {
 
         try {
             return JSON.parse(savedCommunityPosts).map((post) => {
-                const likedBy = post.likedBy || [];
+                const likedBy = (post.likedBy || [])
+                    .map((likedUser) =>
+                        typeof likedUser === "number"
+                            ? likedUser
+                            : users.find((user) => user.username === likedUser)?.id
+                    )
+                    .filter(Boolean);
 
                 return {
                     ...post,

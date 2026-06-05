@@ -30,8 +30,8 @@ export default function Followers() {
         );
     }
 
-    const profileNetwork = networks.find((network) => network.username === profileUser.username);
-    const currentUserNetwork = networks.find((network) => network.username === userData.username);
+    const profileNetwork = networks.find((network) => network.userId === profileUser.id);
+    const currentUserNetwork = networks.find((network) => network.userId === userData.id);
     const currentUserFollowing = currentUserNetwork?.following || [];
     const currentUserFollowingUsernames = currentUserFollowing.map((user) => user.username);
     const followers = (profileNetwork?.followers || []).map((user) => ({

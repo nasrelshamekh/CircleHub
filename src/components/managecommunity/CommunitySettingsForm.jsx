@@ -97,10 +97,11 @@ export default function CommunitySettingsForm({ community, onSave }) {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="community-visibility" className="type-body-sm text-(--primary)">
+                        <label htmlFor="community-visibility" className="type-body-sm cursor-pointer text-(--primary)">
                             Visibility
                         </label>
                         <ThemedDropdownSelect
+                            id="community-visibility"
                             value={formData.visibility}
                             options={visibilityOptions}
                             ariaLabel="Select community visibility"

@@ -17,6 +17,7 @@ export default function CommunityCardSuggestion({ communities, onMembershipChang
                         type="button"
                         className="icon-button-soft cursor-pointer p-2"
                         aria-label={isSuggestionsExpanded ? "Show fewer suggestions" : "View more suggestions"}
+                        aria-expanded={isSuggestionsExpanded}
                         onClick={() => setIsSuggestionsExpanded((current) => !current)}
                     >
                         <motion.span
@@ -43,6 +44,7 @@ export default function CommunityCardSuggestion({ communities, onMembershipChang
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 className={`grid ${isSuggestionsExpanded ? "" : "pointer-events-none"}`}
                 aria-hidden={!isSuggestionsExpanded}
+                inert={!isSuggestionsExpanded}
             >
                 <div className="overflow-hidden">
                     <div className="space-y-3">

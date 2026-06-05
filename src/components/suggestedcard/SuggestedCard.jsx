@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 export default function SuggestedCard() {
 
     const { userData } = useAuth();
-    const currentUserNetwork = networks.find((network) => network.username === userData.username);
+    const currentUserNetwork = networks.find((network) => network.userId === userData.id);
     const followingUsers = currentUserNetwork?.following || [];
     const followingUsernames = followingUsers.map((user) => user.username);
     const filteredUsers = suggestedUsers

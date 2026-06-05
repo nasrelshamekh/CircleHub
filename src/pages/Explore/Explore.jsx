@@ -17,7 +17,7 @@ export default function Explore() {
   const { handleCommunityMembershipChange } = useCommunityMembership();
 
   const normalizedQuery = searchQuery.toLowerCase().trim();
-  const currentUserNetwork = networks.find((network) => network.username === userData.username);
+  const currentUserNetwork = networks.find((network) => network.userId === userData.id);
   const followingUsers = currentUserNetwork?.following || [];
   const followingUsernames = followingUsers.map((user) => user.username);
   const displayPosts = posts.map((post) =>

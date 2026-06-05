@@ -64,6 +64,7 @@ export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc
       <button
         type="button"
         onClick={openFilePicker}
+        aria-label={isCover ? "Change cover photo" : "Change profile photo"}
         className={
           isCover
             ? "button-primary absolute bottom-4 right-4 flex items-center gap-2 p-2 text-sm"

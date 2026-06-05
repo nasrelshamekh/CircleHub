@@ -55,13 +55,18 @@ export default function ExplorePostCard({ post }) {
                 </span>
 
                 <div className="flex items-center">
-                    <Link to="#" className="post-action-button gap-1.5 px-2.5 py-2 text-(length:--text-label-sm)">
+                    <Link
+                        to="#"
+                        aria-label={`Like post. ${post.likesCount} likes`}
+                        className="post-action-button gap-1.5 px-2.5 py-2 text-(length:--text-label-sm)"
+                    >
                         <Heart size={16} />
                         <span>{post.likesCount}</span>
                     </Link>
 
                     <Link
                         to={`/post/${post.id}`}
+                        aria-label={`View comments. ${post.commentsCount} comments`}
                         className="post-action-button gap-1.5 px-2.5 py-2 text-(length:--text-label-sm)"
                     >
                         <MessageCircle size={16} />

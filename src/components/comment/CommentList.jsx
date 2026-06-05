@@ -16,7 +16,7 @@ export default function CommentList({ post, onAddComment, onDeleteComment }) {
         <div className="space-y-4">
           {postComments.map((comment) => {
             const isCommentOwner =
-              comment.author?.username === userData.username;
+              comment.author?.id === userData.id;
             const displayAuthor = isCommentOwner ? userData : comment.author;
 
             return (
