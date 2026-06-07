@@ -3,17 +3,9 @@ import { Link, MapPin, Network } from "lucide-react";
 import CommunityCardItem from "@/components/communitycard/CommunityCardItem";
 import { useCommunities } from "@/hooks/useCommunities";
 
-const skills = [
-  "React",
-  "Tailwind CSS",
-  "UI Architecture",
-  "Design Systems",
-  "Accessibility",
-  "Frontend Mentoring",
-];
-
 export default function ProfileInfoPanels({ user }) {
   const { communities } = useCommunities();
+  const skills = user.skills || [];
   const mutualConnections = user.mutualConnections || [];
   const mutualConnectionsCount = mutualConnections.length;
   const userCommunities = communities.filter((community) => {
@@ -31,16 +23,22 @@ export default function ProfileInfoPanels({ user }) {
           Skills & Interests
         </h2>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {skills.map((skill) => (
-            <span
-              key={skill}
-              className="type-label-sm rounded-full bg-(--active) px-3 py-1.5 text-(--primary)"
-            >
-              {skill}
-            </span>
-          ))}
-        </div>
+        {skills.length > 0 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {skills.map((skill) => (
+              <span
+                key={skill}
+                className="type-label-sm rounded-full bg-(--active) px-3 py-1.5 text-(--primary)"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="type-body-sm-readable mt-4 text-secondary">
+            No skills or interests added yet.
+          </p>
+        )}
 
         <div className="type-body-sm mt-5 space-y-3 text-secondary">
           <p className="flex items-center gap-2">

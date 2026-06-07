@@ -29,7 +29,7 @@ const tabs = [
     },
 ];
 
-export default function ExploreTabs({ posts, users, communities, onCommunityMembershipChange, searchQuery }) {
+export default function ExploreTabs({ posts, users, communities, onCommunityMembershipChange, onToggleLike, searchQuery }) {
     return (
         <Tabs defaultValue="posts" className="min-w-0">
             <div className="py-2">
@@ -47,7 +47,7 @@ export default function ExploreTabs({ posts, users, communities, onCommunityMemb
 
             <TabsContent value="posts" className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {posts.length > 0 ? (
-                    posts.map((post) => <ExplorePostCard key={post.id} post={post} />)
+                    posts.map((post) => <ExplorePostCard key={post.id} post={post} onToggleLike={onToggleLike} />)
                 ) : (
                     <div className="content-card-padded col-span-full flex flex-col items-center justify-center py-10 text-center">
                         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">

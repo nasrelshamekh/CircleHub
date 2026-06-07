@@ -1,13 +1,13 @@
 import CommunityCard from "@/components/communitycard/CommunityCard";
 import CommunityCardSuggestion from "@/components/communitycard/CommunityCardSuggestion";
 import { useAuth } from "@/hooks/useAuth";
-import { useCommunityMembership } from "@/hooks/useCommunityMembership";
 import { useCommunities } from "@/hooks/useCommunities";
+import { getCommunityMembershipToast, updateCommunityMembership } from "@/lib/communityMembership";
+import { toast } from "sonner";
 
 export default function Communities() {
-    const { communities } = useCommunities();
+    const { communities, setCommunities } = useCommunities();
     const { userData } = useAuth();
-    const { handleCommunityMembershipChange } = useCommunityMembership();
 
     const adminCommunities = communities.filter(
         (community) => community.admin.id === userData.id
@@ -20,6 +20,18 @@ export default function Communities() {
     const suggestedCommunities = communities.filter(
         (community) => community.membershipStatus === "not_joined"
     );
+
+    function handleCommunityMembershipChange(communityId) {
+        const selectedCommunity = communities.find((community) => community.id === communityId);
+
+        if (!selectedCommunity) return;
+
+        setCommunities((currentCommunities) =>
+            updateCommunityMembership(currentCommunities, communityId, userData)
+        );
+
+        toast.success(getCommunityMembershipToast(selectedCommunity));
+    }
 
     return (
         <section className="content-stack max-w-7xl">

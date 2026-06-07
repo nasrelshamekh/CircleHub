@@ -19,13 +19,20 @@ export default function AuthContextProvider({ children }) {
 
         return currentUser;
     });
+    const [isAuthenticated, setIsAuthenticated] = useState(() => {
+        return localStorage.getItem("is-authenticated") === "true";
+    });
 
     useEffect(() => {
         localStorage.setItem("user-data", JSON.stringify(userData));
     }, [userData]);
 
+    useEffect(() => {
+        localStorage.setItem("is-authenticated", String(isAuthenticated));
+    }, [isAuthenticated]);
+
     return (
-        <authContext.Provider value={{ userData, setUserData }}>
+        <authContext.Provider value={{ userData, setUserData, isAuthenticated, setIsAuthenticated }}>
             {children}
         </authContext.Provider>
     )

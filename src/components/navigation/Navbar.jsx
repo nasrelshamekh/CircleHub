@@ -8,13 +8,21 @@ import {
     DropdownMenuLabel,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/hooks/useAuth'
+import { toast } from 'sonner'
 
 export default function Navbar() {
     const { toggleTheme, theme } = useTheme();
-    const { userData } = useAuth();
+    const { userData, setIsAuthenticated } = useAuth();
+    const navigate = useNavigate();
+
+    function handleSignout() {
+        setIsAuthenticated(false);
+        toast.success("Signed out successfully.");
+        navigate("/signin", { replace: true });
+    }
 
     return (
         <>
@@ -27,7 +35,12 @@ export default function Navbar() {
                         <button type="button" className='icon-button' aria-label="Open messages">
                             <MessageCircleMore size={22} />
                         </button>
-                        <button type="button" className='icon-button' aria-label="Open notifications">
+                        <button
+                            type="button"
+                            onClick={() => navigate("/notifications")}
+                            className='icon-button'
+                            aria-label="Open notifications"
+                        >
                             <Bell size={22} />
                         </button>
                         <button
@@ -61,7 +74,7 @@ export default function Navbar() {
                                             Settings
                                         </NavLink>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handleSignout}>
                                         Sign Out
                                     </DropdownMenuItem>
                                 </DropdownMenuGroup>

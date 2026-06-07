@@ -2,17 +2,26 @@ import ProfileHeader from "@/components/profile/ProfileHeader"
 import ProfileInfoPanels from "@/components/profile/ProfileInfoPanels"
 import ProfileTabs from "@/components/profile/ProfileTabs"
 import users from "@/data/users"
+import networks from "@/data/network";
 import { useAuth } from "@/hooks/useAuth"
 import { usePosts } from "@/hooks/usePosts"
+import { togglePostLikeInList } from "@/lib/postLikes";
 import { useParams } from "react-router-dom"
 
 export default function Profile() {
     const { username } = useParams();
     const { userData } = useAuth();
-    const { posts } = usePosts();
+    const { posts, setPosts } = usePosts();
     const routeUser = users.find((user) => user.username === username);
     const user = username === userData.username || routeUser?.id === userData.id ? userData : routeUser;
     const isCurrentUser = user?.id === userData.id;
+    const currentUserNetwork = networks.find(
+        (network) => network.userId === userData.id
+    );
+
+    const followsMe = currentUserNetwork?.followers.some(
+        (follower) => follower.id === user?.id
+    );
     const profilePosts = posts.map((post) =>
         post.author.id === userData.id
             ? { ...post, author: userData, authorUsername: userData.username }
@@ -21,6 +30,12 @@ export default function Profile() {
     const userPostsCount = user
         ? profilePosts.filter((post) => post.author.id === user.id).length
         : 0;
+
+    function toggleLike(postId) {
+        setPosts((currentPosts) =>
+            togglePostLikeInList(currentPosts, postId, userData.id)
+        );
+    }
 
     if (!user) {
         return (
@@ -38,11 +53,11 @@ export default function Profile() {
     return (
         <>
             <section className="w-full pb-20 lg:pb-0">
-                <ProfileHeader user={user} isCurrentUser={isCurrentUser} postsCount={userPostsCount} />
+                <ProfileHeader followsMe={followsMe} user={user} isCurrentUser={isCurrentUser} postsCount={userPostsCount} />
 
                 <div className="mx-auto grid w-full max-w-7xl grid-cols-4 gap-6 p-6">
                     <div className="order-2 lg:order-1 col-span-4 lg:col-span-3">
-                        <ProfileTabs user={user} posts={profilePosts} />
+                        <ProfileTabs user={user} posts={profilePosts} onToggleLike={toggleLike} />
                     </div>
 
                     <div className="order-1 lg:order-2 col-span-4 lg:col-span-1">

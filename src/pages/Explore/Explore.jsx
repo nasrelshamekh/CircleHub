@@ -5,16 +5,17 @@ import networks from "@/data/network";
 import ExploreSearch from "@/components/explore/ExploreSearch";
 import ExploreTabs from "@/components/explore/ExploreTabs";
 import { useAuth } from "@/hooks/useAuth";
-import { useCommunityMembership } from "@/hooks/useCommunityMembership";
 import { useCommunities } from "@/hooks/useCommunities";
 import { usePosts } from "@/hooks/usePosts";
+import { getCommunityMembershipToast, updateCommunityMembership } from "@/lib/communityMembership";
+import { togglePostLikeInList } from "@/lib/postLikes";
+import { toast } from "sonner";
 
 export default function Explore() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { communities } = useCommunities();
+  const { communities, setCommunities } = useCommunities();
   const { userData } = useAuth();
-  const { posts } = usePosts();
-  const { handleCommunityMembershipChange } = useCommunityMembership();
+  const { posts, setPosts } = usePosts();
 
   const normalizedQuery = searchQuery.toLowerCase().trim();
   const currentUserNetwork = networks.find((network) => network.userId === userData.id);
@@ -58,6 +59,24 @@ export default function Explore() {
     );
   });
 
+  function handleCommunityMembershipChange(communityId) {
+    const selectedCommunity = communities.find((community) => community.id === communityId);
+
+    if (!selectedCommunity) return;
+
+    setCommunities((currentCommunities) =>
+      updateCommunityMembership(currentCommunities, communityId, userData)
+    );
+
+    toast.success(getCommunityMembershipToast(selectedCommunity));
+  }
+
+  function toggleLike(postId) {
+    setPosts((currentPosts) =>
+      togglePostLikeInList(currentPosts, postId, userData.id)
+    );
+  }
+
   return (
     <section className="content-stack max-w-7xl">
       <div className="text-center">
@@ -80,6 +99,7 @@ export default function Explore() {
         users={filteredUsers}
         communities={filteredCommunities}
         onCommunityMembershipChange={handleCommunityMembershipChange}
+        onToggleLike={toggleLike}
         searchQuery={searchQuery}
       />
     </section>

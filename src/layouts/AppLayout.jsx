@@ -15,8 +15,8 @@ export default function AppLayout() {
                 <div
                     className={`mx-auto grid max-w-512 grid-cols-1 transition-[grid-template-columns] duration-200 ease-out ${
                         isSidebarExpanded
-                            ? 'lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)_20rem]'
-                            : 'lg:grid-cols-[5rem_minmax(0,1fr)] xl:grid-cols-[5rem_minmax(0,1fr)_20rem]'
+                            ? 'lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)_25rem]'
+                            : 'lg:grid-cols-[5rem_minmax(0,1fr)] xl:grid-cols-[5rem_minmax(0,1fr)_25rem]'
                     }`}
                 >
 

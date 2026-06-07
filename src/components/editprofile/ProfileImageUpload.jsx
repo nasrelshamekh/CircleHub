@@ -1,13 +1,15 @@
 import { useRef, useState } from "react";
 import { PencilIcon, X } from "lucide-react";
 import { toast } from "sonner";
+import { getAvatarImage, getCoverImage } from "@/lib/profileImages";
 
 export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc = imageSrc, alt, onImageChange }) {
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
 
   const isCover = variant === "cover";
-  const visibleImage = previewUrl || imageSrc;
+  const placeholderImage = isCover ? getCoverImage(imageSrc) : getAvatarImage(imageSrc);
+  const visibleImage = previewUrl || placeholderImage;
 
   function openFilePicker() {
     fileInputRef.current?.click();

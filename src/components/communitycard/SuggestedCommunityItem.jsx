@@ -64,10 +64,11 @@ export default function SuggestedCommunityItem({ community, onMembershipChange }
             <AnimatePresence initial={false}>
                 {isExpanded && (
                     <motion.div
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 1, y: -4 }}
-                        transition={{ duration: 0.12, ease: "easeOut" }}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.22, ease: "easeOut" }}
+                        className="overflow-hidden"
                     >
                         <div className="mt-3 space-y-3 border-t border-(--border) pt-3">
                             <div>

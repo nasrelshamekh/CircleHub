@@ -1,8 +1,11 @@
 
+import { useAuth } from "@/hooks/useAuth";
 import { Check, MapPin, UserPlus, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function FollowUserCard({ user }) {
+    const { userData } = useAuth()
+    const isMyself = user.id === userData.id
     const mutualConnectionsCount = user.mutualConnections?.length || 0;
 
     return (
@@ -30,13 +33,14 @@ export default function FollowUserCard({ user }) {
                     </div>
                 </Link>
 
-                <button
+                {!isMyself && ( <button
                     type="button"
                     className="icon-button-soft flex h-10 w-10 shrink-0 items-center justify-center bg-(--surface-low) text-(--primary)"
                     aria-label={user.isFollowing ? `Following ${user.name}` : `Follow ${user.name}`}
                 >
                     {user.isFollowing ? <Check size={18} /> : <UserPlus size={18} />}
                 </button>
+            )}
             </div>
 
             <p className="line-clamp-2 text-(length:--text-body-sm) leading-6 text-(--text-secondary)">

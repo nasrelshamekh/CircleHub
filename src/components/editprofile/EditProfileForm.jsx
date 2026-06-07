@@ -15,6 +15,7 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
         website: currentUser.website,
         dateOfBirth: currentUser.dateOfBirth,
         bio: currentUser.bio,
+        skills: (currentUser.skills || []).join(", "),
     });
 
     function handleChange(event) {
@@ -28,7 +29,13 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
 
     function handleSubmit(event) {
         event.preventDefault();
-        onProfileUpdate(formData);
+        onProfileUpdate({
+            ...formData,
+            skills: formData.skills
+                .split(",")
+                .map((skill) => skill.trim())
+                .filter(Boolean),
+        });
         toast.success("Profile updated successfully");
     }
     
@@ -148,6 +155,26 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
                             onChange={handleChange}
                             className="input-surface type-body-sm w-full rounded-lg px-4 py-3 text-primary outline-none placeholder:text-(--text-secondary)"
                         />
+                    </div>
+
+                    <div className="flex flex-col gap-2 md:col-span-2">
+                        <label htmlFor="skills" className="type-body-sm text-(--primary)">
+                            Skills & Interests
+                        </label>
+
+                        <input
+                            id="skills"
+                            name="skills"
+                            type="text"
+                            placeholder="React, UI Design, Accessibility"
+                            value={formData.skills}
+                            onChange={handleChange}
+                            className="input-surface type-body-sm w-full rounded-lg px-4 py-3 text-primary outline-none placeholder:text-(--text-secondary)"
+                        />
+
+                        <p className="type-label-sm text-secondary">
+                            Separate each skill or interest with a comma.
+                        </p>
                     </div>
 
                     <div className="flex flex-col gap-2 md:col-span-2">

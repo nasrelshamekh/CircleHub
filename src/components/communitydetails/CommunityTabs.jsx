@@ -40,6 +40,7 @@ export default function CommunityTabs({
     userData,
     canManagePosts,
     onDeletePost,
+    onToggleLike,
     canCreatePost,
     onCreatePost,
 }) {
@@ -78,6 +79,7 @@ export default function CommunityTabs({
                                 post={post}
                                 onDelete={canDeletePost ? onDeletePost : undefined}
                                 canDelete={canDeletePost}
+                                onToggleLike={onToggleLike}
                             />
                         );
                     })

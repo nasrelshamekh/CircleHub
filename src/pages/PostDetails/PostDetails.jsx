@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useCommunityPosts } from "@/hooks/useCommunityPosts"
 import { useCommunities } from "@/hooks/useCommunities"
 import { usePosts } from "@/hooks/usePosts"
+import { togglePostLikeInList } from "@/lib/postLikes"
 import { toast } from "sonner"
 
 export default function PostDetails() {
@@ -138,6 +139,19 @@ export default function PostDetails() {
         toast.success("Comment has been deleted");
     }
 
+    function handleToggleLike(postId) {
+        if (isFeedPost) {
+            setPosts((currentPosts) =>
+                togglePostLikeInList(currentPosts, postId, userData.id)
+            );
+            return;
+        }
+
+        setCommunityPosts((currentPosts) =>
+            togglePostLikeInList(currentPosts, postId, userData.id)
+        );
+    }
+
     return (
         <>
             <div className="content-stack gap-4 max-w-5xl">
@@ -151,6 +165,7 @@ export default function PostDetails() {
                         post={post}
                         onDelete={isFeedPost || canDeleteCommunityPost ? handleDeletePost : undefined}
                         canDelete={isFeedPost ? undefined : canDeleteCommunityPost}
+                        onToggleLike={handleToggleLike}
                     />
                     <CommentList onDeleteComment={handleDeleteComment} onAddComment={handleAddComment} post={post} />
                 </>) : (

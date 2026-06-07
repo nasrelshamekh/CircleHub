@@ -4,17 +4,17 @@ import CommunityHeader from "@/components/communitydetails/CommunityHeader";
 import CommunityInfoPanels from "@/components/communitydetails/CommunityInfoPanels";
 import CommunityTabs from "@/components/communitydetails/CommunityTabs";
 import { useAuth } from "@/hooks/useAuth";
-import { useCommunityMembership } from "@/hooks/useCommunityMembership";
 import { useCommunityPosts } from "@/hooks/useCommunityPosts";
 import { useCommunities } from "@/hooks/useCommunities";
+import { getCommunityMembershipToast, updateCommunityMembership } from "@/lib/communityMembership";
+import { togglePostLikeInList } from "@/lib/postLikes";
 import { toast } from "sonner";
 
 export default function CommunitiesDetails() {
     const { slug } = useParams();
-    const { communities } = useCommunities();
+    const { communities, setCommunities } = useCommunities();
     const { communityPosts, setCommunityPosts } = useCommunityPosts();
     const { userData } = useAuth();
-    const { handleCommunityMembershipChange } = useCommunityMembership();
     const community = communities.find((item) => item.slug === slug);
 
     function handleDeleteCommunityPost(postId) {
@@ -27,6 +27,24 @@ export default function CommunitiesDetails() {
 
     function handleCreateCommunityPost(newPost) {
         setCommunityPosts((currentPosts) => [newPost, ...currentPosts]);
+    }
+
+    function handleCommunityMembershipChange(communityId) {
+        const selectedCommunity = communities.find((item) => item.id === communityId);
+
+        if (!selectedCommunity) return;
+
+        setCommunities((currentCommunities) =>
+            updateCommunityMembership(currentCommunities, communityId, userData)
+        );
+
+        toast.success(getCommunityMembershipToast(selectedCommunity));
+    }
+
+    function toggleCommunityPostLike(postId) {
+        setCommunityPosts((currentPosts) =>
+            togglePostLikeInList(currentPosts, postId, userData.id)
+        );
     }
 
     if (!community) {
@@ -70,6 +88,7 @@ export default function CommunitiesDetails() {
                         userData={userData}
                         canManagePosts={canManagePosts}
                         onDeletePost={handleDeleteCommunityPost}
+                        onToggleLike={toggleCommunityPostLike}
                         canCreatePost={isCommunityMember}
                         onCreatePost={handleCreateCommunityPost}
                     />

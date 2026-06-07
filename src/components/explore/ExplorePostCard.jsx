@@ -1,12 +1,14 @@
 import { Heart, MessageCircle } from "lucide-react";
+import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "@/hooks/useAuth";
 
-export default function ExplorePostCard({ post }) {
+export default function ExplorePostCard({ post, onToggleLike }) {
     const { userData } = useAuth();
     const postOwner = post.author.id === userData.id;
     const author = postOwner ? userData : post.author;
+    const isLiked = post.likedBy?.includes(userData.id);
 
     return (
         <article className="content-card-padded flex min-w-0 flex-col gap-4 overflow-hidden">
@@ -55,14 +57,24 @@ export default function ExplorePostCard({ post }) {
                 </span>
 
                 <div className="flex items-center">
-                    <Link
-                        to="#"
-                        aria-label={`Like post. ${post.likesCount} likes`}
-                        className="post-action-button gap-1.5 px-2.5 py-2 text-(length:--text-label-sm)"
+                    <button
+                        type="button"
+                        onClick={() => onToggleLike?.(post.id)}
+                        aria-label={isLiked ? `Unlike post. ${post.likesCount} likes` : `Like post. ${post.likesCount} likes`}
+                        aria-pressed={isLiked}
+                        className={`post-action-button gap-1.5 px-2.5 py-2 text-(length:--text-label-sm) ${isLiked ? "text-(--primary)" : ""}`}
                     >
-                        <Heart size={16} />
+                        <motion.span
+                            key={isLiked ? "liked" : "unliked"}
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: isLiked ? [1, 1.3, 1] : [1, 0.85, 1] }}
+                            transition={{ duration: 0.25, ease: "easeOut" }}
+                            className="flex"
+                        >
+                            <Heart size={16} className={isLiked ? "fill-current" : ""} />
+                        </motion.span>
                         <span>{post.likesCount}</span>
-                    </Link>
+                    </button>
 
                     <Link
                         to={`/post/${post.id}`}

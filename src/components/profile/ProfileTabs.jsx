@@ -32,7 +32,7 @@ const tabs = [
     },
 ];
 
-export default function ProfileTabs({ user, posts }) {
+export default function ProfileTabs({ user, posts, onToggleLike }) {
     const userPosts = posts.filter((post) => post.author.id === user.id);
     const mediaPosts = posts.filter((post) => post.author.id === user.id && post.image);
     const likedPosts = posts.filter((post) => post.likedBy?.includes(user.id));
@@ -56,7 +56,7 @@ export default function ProfileTabs({ user, posts }) {
 
             <TabsContent value="posts" className="space-y-5">
                 {userPosts.length > 0 ? (
-                    userPosts.map((post) => <PostCard key={post.id} post={post} />)
+                    userPosts.map((post) => <PostCard key={post.id} post={post} onToggleLike={onToggleLike} />)
                 ) : (
                     <div className="content-card-padded flex flex-col items-center justify-center py-10 text-center">
                         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">
@@ -111,7 +111,7 @@ export default function ProfileTabs({ user, posts }) {
 
             <TabsContent value="liked" className="space-y-5">
                 {likedPosts.length > 0 ? (
-                    likedPosts.map((post) => <PostCard key={post.id} post={post} />)
+                    likedPosts.map((post) => <PostCard key={post.id} post={post} onToggleLike={onToggleLike} />)
                 ) : (
                     <div className="content-card-padded flex flex-col items-center justify-center py-10 text-center">
                         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">

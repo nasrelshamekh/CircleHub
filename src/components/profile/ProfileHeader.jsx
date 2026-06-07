@@ -2,13 +2,13 @@ import {
     CalendarDays,
     MapPin,
     MessageCircle,
-    MoreHorizontal,
     Pencil,
     Settings,
 } from "lucide-react";
+import { getAvatarImage, getCoverImage } from "@/lib/profileImages";
 import { useNavigate } from "react-router-dom";
 
-export default function ProfileHeader({ user, isCurrentUser, postsCount }) {
+export default function ProfileHeader({ user, isCurrentUser, postsCount, followsMe }) {
     const networkPath = `/followers/${user.username}`;
     const stats = [
         {
@@ -28,12 +28,14 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount }) {
     ];
 
     const navigate = useNavigate();
+    const avatarImage = getAvatarImage(user.avatar);
+    const coverImage = getCoverImage(user.coverImage);
 
     return (
         <section className="w-full">
             <div className="relative h-48 w-full bg-(--surface-high) md:h-72">
                 <img
-                    src={user.coverImage}
+                    src={coverImage}
                     alt={`${user.name} cover`}
                     className="h-full w-full object-cover object-center"
                 />
@@ -48,7 +50,7 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount }) {
                     <div className="relative flex flex-col gap-5 md:flex-row md:items-center">
                         <div>
                             <img
-                                src={user.avatar}
+                                src={avatarImage}
                                 alt={user.name}
                                 className="h-30 w-30 rounded-full border-4 border-(--surface-lowest) object-cover shadow-sm md:h-40 md:w-40"
                             />
@@ -57,10 +59,16 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount }) {
                         <div className="flex min-w-0 flex-1 flex-col gap-4">
                             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                                 <div>
-                                    <h1 className="type-headline-responsive text-primary">
-                                        {user.name}
-                                    </h1>
-
+                                    <div className="flex items-center gap-3">
+                                        <h1 className="type-headline-responsive text-primary">
+                                            {user.name}
+                                        </h1>
+                                        {!isCurrentUser && followsMe && (
+                                            <span className="flex items-center gap-1.5 type-label-sm rounded-full bg-(--surface-low) px-3 py-1 text-(--primary)">
+                                                Follows you
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="type-body-sm mt-1 text-secondary">
                                         @{user.username} &bull; {user.role}
                                     </p>
@@ -93,10 +101,10 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount }) {
                                                 <MessageCircle size={16} />
                                                 Message
                                             </button>
-
-                                            <button type="button" className="icon-button-soft hidden h-10 w-10 items-center justify-center bg-(--surface-low) md:flex" aria-label="Open profile actions">
+                                            {/* Keep this for now just in case */}
+                                            {/* <button type="button" className="icon-button-soft hidden h-10 w-10 items-center justify-center bg-(--surface-low) md:flex" aria-label="Open profile actions">
                                                 <MoreHorizontal size={18} />
-                                            </button>
+                                            </button> */}
                                         </>
                                     )}
                                 </div>
@@ -123,21 +131,22 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount }) {
                                     const Comp = stat.to ? "button" : "div";
 
                                     return (
-                                    <Comp
-                                        key={stat.label}
-                                        onClick={stat.to ? () => navigate(stat.to) : undefined}
-                                        className={`flex items-baseline gap-2 ${stat.to ? "cursor-pointer rounded-lg transition hover:text-(--primary)" : ""}`}
-                                        type={stat.to ? "button" : undefined}
-                                    >
-                                        <span className="type-label-md text-primary">
-                                            {stat.value.toLocaleString()}
-                                        </span>
+                                        <Comp
+                                            key={stat.label}
+                                            onClick={stat.to ? () => navigate(stat.to) : undefined}
+                                            className={`flex items-baseline gap-2 ${stat.to ? "cursor-pointer rounded-lg transition hover:text-(--primary)" : ""}`}
+                                            type={stat.to ? "button" : undefined}
+                                        >
+                                            <span className="type-label-md text-primary">
+                                                {stat.value.toLocaleString()}
+                                            </span>
 
-                                        <span className="type-body-sm text-secondary">
-                                            {stat.label}
-                                        </span>
-                                    </Comp>
-                                )})}
+                                            <span className="type-body-sm text-secondary">
+                                                {stat.label}
+                                            </span>
+                                        </Comp>
+                                    )
+                                })}
                             </div>
                         </div>
                     </div>

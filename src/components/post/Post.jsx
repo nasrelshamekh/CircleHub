@@ -2,7 +2,7 @@ import PostHeader from '../postcard/PostHeader'
 import PostContent from '../postcard/PostContent'
 import PostActions from '../postcard/PostActions'
 
-export default function Post({ post, onDelete, canDelete }) {
+export default function Post({ post, onDelete, canDelete, onToggleLike }) {
     return (
         <>
             <div className="content-card-padded gap-4 flex flex-col">
@@ -11,7 +11,7 @@ export default function Post({ post, onDelete, canDelete }) {
 
                 <PostContent post={post} />
 
-                <PostActions post={post} />
+                <PostActions post={post} onToggleLike={onToggleLike} />
 
             </div>
         </>
