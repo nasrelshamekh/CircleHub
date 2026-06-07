@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Check, MapPin, UserPlus, Users } from "lucide-react";
+import { MapPin, Users } from "lucide-react";
+import FollowButton from "../followers/FollowButton";
 
 export default function UserResultCard({ user }) {
   return (
@@ -27,13 +28,7 @@ export default function UserResultCard({ user }) {
           </div>
         </Link>
 
-        <button
-          type="button"
-          className="icon-button-soft flex h-10 w-10 shrink-0 items-center justify-center bg-(--surface-low) text-(--primary)"
-          aria-label={user.isFollowing ? `Following ${user.name}` : `Follow ${user.name}`}
-        >
-          {user.isFollowing ? <Check size={18} /> : <UserPlus size={18} />}
-        </button>
+        <FollowButton user={user} />
       </div>
 
       <p className="line-clamp-2 text-(length:--text-body-sm) leading-6 text-(--text-secondary)">

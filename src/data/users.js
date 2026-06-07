@@ -16,6 +16,7 @@ const users = [
     postsCount: 28,
     joinedAt: "January, 2026",
     website: "circlehub.dev/nasr.dev",
+    skills: ["React", "Node.js", "APIs", "Databases", "UI Architecture"],
   },
   {
     id: 2,
@@ -34,6 +35,7 @@ const users = [
     postsCount: 86,
     joinedAt: "March, 2024",
     website: "elena.design",
+    skills: ["Product Design", "Design Systems", "Figma", "User Research", "Prototyping"],
   },
   {
     id: 3,
@@ -52,6 +54,7 @@ const users = [
     postsCount: 64,
     joinedAt: "May, 2024",
     website: "davidcodes.dev",
+    skills: ["React", "JavaScript", "Performance", "Component APIs", "Testing"],
   },
   {
     id: 4,
@@ -70,6 +73,7 @@ const users = [
     postsCount: 51,
     joinedAt: "July, 2024",
     website: "maya.creates",
+    skills: ["Content Strategy", "Frontend Tips", "Storytelling", "Community", "UI Reviews"],
   },
   {
     id: 5,
@@ -88,6 +92,7 @@ const users = [
     postsCount: 43,
     joinedAt: "February, 2025",
     website: "omarui.studio",
+    skills: ["UI Design", "UX Flows", "Wireframing", "Usability", "Design Critique"],
   },
   {
     id: 6,
@@ -106,6 +111,7 @@ const users = [
     postsCount: 72,
     joinedAt: "April, 2024",
     website: "sophialee.dev",
+    skills: ["React", "Hooks", "State Management", "TypeScript", "Frontend Architecture"],
   },
   {
     id: 7,
@@ -124,6 +130,7 @@ const users = [
     postsCount: 39,
     joinedAt: "June, 2025",
     website: "karimbuilds.dev",
+    skills: ["Full Stack", "REST APIs", "Databases", "Authentication", "Deployment"],
   },
   {
     id: 8,
@@ -142,6 +149,7 @@ const users = [
     postsCount: 57,
     joinedAt: "August, 2024",
     website: "sarahdesign.co",
+    skills: ["Interface Design", "Typography", "Layout", "Design Systems", "Accessibility"],
   },
   {
     id: 9,
@@ -160,6 +168,7 @@ const users = [
     postsCount: 48,
     joinedAt: "September, 2024",
     website: "michaellee.dev",
+    skills: ["Software Engineering", "React", "Reusable Components", "Debugging", "Code Quality"],
   },
   {
     id: 10,
@@ -178,6 +187,7 @@ const users = [
     postsCount: 61,
     joinedAt: "January, 2025",
     website: "emilymotion.studio",
+    skills: ["Motion Design", "Animation", "Microinteractions", "Prototyping", "Product Polish"],
   },
   {
     id: 11,
@@ -196,6 +206,7 @@ const users = [
     postsCount: 103,
     joinedAt: "October, 2023",
     website: "danielcommunity.com",
+    skills: ["Community Building", "Events", "Mentoring", "Developer Relations", "Collaboration"],
   },
   {
     id: 12,
@@ -214,6 +225,7 @@ const users = [
     postsCount: 46,
     joinedAt: "November, 2024",
     website: "oliviamartinez.dev",
+    skills: ["Frontend Design", "Dark Mode", "Color Systems", "CSS", "Accessibility"],
   },
   {
     id: 13,
@@ -232,6 +244,7 @@ const users = [
     postsCount: 34,
     joinedAt: "December, 2024",
     website: "jameswilson.dev",
+    skills: ["Portfolio Design", "Case Studies", "React", "Presentation", "Frontend"],
   },
   {
     id: 14,
@@ -250,6 +263,7 @@ const users = [
     postsCount: 29,
     joinedAt: "February, 2025",
     website: "sophiapalette.design",
+    skills: ["Visual Design", "Color Palettes", "Brand Systems", "Accessibility", "Dashboards"],
   },
   {
     id: 15,
@@ -268,6 +282,7 @@ const users = [
     postsCount: 66,
     joinedAt: "June, 2024",
     website: "alexcomponents.dev",
+    skills: ["Component Architecture", "Design Tokens", "React", "Patterns", "Documentation"],
   },
   {
     id: 16,
@@ -286,6 +301,7 @@ const users = [
     postsCount: 54,
     joinedAt: "May, 2025",
     website: "natalietokens.dev",
+    skills: ["Design Tokens", "Spacing Systems", "CSS Variables", "Design Systems", "Documentation"],
   },
   {
     id: 17,
@@ -304,6 +320,7 @@ const users = [
     postsCount: 75,
     joinedAt: "April, 2025",
     website: "ryanbeta.dev",
+    skills: ["MVPs", "Beta Launches", "Student Projects", "React", "Product Iteration"],
   },
   {
     id: 18,
@@ -322,6 +339,7 @@ const users = [
     postsCount: 58,
     joinedAt: "July, 2023",
     website: "avaproduct.com",
+    skills: ["Product Strategy", "Roadmaps", "User Research", "MVP Scope", "Team Alignment"],
   },
   {
     id: 19,
@@ -340,6 +358,7 @@ const users = [
     postsCount: 22,
     joinedAt: "August, 2025",
     website: "youssefcodes.dev",
+    skills: ["Backend", "APIs", "Databases", "Logging", "Service Design"],
   },
   {
     id: 20,
@@ -358,6 +377,7 @@ const users = [
     postsCount: 49,
     joinedAt: "September, 2024",
     website: "noramotion.studio",
+    skills: ["Motion Design", "Interaction Design", "Animation", "Prototyping", "UX Polish"],
   },
   {
     id: 21,
@@ -376,6 +396,7 @@ const users = [
     postsCount: 37,
     joinedAt: "December, 2024",
     website: "leofrontend.dev",
+    skills: ["JavaScript", "Frontend Debugging", "Performance", "Browser APIs", "React"],
   },
   {
     id: 22,
@@ -394,6 +415,7 @@ const users = [
     postsCount: 92,
     joinedAt: "March, 2023",
     website: "priyasystems.design",
+    skills: ["Design Systems", "Accessibility", "Documentation", "Token Strategy", "Governance"],
   },
   {
     id: 23,
@@ -412,6 +434,7 @@ const users = [
     postsCount: 44,
     joinedAt: "October, 2024",
     website: "marcuscloud.dev",
+    skills: ["Cloud", "Deployment", "Observability", "CI/CD", "Infrastructure"],
   },
   {
     id: 24,
@@ -430,6 +453,7 @@ const users = [
     postsCount: 38,
     joinedAt: "January, 2025",
     website: "linaaccessible.dev",
+    skills: ["Accessibility", "WCAG", "Semantic HTML", "Inclusive Design", "Audits"],
   },
   {
     id: 25,
@@ -448,6 +472,7 @@ const users = [
     postsCount: 42,
     joinedAt: "May, 2024",
     website: "ethanreact.dev",
+    skills: ["React Native", "Mobile UX", "State Management", "Product Thinking", "Performance"],
   },
 ];
 

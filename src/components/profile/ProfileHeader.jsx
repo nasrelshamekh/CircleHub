@@ -5,6 +5,7 @@ import {
     Pencil,
     Settings,
 } from "lucide-react";
+import FollowButton from "@/components/followers/FollowButton";
 import { getAvatarImage, getCoverImage } from "@/lib/profileImages";
 import { useNavigate } from "react-router-dom";
 
@@ -93,9 +94,7 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount, follows
                                         </>
                                     ) : (
                                         <>
-                                            <button type="button" className="button-primary type-button flex-1 px-5 py-2 md:flex-none">
-                                                Follow
-                                            </button>
+                                            <FollowButton user={user} variant="text" />
 
                                             <button type="button" className="type-button flex flex-1 items-center justify-center gap-2 rounded-xl bg-(--surface-low) px-4 py-2 text-(--primary) transition hover:bg-(--hover) md:flex-none">
                                                 <MessageCircle size={16} />

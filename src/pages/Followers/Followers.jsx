@@ -31,16 +31,18 @@ export default function Followers() {
     }
 
     const profileNetwork = networks.find((network) => network.userId === profileUser.id);
-    const currentUserNetwork = networks.find((network) => network.userId === userData.id);
-    const currentUserFollowing = currentUserNetwork?.following || [];
-    const currentUserFollowingUsernames = currentUserFollowing.map((user) => user.username);
+    const followingIds = userData.followingIds || [];
+    const profileFollowing =
+        profileUser.id === userData.id
+            ? users.filter((user) => followingIds.includes(user.id))
+            : profileNetwork?.following || [];
     const followers = (profileNetwork?.followers || []).map((user) => ({
         ...(user.id === userData.id ? userData : user),
-        isFollowing: currentUserFollowingUsernames.includes(user.username),
+        isFollowing: followingIds.includes(user.id),
     }));
-    const following = (profileNetwork?.following || []).map((user) => ({
+    const following = profileFollowing.map((user) => ({
         ...(user.id === userData.id ? userData : user),
-        isFollowing: currentUserFollowingUsernames.includes(user.username),
+        isFollowing: followingIds.includes(user.id),
     }));
 
     return (

@@ -15,7 +15,8 @@ const currentUser = {
   postsCount: 28,
   joinedAt: "January, 2026",
   website: "circlehub.dev/nasr.dev",
-  skills: [],
+  followingIds: [2, 4, 6],
+  skills: ["React", "Node.js", "APIs", "Databases", "UI Architecture"],
   mutualConnections: [
     {
       id: 2,

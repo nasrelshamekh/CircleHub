@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import users from "@/data/users";
-import networks from "@/data/network";
 import ExploreSearch from "@/components/explore/ExploreSearch";
 import ExploreTabs from "@/components/explore/ExploreTabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,9 +17,7 @@ export default function Explore() {
   const { posts, setPosts } = usePosts();
 
   const normalizedQuery = searchQuery.toLowerCase().trim();
-  const currentUserNetwork = networks.find((network) => network.userId === userData.id);
-  const followingUsers = currentUserNetwork?.following || [];
-  const followingUsernames = followingUsers.map((user) => user.username);
+  const followingIds = userData.followingIds || [];
   const displayPosts = posts.map((post) =>
     post.author.id === userData.id
       ? { ...post, author: userData, authorUsername: userData.username }
@@ -30,7 +27,7 @@ export default function Explore() {
     .filter((user) => user.id !== userData.id)
     .map((user) => ({
       ...user,
-      isFollowing: followingUsernames.includes(user.username),
+      isFollowing: followingIds.includes(user.id),
     }));
 
   const filteredPosts = displayPosts.filter((post) => {
