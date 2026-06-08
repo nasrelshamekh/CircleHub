@@ -5,7 +5,7 @@ import { CreatePostModal } from '../createpost/CreatePostModal'
 import { useAuth } from '@/hooks/useAuth'
 import { usePosts } from '@/hooks/usePosts'
 import { useSidebar } from '@/hooks/useSidebar'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 
 export default function Sidebar() {
@@ -56,10 +56,7 @@ export default function Sidebar() {
 
     return (
         <>
-            <motion.aside
-                layout
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="sticky top-20 mx-auto flex h-[calc(100vh-5rem)] w-full flex-col justify-between overflow-hidden p-4">
+            <aside className="sticky top-20 mx-auto flex h-[calc(100vh-5rem)] w-full flex-col justify-between overflow-hidden p-4">
 
                 <button
                     type="button"
@@ -87,14 +84,34 @@ export default function Sidebar() {
                 <button
                     type="button"
                     onClick={() => setOpen(true)}
-                    className="button-primary text-md mx-auto flex w-full cursor-pointer items-center justify-center gap-2 py-1"
+                    className="button-primary text-md mx-auto flex h-8 w-full shrink-0 cursor-pointer items-center justify-center gap-2 overflow-hidden"
                     aria-label="Create Post"
                     title={isSidebarExpanded ? undefined : "Create Post"}
                 >
                     <CirclePlus size={isSidebarExpanded ? 20 : 22} />
-                    {isSidebarExpanded && <span>Create Post</span>}
+                    <AnimatePresence initial={false}>
+                        {isSidebarExpanded && (
+                            <motion.span
+                                initial={{ width: 0 }}
+                                animate={{ width: 90 }}
+                                exit={{ width: 0 }}
+                                transition={{ duration: 0.2, ease: "easeOut" }}
+                                className="overflow-hidden"
+                            >
+                                <motion.span
+                                    initial={{ opacity: 0, x: -14 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -14 }}
+                                    transition={{ duration: 0.18, ease: "easeOut" }}
+                                    className="block whitespace-nowrap"
+                                >
+                                    Create Post
+                                </motion.span>
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
                 </button>
-            </motion.aside>
+            </aside>
         </>
     )
 }
