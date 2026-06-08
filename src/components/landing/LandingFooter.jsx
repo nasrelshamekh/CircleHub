@@ -10,7 +10,7 @@ export default function LandingFooter() {
     <footer className="relative overflow-hidden bg-[#060e20] text-white">
       <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
 
-      <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-6 lg:px-8">
+      <div className="w-full px-8 py-8">
         <motion.div
           variants={fadeUp}
           initial="hidden"
@@ -30,7 +30,7 @@ export default function LandingFooter() {
             </h2>
 
             <p className="type-body-md mt-5 max-w-2xl text-white/70">
-              CircleHub is a social app concept for profiles, posts, communities, and the small interactions that make a network feel active.
+              CircleHub is a social app for profiles, posts, communities, and the small interactions that make a network feel active.
             </p>
           </div>
 
@@ -54,15 +54,14 @@ export default function LandingFooter() {
 
         <div className="mt-12 grid gap-6 border-t border-white/10 pt-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div>
-            <img src={logo} alt="CircleHub" className="w-40" />
+            <img src={logo} alt="CircleHub" className="w-40 mb-4 lg:mb-0" />
             <p className="type-label-sm mt-1 text-white/58">
               A focused social space for builders, creators, and communities.
             </p>
           </div>
-
-          <p className="type-label-sm text-white/58">
-            &copy; 2026 CircleHub. All rights reserved. Developed by nWeave.
-          </p>
+            <p className="type-label-sm text-white/58">
+              &copy; 2026 CircleHub. All rights reserved. Developed by nWeave.
+            </p>
         </div>
       </div>
     </footer>

@@ -8,11 +8,11 @@ export default function AuthLayout() {
 
   return (
     <>
-      <div className="grid grid-cols-4">
-        <div className="hidden lg:block col-span-2 h-screen">
-          <img src={authBackground} className="w-full h-full object-cover" alt="Auth Background" />
+      <div className="grid min-h-screen grid-cols-4 items-stretch">
+        <div className="relative hidden min-h-screen lg:col-span-2 lg:block">
+          <img src={authBackground} className="absolute inset-0 h-full w-full object-cover" alt="Auth Background" />
         </div>
-        <div className="lg:col-span-2 col-span-4 flex justify-center items-center">
+        <div className="col-span-4 flex items-center justify-center lg:col-span-2">
           <Outlet />
         </div>
       </div>

@@ -34,7 +34,7 @@ export default function LandingStats() {
             <p className="text-[26px] font-extrabold leading-8 text-primary">
               {stat.value}
             </p>
-            <p className="type-label-sm mx-auto mt-1 max-w-40 text-secondary">
+            <p className="type-label-md mx-auto mt-1 max-w-50 text-secondary">
               {stat.label}
             </p>
           </div>

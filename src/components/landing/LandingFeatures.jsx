@@ -7,7 +7,7 @@ import { features } from "./landingData";
 export default function LandingFeatures() {
   return (
     <section className="relative overflow-hidden bg-(--surface-low) py-16">
-      <div className="mx-auto w-full max-w-7xl px-5 sm:px-6 lg:px-8">
+      <div className="w-full px-8">
         <motion.div
           variants={fadeUp}
           initial="hidden"
@@ -26,7 +26,7 @@ export default function LandingFeatures() {
           </h2>
 
           <p className="type-body-md mt-3 text-secondary">
-            The landing page now mirrors the actual product: connect, join, and explore.
+            Join the ultimate experience.
           </p>
         </motion.div>
 

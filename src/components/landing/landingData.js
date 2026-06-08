@@ -26,27 +26,27 @@ export const floatingCards = [
     label: "3 new notifications",
     detail: "Replies, follows, and community updates",
     icon: Bell,
-    className: "right-2 top-22 hidden xl:flex",
+    className: "right-12 top-22 hidden xl:flex",
     delay: 0.2,
   },
   {
     label: "React Builders",
     detail: "12 posts active today",
     icon: Network,
-    className: "right-60 bottom-28 hidden lg:flex",
+    className: "right-70 bottom-28 hidden lg:flex",
     delay: 0.45,
   },
   {
     label: "Maya follows you",
     detail: "Shared connection in Frontend Community",
     icon: Users,
-    className: "right-18 top-53 hidden xl:flex",
+    className: "right-28 top-53 hidden xl:flex",
     delay: 0.7,
   },
 ];
 
 export const stats = [
-  { value: "25+", label: "members in your mock network", icon: Users },
+  { value: "25+", label: "members in your network", icon: Users },
   { value: "8", label: "community spaces to explore", icon: Network },
   { value: "Live", label: "feed actions and updates", icon: Activity },
 ];

@@ -1,7 +1,6 @@
 import { motion } from "motion/react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
-import TypewriterText from "@/components/ui/TypewriterText";
 
 import heroImage from "@/assets/hero.png";
 import logo from "@/assets/circlehub-logo.png";
@@ -23,7 +22,7 @@ export default function LandingHero() {
 
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,248,255,0.96)_0%,rgba(250,248,255,0.82)_40%,rgba(250,248,255,0.22)_78%)] dark:bg-[linear-gradient(90deg,rgba(6,14,32,0.94)_0%,rgba(6,14,32,0.72)_42%,rgba(6,14,32,0.18)_80%)]" />
 
-      <div className="relative z-10 mx-auto flex min-h-[94vh] w-full max-w-7xl flex-col px-5 py-5 sm:px-6 lg:px-8">
+      <div className="relative z-10 flex min-h-[94vh] w-full flex-col px-8 py-8">
         <motion.header
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -34,7 +33,7 @@ export default function LandingHero() {
             <img
               src={logo}
               alt="CircleHub"
-              className="w-38 rounded-lg bg-white/88 px-3 py-2 shadow-sm dark:bg-(--surface-lowest)/88"
+              className="w-50 lg:w-60 rounded-lg px-3 py-2"
             />
           </Link>
 
@@ -84,7 +83,7 @@ export default function LandingHero() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 to="/register"
-                className="button-primary type-button inline-flex items-center gap-2 px-6 py-3"
+                className="button-primary type-button inline-flex items-center gap-2 px-4 py-3"
               >
                 Create an account
                 <ArrowRight size={18} />
@@ -92,14 +91,14 @@ export default function LandingHero() {
 
               <Link
                 to="/signin"
-                className="type-button rounded-xl bg-(--surface-lowest)/78 px-6 py-3 text-(--primary) shadow-sm backdrop-blur transition-colors duration-200 hover:bg-(--surface-lowest)"
+                className="type-button rounded-xl bg-(--surface-lowest)/78 px-4 py-3 text-(--primary) shadow-sm backdrop-blur transition-colors duration-200 hover:bg-(--surface-lowest)"
               >
                 I already have an account
               </Link>
             </div>
           </motion.div>
 
-          <div className="relative hidden min-h-130 lg:block">
+          <div className="relative hidden min-h-130 xl:block">
             {floatingCards.map((card) => {
               const Icon = card.icon;
 

@@ -74,7 +74,7 @@ export default function Register() {
 
     return (
         <section className="flex min-h-screen w-full items-center justify-center bg-(--surface-low) p-6">
-            <div className="content-card-padded w-full max-w-md">
+            <div className="content-card-padded w-full max-w-lg">
                 <div className="mb-8 flex flex-col items-center justify-center">
                     <img src={logo} alt="CircleHub" className="mb-8 w-44" />
 
