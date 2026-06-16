@@ -16,6 +16,7 @@ import Followers from "@/pages/Followers/Followers";
 import Landing from "@/pages/Landing/Landing";
 import ManageCommunity from "@/pages/ManageCommunity/ManageCommunity";
 import Notifications from "@/pages/Notifications/Notifications";
+import NotFound from "@/pages/NotFound/NotFound";
 import PostDetails from "@/pages/PostDetails/PostDetails";
 import Profile from "@/pages/Profile/Profile";
 
@@ -66,6 +67,10 @@ const router = createBrowserRouter([
         ],
       },
     ],
+  },
+  {
+    path: "*",
+    element: <NotFound />,
   },
 ]);
 
