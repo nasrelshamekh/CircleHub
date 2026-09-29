@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+﻿import { motion } from "motion/react";
 
 export default function TypewriterText({ text, className = "" }) {
   const letters = text.split("");

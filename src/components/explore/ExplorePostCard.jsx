@@ -1,21 +1,30 @@
+﻿import { useState } from "react";
 import { Heart, MessageCircle } from "lucide-react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "@/hooks/useAuth";
+import { formatPostDate } from "@/lib/formatDate";
+import Avatar from "@/components/profileimages/Avatar";
 
 export default function ExplorePostCard({ post, onToggleLike }) {
     const { userData } = useAuth();
     const postOwner = post.author.id === userData.id;
     const author = postOwner ? userData : post.author;
-    const isLiked = post.likedBy?.includes(userData.id);
+    const isLiked = post.isLikedByMe;
+    const [hasInteracted, setHasInteracted] = useState(false);
+
+    function handleToggleLike() {
+        setHasInteracted(true);
+        onToggleLike?.(post.id);
+    }
 
     return (
         <article className="content-card-padded flex min-w-0 flex-col gap-4 overflow-hidden">
-            {post.image && (
+            {post.imageUrl && (
                 <Link to={`/post/${post.id}`} className="-m-5 mb-0 block">
                     <img
-                        src={post.image}
+                        src={post.imageUrl}
                         alt="Post preview"
                         className="h-40 w-full object-cover"
                     />
@@ -24,8 +33,8 @@ export default function ExplorePostCard({ post, onToggleLike }) {
 
             <div className="flex items-start gap-3">
                 <Link to={`/profile/${author.username}`} className="shrink-0">
-                    <img
-                        src={author.avatar}
+                    <Avatar
+                        src={author.avatarUrl}
                         alt={author.name}
                         className="h-11 w-11 rounded-full object-cover"
                     />
@@ -40,7 +49,7 @@ export default function ExplorePostCard({ post, onToggleLike }) {
                     </Link>
 
                     <p className="truncate text-(length:--text-label-sm) text-(--text-secondary)">
-                        @{author.username} &bull; {author.role}
+                        @{author.username} &bull; {author.jobTitle}
                     </p>
                 </div>
             </div>
@@ -53,21 +62,24 @@ export default function ExplorePostCard({ post, onToggleLike }) {
 
             <div className="flex items-center justify-between gap-3 border-t border-(--border) pt-3">
                 <span className="text-(length:--text-label-sm) text-(--text-secondary)">
-                    {post.createdAt}
+                    {formatPostDate(post.createdAt)}
                 </span>
 
                 <div className="flex items-center">
                     <button
                         type="button"
-                        onClick={() => onToggleLike?.(post.id)}
+                        onClick={handleToggleLike}
                         aria-label={isLiked ? `Unlike post. ${post.likesCount} likes` : `Like post. ${post.likesCount} likes`}
                         aria-pressed={isLiked}
                         className={`post-action-button gap-1.5 px-2.5 py-2 text-(length:--text-label-sm) ${isLiked ? "text-(--primary)" : ""}`}
                     >
                         <motion.span
-                            key={isLiked ? "liked" : "unliked"}
-                            initial={{ scale: 0.8 }}
-                            animate={{ scale: isLiked ? [1, 1.3, 1] : [1, 0.85, 1] }}
+                            initial={false}
+                            animate={
+                                hasInteracted
+                                    ? { scale: isLiked ? [1, 1.3, 1] : [1, 0.85, 1] }
+                                    : { scale: 1 }
+                            }
                             transition={{ duration: 0.25, ease: "easeOut" }}
                             className="flex"
                         >

@@ -1,5 +1,6 @@
-import { Check, X } from "lucide-react";
+﻿import { Check, X } from "lucide-react";
 import { Link } from "react-router-dom";
+import Avatar from "@/components/profileimages/Avatar";
 
 export default function CommunityRequestsManager({ requests, onAccept, onReject }) {
     return (
@@ -19,8 +20,8 @@ export default function CommunityRequestsManager({ requests, onAccept, onReject 
                             className="flex flex-col gap-3 rounded-xl bg-(--surface-low) p-3 md:flex-row md:items-center md:justify-between"
                         >
                             <Link to={`/profile/${request.user.username}`} className="flex min-w-0 items-center gap-3">
-                                <img
-                                    src={request.user.avatar}
+                                <Avatar
+                                    src={request.user.avatarUrl}
                                     alt={request.user.name}
                                     className="avatar-lg"
                                 />
@@ -29,7 +30,7 @@ export default function CommunityRequestsManager({ requests, onAccept, onReject 
                                         {request.user.name}
                                     </h3>
                                     <p className="type-label-sm truncate text-secondary">
-                                        {request.user.role} &bull; {request.requestedAt}
+                                        {request.user.jobTitle} &bull; {new Date(request.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                                     </p>
                                     <p className="type-label-sm mt-1 text-secondary">
                                         {request.note}

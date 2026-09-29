@@ -1,8 +1,10 @@
-import { Save } from "lucide-react";
+﻿import { Save } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
-import ProfileImageUpload from "@/components/editprofile/ProfileImageUpload";
+import CommunityImageUpload from "@/components/communityimages/CommunityImageUpload";
 import ThemedDropdownSelect from "@/components/ui/ThemedDropdownSelect";
+import { useCommunityCategories } from "@/hooks/useCommunityCategories";
 
 const visibilityOptions = [
     {
@@ -16,13 +18,27 @@ const visibilityOptions = [
 ];
 
 export default function CommunitySettingsForm({ community, onSave }) {
+    const { categories } = useCommunityCategories();
+    const categoryOptions = [
+        {
+            value: "",
+            label: "Select a category",
+        },
+        ...categories.map((category) => ({
+            value: category,
+            label: category,
+        })),
+    ];
     const [formData, setFormData] = useState({
-        image: community.image,
+        imageUrl: community.imageUrl,
+        coverImageUrl: community.coverImageUrl,
         name: community.name,
         category: community.category,
         visibility: community.visibility,
         description: community.description,
     });
+    const [imageFile, setImageFile] = useState(null);
+    const [coverFile, setCoverFile] = useState(null);
 
     function handleChange(event) {
         const { name, value } = event.target;
@@ -35,24 +51,50 @@ export default function CommunitySettingsForm({ community, onSave }) {
 
     function handleSubmit(event) {
         event.preventDefault();
-        onSave(formData);
+
+        const category = formData.category.trim();
+
+        if (category.length < 2) {
+            toast.error("Category is required");
+            return;
+        }
+
+        onSave({
+            name: formData.name.trim(),
+            category,
+            visibility: formData.visibility,
+            description: formData.description.trim(),
+            image: imageFile,
+            coverImage: coverFile,
+        });
     }
 
     return (
         <section className="content-card-padded">
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                <ProfileImageUpload
-                    variant="cover"
-                    imageSrc={formData.image}
-                    originalImageSrc={community.image}
-                    onImageChange={(imageUrl) =>
-                        setFormData((currentData) => ({
-                            ...currentData,
-                            image: imageUrl,
-                        }))
-                    }
-                    alt={`${community.name} cover`}
-                />
+                <div>
+                    <CommunityImageUpload
+                        variant="cover"
+                        imageSrc={formData.coverImageUrl}
+                        originalImageSrc={community.coverImageUrl}
+                        onImageChange={(imageUrl, file) => {
+                            setCoverFile(file);
+                            setFormData((currentData) => ({ ...currentData, coverImageUrl: imageUrl }));
+                        }}
+                        alt={`${community.name} cover`}
+                    />
+
+                    <CommunityImageUpload
+                        variant="avatar"
+                        imageSrc={formData.imageUrl}
+                        originalImageSrc={community.imageUrl}
+                        onImageChange={(imageUrl, file) => {
+                            setImageFile(file);
+                            setFormData((currentData) => ({ ...currentData, imageUrl }));
+                        }}
+                        alt={`${community.name} image`}
+                    />
+                </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="flex flex-col gap-2">
@@ -83,16 +125,20 @@ export default function CommunitySettingsForm({ community, onSave }) {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="community-category" className="type-body-sm text-(--primary)">
+                        <label htmlFor="community-category" className="type-body-sm cursor-pointer text-(--primary)">
                             Category
                         </label>
-                        <input
+                        <ThemedDropdownSelect
                             id="community-category"
-                            name="category"
-                            type="text"
                             value={formData.category}
-                            onChange={handleChange}
-                            className="input-surface type-body-sm w-full rounded-lg px-4 py-3 text-primary outline-none"
+                            options={categoryOptions}
+                            ariaLabel="Select community category"
+                            onChange={(category) =>
+                                setFormData((currentData) => ({
+                                    ...currentData,
+                                    category,
+                                }))
+                            }
                         />
                     </div>
 

@@ -1,4 +1,4 @@
-import { Check, ChevronDown } from "lucide-react";
+﻿import { Check, ChevronDown } from "lucide-react";
 
 import {
     DropdownMenu,
@@ -7,7 +7,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export default function ThemedDropdownSelect({ id, value, options, onChange, ariaLabel }) {
+export default function ThemedDropdownSelect({ id, value, options, onChange, ariaLabel, disabled = false }) {
     const selectedOption = options.find((option) => option.value === value) || options[0];
 
     return (
@@ -16,7 +16,8 @@ export default function ThemedDropdownSelect({ id, value, options, onChange, ari
                 id={id}
                 type="button"
                 aria-label={ariaLabel}
-                className="input-surface type-body-sm flex w-full items-center justify-between gap-3 rounded-lg border-0 bg-(--surface-low) px-4 py-3 text-primary outline-none transition hover:bg-(--hover)"
+                disabled={disabled}
+                className="input-surface type-body-sm flex w-fit items-center gap-3 rounded-lg border-0 bg-(--surface-low) px-4 py-3 text-primary outline-none transition hover:bg-(--hover) disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-(--surface-low)"
             >
                 <span>{selectedOption.label}</span>
                 <ChevronDown size={17} className="text-(--primary)" />

@@ -1,56 +1,93 @@
+﻿import { useEffect, useRef } from 'react'
+
 import CreatePost from '@/components/createpost/CreatePost'
 import PostCard from '@/components/post/Post'
-import { useAuth } from '@/hooks/useAuth';
-import { usePosts } from '@/hooks/usePosts';
-import { togglePostLikeInList } from '@/lib/postLikes';
-import { toast } from 'sonner';
+import PostSkeleton from '@/components/Skeletons/PostSkeleton'
+import CreatePostSkeleton from '@/components/Skeletons/CreatePostSkeleton'
+import { useFeedPosts } from '@/hooks/useFeedPosts'
+import { useDeletePost } from '@/hooks/mutations/useDeletePost'
+import { useToggleLike } from '@/hooks/mutations/useToggleLike'
+import { toast } from 'sonner'
 
 export default function Feed() {
-    const { posts, setPosts } = usePosts();
-    const { userData } = useAuth();
+    const { posts, isLoading, isLoadingMore, hasMore, loadMore } = useFeedPosts();
+    const toggleLike = useToggleLike();
+    const deletePost = useDeletePost();
+    const sentinelRef = useRef(null);
 
-    function createPost(newPost) {
-        setPosts((currentPosts) => [newPost, ...currentPosts]);
-    }
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el || !hasMore) return;
 
-    function deletePost(postId) {
-        const postExists = posts.some((post) => post.id === postId);
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting && hasMore && !isLoadingMore) {
+                    loadMore();
+                }
+            },
+            { rootMargin: "200px" }
+        );
 
-        if (!postExists) {
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [hasMore, isLoadingMore, loadMore]);
+
+    function handleDeletePost(postId) {
+        const post = posts.find((p) => p.id === postId);
+        if (!post) {
             toast.error("Post not found");
             return;
         }
-
-        setPosts((currentPosts) =>
-            currentPosts.filter((post) => post.id !== postId)
-        );
-
-        toast.success("Post deleted successfully");
-    }
-
-    function toggleLike(postId) {
-        setPosts((currentPosts) =>
-            togglePostLikeInList(currentPosts, postId, userData.id)
-        );
+        deletePost.mutate(post);
     }
 
     return (
-        <>
-            <main >
-                <div className="content-stack max-w-4xl">
-                    <CreatePost onCreatePost={createPost} />
+        <main>
+            <div className="content-stack max-w-4xl">
+                {isLoading ? (
+                    <CreatePostSkeleton />
+                ) : (
+                    <CreatePost />
+                )}
 
-                    {posts.map((post) => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            onDelete={deletePost}
-                            onToggleLike={toggleLike}
-                        />
-                    ))}
+                {isLoading && Array.from({ length: 3 }, (_, index) => (
+                    <PostSkeleton key={index} />
+                ))}
 
-                </div>
-            </main>
-        </>
+                {!isLoading && posts.length === 0 && (
+                    <div className="content-card-padded text-secondary">
+                        No posts yet.
+                    </div>
+                )}
+
+                {!isLoading && posts.map((post) => (
+                    <PostCard
+                        key={post.id}
+                        post={post}
+                        onDelete={handleDeletePost}
+                        onToggleLike={(id) => toggleLike.mutate(id)}
+                    />
+                ))}
+
+                {/* Invisible sentinel â€” triggers loadMore when it enters view. */}
+                {!isLoading && hasMore && (
+                    <div ref={sentinelRef} className="h-1" />
+                )}
+
+                {/* Skeletons at the bottom while the next page loads. */}
+                {isLoadingMore && (
+                    <>
+                        <PostSkeleton />
+                        <PostSkeleton />
+                    </>
+                )}
+
+                {!isLoading && !hasMore && posts.length > 0 && (
+                    <p className="mt-2 py-4 text-center text-(length:--text-label-sm) text-(--text-secondary)">
+                        You're all caught up
+                    </p>
+                )}
+            </div>
+        </main>
     )
 }

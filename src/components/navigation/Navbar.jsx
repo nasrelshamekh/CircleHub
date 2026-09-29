@@ -1,4 +1,4 @@
-import logo from '@/assets/circlehub-logo.png'
+﻿import logo from '@/assets/circlehub-logo.png'
 import { Bell, MessageCircleMore, Moon, Sun } from 'lucide-react'
 import {
     DropdownMenu,
@@ -11,15 +11,16 @@ import {
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/hooks/useAuth'
+import Avatar from '@/components/profileimages/Avatar'
 import { toast } from 'sonner'
 
 export default function Navbar() {
     const { toggleTheme, theme } = useTheme();
-    const { userData, setIsAuthenticated } = useAuth();
+    const { userData, setUserData } = useAuth();
     const navigate = useNavigate();
 
     function handleSignout() {
-        setIsAuthenticated(false);
+        setUserData(null);
         toast.success("Signed out successfully.");
         navigate("/signin", { replace: true });
     }
@@ -58,7 +59,7 @@ export default function Navbar() {
                                     className="size-10 shrink-0 overflow-hidden rounded-full"
                                     aria-label="Open account menu"
                                 >
-                                    <img src={userData.avatar} alt={userData.name} className="size-10 rounded-full object-cover cursor-pointer" />
+                                    <Avatar src={userData.avatarUrl} alt={userData.name} className="size-10 rounded-full object-cover cursor-pointer" />
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-40" align="start">

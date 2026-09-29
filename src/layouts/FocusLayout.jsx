@@ -1,4 +1,4 @@
-import MobileBottomNav from '@/components/navigation/MobileBottomNav'
+﻿import MobileBottomNav from '@/components/navigation/MobileBottomNav'
 import Navbar from '@/components/navigation/Navbar'
 import Sidebar from '@/components/sidebar/Sidebar'
 import { useSidebar } from '@/hooks/useSidebar'
@@ -19,7 +19,7 @@ export default function FocusLayout() {
                             : 'lg:grid-cols-[5rem_minmax(0,1fr)]'
                     }`}
                 >
-                    <aside className='hidden bg-(--surface-lowest) lg:block'>
+                    <aside className='hidden bg-(--surface-low) lg:block'>
                         <Sidebar />
                     </aside>
                     <main className='bg-(--surface-low)'>

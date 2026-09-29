@@ -1,8 +1,8 @@
-import CommentItem from "./CommentItem";
+﻿import CommentItem from "./CommentItem";
 import CommentForm from "./CommentForm";
 import { useAuth } from "@/hooks/useAuth";
 
-export default function CommentList({ post, onAddComment, onDeleteComment }) {
+export default function CommentList({ post }) {
   const { userData } = useAuth();
   const postComments = post.comments || [];
 
@@ -11,7 +11,7 @@ export default function CommentList({ post, onAddComment, onDeleteComment }) {
       <h3 className="type-title-lg mb-4 text-primary">
         Comments
       </h3>
-      <CommentForm onAddComment={onAddComment} postId={post.id} user={userData} />
+      <CommentForm postId={post.id} user={userData} />
       {postComments.length > 0 ? (
         <div className="space-y-4">
           {postComments.map((comment) => {
@@ -23,9 +23,9 @@ export default function CommentList({ post, onAddComment, onDeleteComment }) {
               <CommentItem
                 key={comment.id}
                 {...comment}
+                postId={post.id}
                 author={displayAuthor}
                 isCommentOwner={isCommentOwner}
-                onDeleteComment={onDeleteComment}
               />
             );
           })}

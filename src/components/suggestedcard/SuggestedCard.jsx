@@ -1,20 +1,14 @@
-import SuggestedItem from './SuggestedItem'
-import suggestedUsers from '@/data/suggestedUsers'
-import { useAuth } from '@/hooks/useAuth'
+﻿import SuggestedItem from './SuggestedItem'
+import { useSuggestedUsers } from '@/hooks/useSuggestedUsers'
 
+const SUGGESTED_PEOPLE_LIMIT = 5;
 
 export default function SuggestedCard() {
+    const { suggestedUsers } = useSuggestedUsers();
 
-    const { userData } = useAuth();
-    const followingIds = userData.followingIds || [];
-    const filteredUsers = suggestedUsers
-        .map((user) => ({
-            ...user,
-            isFollowing: followingIds.includes(user.id),
-        }))
-        .filter((user) => !user.isFollowing);
+    const visibleUsers = suggestedUsers.slice(0, SUGGESTED_PEOPLE_LIMIT);
 
-    if (filteredUsers.length === 0) return null;
+    if (visibleUsers.length === 0) return null;
 
     return (
         <div className="content-card p-4">
@@ -23,7 +17,7 @@ export default function SuggestedCard() {
             </h2>
 
             <div className="space-y-3">
-                {filteredUsers.map((user) => (
+                {visibleUsers.map((user) => (
                     <SuggestedItem
                         key={user.id}
                         user={user}

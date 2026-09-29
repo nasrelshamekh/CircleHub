@@ -1,38 +1,60 @@
-import { Eye, EyeOff, LogIn } from "lucide-react";
+﻿import { AlertCircle, Eye, EyeOff, LoaderCircle, LogIn } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import logo from "@/assets/circlehub-logo.png";
 import { useAuth } from "@/hooks/useAuth";
+import { signinSchema } from "@/lib/authValidation";
+import { loginUser } from "@/services/authApi";
 
 export default function Signin() {
-    const { setIsAuthenticated } = useAuth();
+    const { setUserData } = useAuth();
     const navigate = useNavigate();
-    const [formData, setFormData] = useState({
-        email: "",
-        password: "",
-    });
+    const location = useLocation();
     const [showPassword, setShowPassword] = useState(false);
-    function handleChange(event) {
-        const { name, value } = event.target;
 
-        setFormData((currentData) => ({
-            ...currentData,
-            [name]: value,
-        }));
-    }
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+    } = useForm({
+        resolver: zodResolver(signinSchema),
+        mode: "onTouched",
+        defaultValues: { usernameOrEmail: "", password: "" },
+    });
 
-    function handleSubmit(event) {
-        event.preventDefault();
-        if (!formData.email.trim() || !formData.password.trim()) {
-            toast.error("Please enter your email and password.");
-            return;
+    async function onSubmit(values) {
+        try {
+            const response = await loginUser(values);
+            const { user, token } = response.data;
+
+            localStorage.setItem("token", token);
+            setUserData(user);
+
+            toast.success(response.message || "Signed in successfully");
+            navigate(location.state?.from?.pathname || "/feed", { replace: true });
+        } catch (error) {
+            const status = error.response?.status;
+            const message = error.response?.data?.message || error.message || "Could not sign in";
+
+            if (status === 403) {
+                toast.error(message, { duration: 5000 });
+                navigate("/verify-email", {
+                    state: {
+                        email: values.usernameOrEmail.includes("@")
+                            ? values.usernameOrEmail
+                            : "",
+                    },
+                });
+                return;
+            }
+
+            toast.error(message);
         }
-        setIsAuthenticated(true);
-        toast.success("Signed in successfully");
-        navigate("/feed", { replace: true });
     }
 
     return (
@@ -50,21 +72,28 @@ export default function Signin() {
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                     <div className="space-y-3">
-                        <label htmlFor="email" className="type-label-md mb-3 block text-primary">
-                            Email
+                        <label htmlFor="usernameOrEmail" className="type-label-md mb-3 block text-primary">
+                            Email or Username
                         </label>
 
                         <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            placeholder="you@example.com"
+                            id="usernameOrEmail"
+                            type="text"
+                            autoComplete="username"
+                            placeholder="username or you@example.com"
+                            aria-invalid={Boolean(errors.usernameOrEmail)}
                             className="input-surface type-body-sm w-full rounded-xl px-4 py-3"
+                            {...register("usernameOrEmail")}
                         />
+
+                        {errors.usernameOrEmail && (
+                            <p className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--error)">
+                                <AlertCircle size={14} />
+                                {errors.usernameOrEmail.message}
+                            </p>
+                        )}
                     </div>
 
                     <div className="space-y-3">
@@ -75,12 +104,12 @@ export default function Signin() {
                         <div className="input-surface flex w-full items-center rounded-xl px-4 py-3">
                             <input
                                 id="password"
-                                name="password"
                                 type={showPassword ? "text" : "password"}
-                                value={formData.password}
-                                onChange={handleChange}
+                                autoComplete="current-password"
                                 placeholder="Enter your password"
+                                aria-invalid={Boolean(errors.password)}
                                 className="type-body-sm min-w-0 flex-1 bg-transparent outline-none placeholder:text-(--text-secondary)"
+                                {...register("password")}
                             />
 
                             <button
@@ -100,14 +129,26 @@ export default function Signin() {
                                 </motion.span>
                             </button>
                         </div>
+
+                        {errors.password && (
+                            <p className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--error)">
+                                <AlertCircle size={14} />
+                                {errors.password.message}
+                            </p>
+                        )}
                     </div>
 
                     <button
                         type="submit"
-                        className="button-primary type-button flex w-full items-center justify-center gap-2 px-5 py-3"
+                        disabled={isSubmitting}
+                        className="button-primary type-button flex w-full items-center justify-center gap-2 px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        <LogIn size={18} />
-                        Sign In
+                        {isSubmitting ? (
+                            <LoaderCircle size={18} className="animate-spin" />
+                        ) : (
+                            <LogIn size={18} />
+                        )}
+                        {isSubmitting ? "Signing In..." : "Sign In"}
                     </button>
                 </form>
 

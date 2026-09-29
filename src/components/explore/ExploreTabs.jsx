@@ -1,8 +1,11 @@
-import { FileText, Users, Network } from "lucide-react";
+﻿import { FileText, Users, Network } from "lucide-react";
 
 import ExplorePostCard from "./ExplorePostCard";
 import UserResultCard from "./UserResultCard";
 import CommunityResultCard from "./CommunityResultCard";
+import ExplorePostCardSkeleton from "@/components/Skeletons/ExplorePostCardSkeleton";
+import UserResultCardSkeleton from "@/components/Skeletons/UserResultCardSkeleton";
+import CommunityResultCardSkeleton from "@/components/Skeletons/CommunityResultCardSkeleton";
 
 import {
     Tabs,
@@ -29,7 +32,21 @@ const tabs = [
     },
 ];
 
-export default function ExploreTabs({ posts, users, communities, onCommunityMembershipChange, onToggleLike, searchQuery }) {
+const SKELETON_COUNT = 6;
+
+export default function ExploreTabs({
+    posts,
+    users,
+    communities,
+    onCommunityMembershipChange,
+    onToggleLike,
+    searchQuery,
+    isLoading,
+}) {
+    const showPostSkeletons = isLoading && posts.length === 0;
+    const showUserSkeletons = isLoading && users.length === 0;
+    const showCommunitySkeletons = isLoading && communities.length === 0;
+
     return (
         <Tabs defaultValue="posts" className="min-w-0">
             <div className="py-2">
@@ -41,12 +58,17 @@ export default function ExploreTabs({ posts, users, communities, onCommunityMemb
                                 <Icon size={16} />
                                 {tab.label}
                             </TabsTrigger>
-                        );})}
+                        );
+                    })}
                 </TabsList>
             </div>
 
             <TabsContent value="posts" className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {posts.length > 0 ? (
+                {showPostSkeletons ? (
+                    Array.from({ length: SKELETON_COUNT }, (_, i) => (
+                        <ExplorePostCardSkeleton key={i} />
+                    ))
+                ) : posts.length > 0 ? (
                     posts.map((post) => <ExplorePostCard key={post.id} post={post} onToggleLike={onToggleLike} />)
                 ) : (
                     <div className="content-card-padded col-span-full flex flex-col items-center justify-center py-10 text-center">
@@ -65,7 +87,11 @@ export default function ExploreTabs({ posts, users, communities, onCommunityMemb
             </TabsContent>
 
             <TabsContent value="users" className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {users.length > 0 ? (
+                {showUserSkeletons ? (
+                    Array.from({ length: SKELETON_COUNT }, (_, i) => (
+                        <UserResultCardSkeleton key={i} />
+                    ))
+                ) : users.length > 0 ? (
                     users.map((user) => <UserResultCard key={user.id} user={user} />)
                 ) : (
                     <div className="content-card-padded col-span-full flex flex-col items-center justify-center py-10 text-center">
@@ -77,14 +103,18 @@ export default function ExploreTabs({ posts, users, communities, onCommunityMemb
 
                         <p className="type-body-sm-readable mt-2 max-w-sm text-secondary">
                             {searchQuery
-                                ? "Try searching by name, username, or role."
+                                ? "Try searching by name, username, or job title."
                                 : "Suggested people will appear here."}
                         </p>
                     </div>)}
             </TabsContent>
 
             <TabsContent value="communities" className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {communities.length > 0 ? (
+                {showCommunitySkeletons ? (
+                    Array.from({ length: SKELETON_COUNT }, (_, i) => (
+                        <CommunityResultCardSkeleton key={i} />
+                    ))
+                ) : communities.length > 0 ? (
                     communities.map((community) => (
                         <CommunityResultCard
                             key={community.id}

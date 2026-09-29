@@ -1,13 +1,25 @@
-import { useContext } from "react";
+﻿import { useQuery } from "@tanstack/react-query";
 
-import { communityPostsContext } from "@/context/CommunityPostsContext.jsx";
+import { getCommunityPosts } from "@/services/postApi";
+import { queryKeys } from "@/lib/queryKeys";
 
-export function useCommunityPosts() {
-    const context = useContext(communityPostsContext);
+export function useCommunityPosts(communityId) {
+    const query = useQuery({
+        queryKey: queryKeys.communityPosts(communityId),
+        queryFn: async () => {
+            try {
+                const { data } = await getCommunityPosts(communityId);
+                return data;
+            } catch (error) {
+                if (error.response?.status === 403) return [];
+                throw error;
+            }
+        },
+        enabled: Boolean(communityId),
+    });
 
-    if (!context) {
-        throw new Error("useCommunityPosts must be used within a CommunityPostsContextProvider");
-    }
-
-    return context;
+    return {
+        posts: query.data ?? [],
+        isLoading: query.isPending,
+    };
 }

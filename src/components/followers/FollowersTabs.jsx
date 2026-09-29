@@ -1,4 +1,4 @@
-import { Users, UserCheck } from "lucide-react";
+﻿import { Users, UserCheck } from "lucide-react";
 
 import {
     Tabs,
@@ -21,12 +21,12 @@ export default function FollowersTabs({
                 <TabsList className="sm:grid-cols-2">
                     <TabsTrigger value="followers">
                         <Users size={16} />
-                        Followers
+                        Followers ({followers.length})
                     </TabsTrigger>
 
                     <TabsTrigger value="following">
                         <UserCheck size={16} />
-                        Following
+                        Following ({following.length})
                     </TabsTrigger>
                 </TabsList>
             </div>

@@ -3,6 +3,17 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
+/* Couples Tailwind's `dark:` modifier to the `.dark` class on <html>, which
+   ThemeContext toggles. Without this, Tailwind v4 defaults to using the
+   `prefers-color-scheme: dark` media query, which ignores the in-app theme
+   state and tracks the user's OS preference instead. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+}
+
 /* =========================
    DESIGN TOKENS
    Light mode from updated design.md
@@ -50,6 +61,8 @@
   --surface-high: #e2e7ff;
   --surface-highest: #dae2fd;
   --surface-variant: #dae2fd;
+  --muted: var(--surface-highest);
+  --muted-foreground: var(--text-secondary);
 
   --inverse-surface: #283044;
   --inverse-on-surface: #eef0ff;
@@ -210,6 +223,8 @@
   --surface-high: #222a3d;
   --surface-highest: #2d3449;
   --surface-variant: #2d3449;
+  --muted: var(--surface-highest);
+  --muted-foreground: var(--text-secondary);
 
   --inverse-surface: #dae2fd;
   --inverse-on-surface: #283044;

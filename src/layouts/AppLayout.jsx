@@ -1,4 +1,4 @@
-import MobileBottomNav from '@/components/navigation/MobileBottomNav'
+﻿import MobileBottomNav from '@/components/navigation/MobileBottomNav'
 import Navbar from '@/components/navigation/Navbar'
 import RightSidebar from '@/components/rightsidebar/RightSidebar'
 import Sidebar from '@/components/sidebar/Sidebar'
@@ -20,7 +20,7 @@ export default function AppLayout() {
                     }`}
                 >
 
-                    <aside className="hidden bg-(--surface-lowest) lg:block">
+                    <aside className="hidden bg-(--surface-low) lg:block">
                         <Sidebar />
                     </aside>
 

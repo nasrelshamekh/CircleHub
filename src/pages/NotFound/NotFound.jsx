@@ -1,4 +1,4 @@
-import { Compass, Home, SearchX } from "lucide-react";
+﻿import { Compass, Home, SearchX } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 import logo from "@/assets/circlehub-logo.png";
@@ -6,8 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function NotFound() {
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuth();
-    const homePath = isAuthenticated ? "/feed" : "/";
+    const { userData } = useAuth();
+    const homePath = userData ? "/feed" : "/";
 
     return (
         <main className="flex min-h-screen items-center justify-center bg-(--surface-low) px-5 py-10 text-primary">
@@ -36,7 +36,7 @@ export default function NotFound() {
                         className="button-primary type-button flex w-full items-center justify-center gap-2 px-5 py-3 sm:w-auto"
                     >
                         <Home size={18} />
-                        {isAuthenticated ? "Back to Feed" : "Back to Home"}
+                        {userData ? "Back to Feed" : "Back to Home"}
                     </Link>
 
                     <button

@@ -1,8 +1,9 @@
-import { FileText, Image, Info, Users } from "lucide-react";
+﻿import { FileText, Image, Info, Lock, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import CreatePost from "@/components/createpost/CreatePost";
 import PostCard from "@/components/post/Post";
+import Avatar from "@/components/profileimages/Avatar";
 import {
     Tabs,
     TabsContent,
@@ -42,9 +43,10 @@ export default function CommunityTabs({
     onDeletePost,
     onToggleLike,
     canCreatePost,
-    onCreatePost,
 }) {
-    const mediaPosts = posts.filter((post) => post.image);
+    const mediaPosts = posts.filter((post) => post.imageUrl);
+    const isPrivateLocked =
+        community.visibility === "private" && !canCreatePost;
 
     return (
         <Tabs defaultValue="posts" className="min-w-0">
@@ -65,10 +67,23 @@ export default function CommunityTabs({
 
             <TabsContent value="posts" className="space-y-5">
                 {canCreatePost && (
-                    <CreatePost onCreatePost={onCreatePost} community={community} />
+                    <CreatePost community={community} />
                 )}
 
-                {posts.length > 0 ? (
+                {isPrivateLocked ? (
+                    <div className="content-card-padded flex flex-col items-center justify-center py-10 text-center">
+                        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">
+                            <Lock size={24} />
+                        </div>
+
+                        <h3 className="type-title-lg text-primary">
+                            This community is private
+                        </h3>
+                        <p className="type-body-sm-readable mt-2 max-w-sm text-secondary">
+                            Request to join {community.name} to view its posts.
+                        </p>
+                    </div>
+                ) : posts.length > 0 ? (
                     posts.map((post) => {
                         const isPostOwner = post.author.id === userData.id;
                         const canDeletePost = canManagePosts || isPostOwner;
@@ -98,6 +113,20 @@ export default function CommunityTabs({
             </TabsContent>
 
             <TabsContent value="members">
+                {isPrivateLocked ? (
+                    <div className="content-card-padded flex flex-col items-center justify-center py-10 text-center">
+                        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">
+                            <Lock size={24} />
+                        </div>
+
+                        <h3 className="type-title-lg text-primary">
+                            This community is private
+                        </h3>
+                        <p className="type-body-sm-readable mt-2 max-w-sm text-secondary">
+                            Request to join {community.name} to view its members.
+                        </p>
+                    </div>
+                ) : (
                 <div className="content-card-padded">
                     <h2 className="type-title-lg mb-4 text-primary">Members</h2>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -111,8 +140,8 @@ export default function CommunityTabs({
                                     to={`/profile/${displayMember.username}`}
                                     className="flex min-w-0 items-center gap-3 rounded-xl bg-(--surface-low) p-3 transition hover:bg-(--hover)"
                                 >
-                                    <img
-                                        src={displayMember.avatar}
+                                    <Avatar
+                                        src={displayMember.avatarUrl}
                                         alt={displayMember.name}
                                         className="avatar-lg"
                                     />
@@ -121,7 +150,7 @@ export default function CommunityTabs({
                                             {displayMember.name}
                                         </h3>
                                         <p className="type-label-sm truncate text-secondary">
-                                            {displayMember.role}
+                                            {displayMember.jobTitle}
                                         </p>
                                         <p className="type-label-sm truncate text-secondary">
                                             {displayMember.location}
@@ -132,17 +161,31 @@ export default function CommunityTabs({
                         })}
                     </div>
                 </div>
+                )}
             </TabsContent>
 
             <TabsContent value="media">
-                {mediaPosts.length > 0 ? (
+                {isPrivateLocked ? (
+                    <div className="content-card-padded flex flex-col items-center justify-center py-10 text-center">
+                        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">
+                            <Lock size={24} />
+                        </div>
+
+                        <h3 className="type-title-lg text-primary">
+                            This community is private
+                        </h3>
+                        <p className="type-body-sm-readable mt-2 max-w-sm text-secondary">
+                            Request to join {community.name} to view its media.
+                        </p>
+                    </div>
+                ) : mediaPosts.length > 0 ? (
                     <div className="content-card-padded">
                         <h2 className="type-title-lg mb-4 text-primary">Media</h2>
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                             {mediaPosts.map((post) => (
                                 <Link key={post.id} to={`/post/${post.id}`}>
                                     <img
-                                        src={post.image}
+                                        src={post.imageUrl}
                                         alt="Community post media"
                                         className="aspect-square w-full rounded-lg object-cover"
                                     />
@@ -203,14 +246,14 @@ export default function CommunityTabs({
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
                             <span className="type-label-md w-32 text-(--primary)">Members:</span>
                             <span className="type-body-sm-readable flex-1 text-secondary">
-                                {members.length}
+                                {community.membersCount}
                             </span>
                         </div>
 
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
                             <span className="type-label-md w-32 text-(--primary)">Posts:</span>
                             <span className="type-body-sm-readable flex-1 text-secondary">
-                                {posts.length}
+                                {community.postsCount}
                             </span>
                         </div>
                     </div>

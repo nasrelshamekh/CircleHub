@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from "react-router-dom"
+﻿import { Outlet, useLocation } from "react-router-dom"
 import RegisterBG from "@/assets/registerpage.png"
 import SigninBG from "@/assets/signinpage.png"
 

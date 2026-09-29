@@ -1,52 +1,47 @@
-import { Check, UserPlus } from "lucide-react";
+﻿import { Check, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useToggleFollow } from "@/hooks/mutations/useToggleFollow";
 
 export default function FollowButton({ user, variant = "icon" }) {
-    const { userData, setUserData } = useAuth();
+    const toggleFollow = useToggleFollow();
+    const isFollowing = Boolean(user.isFollowedByMe);
 
-    const isMyself = user.id === userData.id;
-    const isFollowing = userData.followingIds?.includes(user.id);
+    if (user.isCurrentUser) return null;
 
     function handleToggleFollow() {
-        if (isMyself) {
-            toast.error("You cannot follow yourself");
-            return;
-        }
+        if (toggleFollow.isPending) return;
 
-        setUserData((currentUser) => {
-            const followingIds = currentUser.followingIds || [];
-            const alreadyFollowing = followingIds.includes(user.id);
-            const nextFollowingIds = alreadyFollowing
-                ? followingIds.filter((id) => id !== user.id)
-                : [...followingIds, user.id];
+        const shouldFollow = !isFollowing;
 
-            return {
-                ...currentUser,
-                followingIds: nextFollowingIds,
-                followingCount: nextFollowingIds.length,
-            };
-        });
-
-        toast.success(
-            isFollowing
-                ? `Unfollowed ${user.name}`
-                : `You are now following ${user.name}`
+        toggleFollow.mutate(
+            {
+                userId: user.id,
+                shouldFollow,
+                targetUsername: user.username,
+            },
+            {
+                onSuccess: () => {
+                    toast.success(
+                        shouldFollow
+                            ? `${user.name} has been followed`
+                            : `${user.name} has been unfollowed`
+                    );
+                },
+            }
         );
     }
-
-    if (isMyself) return null;
 
     if (variant === "text") {
         return (
             <button
                 type="button"
                 onClick={handleToggleFollow}
+                disabled={toggleFollow.isPending}
                 className={
                     isFollowing
-                        ? "rounded-(--radius-full) bg-(--active) px-4 py-2 type-button text-(--primary)"
-                        : "button-primary px-4 py-2 type-button"
+                        ? "rounded-(--radius-full) bg-(--active) px-4 py-2 type-button text-(--primary) disabled:opacity-60"
+                        : "button-primary px-4 py-2 type-button disabled:opacity-60"
                 }
             >
                 {isFollowing ? "Following" : "Follow"}
@@ -58,10 +53,11 @@ export default function FollowButton({ user, variant = "icon" }) {
         <button
             type="button"
             onClick={handleToggleFollow}
+            disabled={toggleFollow.isPending}
             className={
                 isFollowing
-                    ? "icon-button-soft flex h-10 w-10 shrink-0 items-center justify-center bg-(--active) text-(--primary)"
-                    : "icon-button-soft flex h-10 w-10 shrink-0 items-center justify-center bg-(--surface-low) text-(--primary)"
+                    ? "icon-button-soft flex h-10 w-10 shrink-0 items-center justify-center bg-(--active) text-(--primary) disabled:opacity-60"
+                    : "icon-button-soft flex h-10 w-10 shrink-0 items-center justify-center bg-(--surface-low) text-(--primary) disabled:opacity-60"
             }
             aria-label={isFollowing ? `Following ${user.name}` : `Follow ${user.name}`}
             title={isFollowing ? "Following" : "Follow"}

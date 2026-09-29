@@ -1,39 +1,85 @@
-/* eslint-disable react-refresh/only-export-components */
-import currentUser from "@/data/currentUser"
-import { createContext, useEffect, useState } from 'react'
+﻿import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 
-export const authContext = createContext(null)
+import logo from "@/assets/circlehub-logo.png";
+import { authContext } from "@/hooks/useAuth";
+import { getCurrentUser } from "@/services/authApi";
 
 export default function AuthContextProvider({ children }) {
-
     const [userData, setUserData] = useState(() => {
-        const savedUserData = localStorage.getItem("user-data");
-
-        if (savedUserData) {
-            try {
-                return JSON.parse(savedUserData);
-            } catch {
-                return currentUser;
-            }
+        try {
+            const cached = localStorage.getItem("user-data");
+            return cached ? JSON.parse(cached) : null;
+        } catch {
+            return null;
         }
-
-        return currentUser;
     });
-    const [isAuthenticated, setIsAuthenticated] = useState(() => {
-        return localStorage.getItem("is-authenticated") === "true";
-    });
+    const [isVerifying, setIsVerifying] = useState(
+        () => Boolean(localStorage.getItem("token"))
+    );
 
     useEffect(() => {
-        localStorage.setItem("user-data", JSON.stringify(userData));
+        if (userData) {
+            localStorage.setItem("user-data", JSON.stringify(userData));
+        } else {
+            localStorage.removeItem("user-data");
+            localStorage.removeItem("token");
+        }
     }, [userData]);
 
     useEffect(() => {
-        localStorage.setItem("is-authenticated", String(isAuthenticated));
-    }, [isAuthenticated]);
+        if (!localStorage.getItem("token")) {
+            setUserData(null);
+            setIsVerifying(false);
+            return;
+        }
+
+        let ignore = false;
+
+        async function loadCurrentUser() {
+            try {
+                const { data } = await getCurrentUser();
+                if (!ignore) setUserData(data);
+            } catch (error) {
+                if (ignore) return;
+                if (error.response?.status === 401) {
+                    setUserData(null);
+                }
+            } finally {
+                if (!ignore) setIsVerifying(false);
+            }
+        }
+
+        loadCurrentUser();
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    if (isVerifying) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-(--surface-low)">
+                <motion.img
+                    src={logo}
+                    alt="CircleHub"
+                    className="w-48"
+                    animate={{
+                        opacity: [0.5, 1, 0.5],
+                        scale: [0.98, 1.02, 0.98],
+                    }}
+                    transition={{
+                        duration: 1.6,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                    }}
+                />
+            </div>
+        );
+    }
 
     return (
-        <authContext.Provider value={{ userData, setUserData, isAuthenticated, setIsAuthenticated }}>
+        <authContext.Provider value={{ userData, setUserData}}>
             {children}
         </authContext.Provider>
-    )
+    );
 }

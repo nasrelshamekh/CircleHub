@@ -1,6 +1,6 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { motion } from "motion/react";
-import { ArrowDownFromLine } from "lucide-react";
+import { ArrowDownFromLine, ArrowUpFromLine } from "lucide-react";
 
 import SuggestedCommunityItem from "./SuggestedCommunityItem";
 
@@ -21,11 +21,13 @@ export default function CommunityCardSuggestion({ communities, onMembershipChang
                         onClick={() => setIsSuggestionsExpanded((current) => !current)}
                     >
                         <motion.span
-                            className="block"
-                            animate={{ rotate: isSuggestionsExpanded ? 180 : 0 }}
-                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            key={isSuggestionsExpanded ? "collapse" : "expand"}
+                            initial={{ opacity: 0, scale: 0.8, rotate: -12 }}
+                            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                            transition={{ duration: 0.18, ease: "easeOut" }}
+                            className="flex"
                         >
-                            <ArrowDownFromLine size={22} />
+                            {isSuggestionsExpanded ? <ArrowUpFromLine size={22} /> : <ArrowDownFromLine size={22} />}
                         </motion.span>
                     </button>
                 </div>

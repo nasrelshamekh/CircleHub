@@ -1,13 +1,29 @@
-import { useContext } from "react";
+﻿import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { CommunitiesContext } from "@/context/CommunitiesContext.jsx";
+import { getCommunities } from "@/services/communityApi";
+import { queryKeys } from "@/lib/queryKeys";
 
 export function useCommunities() {
-    const context = useContext(CommunitiesContext);
+    const queryClient = useQueryClient();
 
-    if (!context) {
-        throw new Error("useCommunities must be used within a CommunitiesContextProvider");
+    const query = useQuery({
+        queryKey: queryKeys.communities(),
+        queryFn: async () => {
+            const { data } = await getCommunities();
+            return data;
+        },
+    });
+
+    function setCommunities(updater) {
+        queryClient.setQueryData(queryKeys.communities(), (old = []) =>
+            typeof updater === "function" ? updater(old) : updater
+        );
     }
 
-    return context;
+    return {
+        communities: query.data ?? [],
+        setCommunities,
+        isLoading: query.isPending,
+        refetch: query.refetch,
+    };
 }

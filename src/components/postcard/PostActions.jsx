@@ -1,19 +1,20 @@
+﻿import { useState } from "react";
 import {
   Heart,
   MessageCircle,
   Send,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 
 export default function PostActions({ post, onToggleLike }) {
 
   const navigate = useNavigate();
-  const { userData } = useAuth();
-  const isLiked = post.likedBy?.includes(userData.id);
+  const isLiked = post.isLikedByMe;
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   function handleToggleLike() {
+    setHasInteracted(true);
     onToggleLike?.(post.id);
   }
 
@@ -29,9 +30,12 @@ export default function PostActions({ post, onToggleLike }) {
           aria-pressed={isLiked}
         >
           <motion.span
-            key={isLiked ? "liked" : "unliked"}
-            initial={{ scale: 0.8 }}
-            animate={{ scale: isLiked ? [1, 1.3, 1] : [1, 0.85, 1] }}
+            initial={false}
+            animate={
+              hasInteracted
+                ? { scale: isLiked ? [1, 1.3, 1] : [1, 0.85, 1] }
+                : { scale: 1 }
+            }
             transition={{ duration: 0.25, ease: "easeOut" }}
             className="flex"
           >

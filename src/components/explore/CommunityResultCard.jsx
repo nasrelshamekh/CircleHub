@@ -1,7 +1,8 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { Check, Clock, FileText, Hash, Lock, Settings, ShieldUser, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useCommunityPosts } from "@/hooks/useCommunityPosts";
+import Avatar from "@/components/profileimages/Avatar";
+import CommunityImage from "@/components/communityimages/CommunityImage";
 
 export default function CommunityResultCard({ community, onMembershipChange }) {
   const { userData } = useAuth();
@@ -11,16 +12,15 @@ export default function CommunityResultCard({ community, onMembershipChange }) {
   const isAdmin = community.admin.id === userData.id;
   const displayAdmin = isAdmin ? userData : community.admin;
   const actionLabel = isAdmin ? "Manage" : isJoined ? "Leave" : isRequested ? "Requested" : isPrivate ? "Request" : "Join";
-  const membersCount = community.members.length;
-  const { communityPosts } = useCommunityPosts();
-  const postsCount = communityPosts.filter((post) => post.communitySlug === community.slug).length;
+  const membersCount = community.membersCount;
+  const postsCount = community.postsCount;
 
   return (
     <div className="content-card-padded flex min-w-0 flex-col gap-4 overflow-hidden">
       <div className="flex items-start gap-4">
         <Link to={`/communities/${community.slug}`} className="shrink-0">
-          <img
-            src={community.image}
+          <CommunityImage
+            src={community.imageUrl}
             alt={community.name}
             className="h-20 w-20 rounded-lg object-cover sm:h-24 sm:w-24"
           />
@@ -72,8 +72,8 @@ export default function CommunityResultCard({ community, onMembershipChange }) {
         to={`/profile/${displayAdmin.username}`}
         className="flex min-w-0 items-center gap-2 rounded-lg bg-(--surface-low) px-3 py-2 transition hover:bg-(--hover)"
       >
-        <img
-          src={displayAdmin.avatar}
+        <Avatar
+          src={displayAdmin.avatarUrl}
           alt={displayAdmin.name}
           className="h-8 w-8 shrink-0 rounded-full object-cover"
         />
@@ -84,7 +84,7 @@ export default function CommunityResultCard({ community, onMembershipChange }) {
             Admin
           </p>
           <p className="truncate text-(length:--text-label-sm) text-(--text-secondary)">
-            {displayAdmin.name} &bull; {displayAdmin.role}
+            {displayAdmin.name} &bull; {displayAdmin.jobTitle}
           </p>
         </div>
       </Link>

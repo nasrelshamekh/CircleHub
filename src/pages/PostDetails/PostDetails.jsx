@@ -1,174 +1,72 @@
-import PostCard from '@/components/post/Post'
+﻿import PostCard from '@/components/post/Post'
 import { MoveLeft, SearchX } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import CommentList from "@/components/comment/CommentList"
 import { useAuth } from "@/hooks/useAuth"
-import { useCommunityPosts } from "@/hooks/useCommunityPosts"
 import { useCommunities } from "@/hooks/useCommunities"
-import { usePosts } from "@/hooks/usePosts"
-import { togglePostLikeInList } from "@/lib/postLikes"
+import { useToggleLike } from '@/hooks/mutations/useToggleLike'
+import { useDeletePost } from '@/hooks/mutations/useDeletePost'
+import { usePostDetails } from "@/hooks/usePostDetails"
+import PostDetailsSkeleton from '@/components/Skeletons/PostDetailsSkeleton'
 import { toast } from "sonner"
 
 export default function PostDetails() {
-    const { posts: feedPosts, setPosts } = usePosts();
-    const { communityPosts, setCommunityPosts } = useCommunityPosts();
     const { communities } = useCommunities();
     const { userData } = useAuth();
-    const posts = [...feedPosts, ...communityPosts];
+    const { id: postId } = useParams();
+    const { post, isLoading } = usePostDetails(postId);
+    const navigate = useNavigate();
+    const toggleLike = useToggleLike();
+    const deletePost = useDeletePost();
 
-    const { id } = useParams()
-    const navigate = useNavigate()
-    const post = posts.find((post) => post.id === Number(id));
-    const isFeedPost = feedPosts.some((feedPost) => feedPost.id === post?.id);
-    const community = communities.find((community) => community.slug === post?.communitySlug);
-    const currentUserMember = community?.members.find((member) => member.id === userData.id);
+    const community = communities.find((c) => c.slug === post?.community?.slug);
+    const currentUserMember = community?.members?.find((m) => m.id === userData.id);
     const isCommunityAdmin = community?.admin.id === userData.id;
     const isCommunityModerator = currentUserMember?.communityRole === "moderator";
     const isPostOwner = post?.author.id === userData.id;
-    const canDeleteCommunityPost =
-        Boolean(post?.communitySlug) &&
-        (isPostOwner || isCommunityAdmin || isCommunityModerator);
-    const backPath = post?.communitySlug ? `/communities/${post.communitySlug}` : "/feed";
-    const backLabel = post?.communitySlug ? "Back To Community" : "Back To Feed";
+    const isCommunityPost = Boolean(post?.community?.slug);
+    const canDelete =
+        isPostOwner ||
+        (isCommunityPost && (isCommunityAdmin || isCommunityModerator));
 
-    function handleDeletePost(postId) {
-        if (isFeedPost) {
-            setPosts((currentPosts) =>
-                currentPosts.filter((currentPost) => currentPost.id !== postId)
-            );
+    const backPath = isCommunityPost ? `/communities/${post.community?.slug}` : "/feed";
+    const backLabel = isCommunityPost ? "Back To Community" : "Back To Feed";
 
-            toast.success("Post deleted successfully");
-            navigate("/feed");
-            return;
-        }
-
-        if (!canDeleteCommunityPost) {
+    function handleDeletePost() {
+        if (!post) return;
+        if (!canDelete) {
             toast.error("You do not have permission to delete this post");
             return;
         }
-
-        setCommunityPosts((currentPosts) =>
-            currentPosts.filter((currentPost) => currentPost.id !== postId)
-        );
-
-        toast.success("Community post deleted successfully");
-        navigate(backPath);
-    }
-
-    function handleAddComment(postId, newComment) {
-        if (isFeedPost) {
-            setPosts((currentPosts) =>
-                currentPosts.map((currentPost) => {
-                    if (currentPost.id !== postId) return currentPost;
-
-                    const updatedComments = [
-                        newComment,
-                        ...(currentPost.comments || []),
-                    ];
-
-                    return {
-                        ...currentPost,
-                        comments: updatedComments,
-                        commentsCount: updatedComments.length,
-                    };
-                })
-            );
-
-            toast.success("Comment added successfully");
-            return;
-        }
-
-        setCommunityPosts((currentPosts) =>
-            currentPosts.map((currentPost) => {
-                if (currentPost.id !== postId) return currentPost;
-
-                const updatedComments = [
-                    newComment,
-                    ...(currentPost.comments || []),
-                ];
-
-                return {
-                    ...currentPost,
-                    comments: updatedComments,
-                    commentsCount: updatedComments.length,
-                };
-            })
-        );
-
-        toast.success("Comment added successfully");
-    }
-
-    function handleDeleteComment(postId, commentId) {
-        if (isFeedPost) {
-            setPosts((currentPosts) =>
-                currentPosts.map((currentPost) => {
-                    if (currentPost.id !== postId) return currentPost;
-
-                    const remainingComments = (currentPost.comments || []).filter(
-                        (comment) => comment.id !== commentId
-                    );
-
-                    return {
-                        ...currentPost,
-                        comments: remainingComments,
-                        commentsCount: remainingComments.length,
-                    };
-                })
-            );
-
-            toast.success("Comment has been deleted");
-            return;
-        }
-
-        setCommunityPosts((currentPosts) =>
-            currentPosts.map((currentPost) => {
-                if (currentPost.id !== postId) return currentPost;
-
-                const remainingComments = (currentPost.comments || []).filter(
-                    (comment) => comment.id !== commentId
-                );
-
-                return {
-                    ...currentPost,
-                    comments: remainingComments,
-                    commentsCount: remainingComments.length,
-                };
-            })
-        );
-
-        toast.success("Comment has been deleted");
-    }
-
-    function handleToggleLike(postId) {
-        if (isFeedPost) {
-            setPosts((currentPosts) =>
-                togglePostLikeInList(currentPosts, postId, userData.id)
-            );
-            return;
-        }
-
-        setCommunityPosts((currentPosts) =>
-            togglePostLikeInList(currentPosts, postId, userData.id)
-        );
+        deletePost.mutate(post, {
+            onSuccess: () => navigate(backPath),
+        });
     }
 
     return (
         <>
             <div className="content-stack gap-4 max-w-5xl">
-
-                {post ? (<>
-                    <button type="button" onClick={() => navigate(backPath)} className="button-primary type-button inline-flex w-fit self-start items-center justify-center gap-1 rounded-full px-3 py-1">
-                        <MoveLeft className="size-5 lg:size-6" />
-                        {backLabel}
-                    </button>
-                    <PostCard
-                        post={post}
-                        onDelete={isFeedPost || canDeleteCommunityPost ? handleDeletePost : undefined}
-                        canDelete={isFeedPost ? undefined : canDeleteCommunityPost}
-                        onToggleLike={handleToggleLike}
-                    />
-                    <CommentList onDeleteComment={handleDeleteComment} onAddComment={handleAddComment} post={post} />
-                </>) : (
+                {isLoading ? (
+                    <PostDetailsSkeleton />
+                ) : post ? (
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => navigate(backPath)}
+                            className="button-primary type-button inline-flex w-fit self-start items-center justify-center gap-1 rounded-full px-3 py-1"
+                        >
+                            <MoveLeft className="size-5 lg:size-6" />
+                            {backLabel}
+                        </button>
+                        <PostCard
+                            post={post}
+                            onDelete={canDelete ? handleDeletePost : undefined}
+                            canDelete={canDelete}
+                            onToggleLike={(id) => toggleLike.mutate(id)}
+                        />
+                        <CommentList post={post} />
+                    </>
+                ) : (
                     <div className="content-card flex flex-col items-center justify-center gap-4 p-10 text-center">
                         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-(--active) text-(--primary)">
                             <SearchX size={38} />
@@ -196,5 +94,5 @@ export default function PostDetails() {
                 )}
             </div>
         </>
-    )
+    );
 }

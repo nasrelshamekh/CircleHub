@@ -1,75 +1,50 @@
-import { ChevronDown, Eye, EyeOff, UserPlus } from "lucide-react";
+﻿import { AlertCircle, ChevronDown, Eye, EyeOff, LoaderCircle, UserPlus } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import logo from "@/assets/circlehub-logo.png";
-import { getAvatarImage, getCoverImage } from "@/lib/profileImages";
-import { useAuth } from "@/hooks/useAuth";
-import { useCommunities } from "@/hooks/useCommunities";
-import { resetCommunitiesForNewUser } from "@/lib/communityMembership";
+import { registerSchema } from "@/lib/authValidation";
+import { registerUser } from "@/services/authApi";
 
 export default function Register() {
-    const { setUserData, setIsAuthenticated } = useAuth();
-    const { setCommunities } = useCommunities();
     const navigate = useNavigate();
-    const [formData, setFormData] = useState({
-        name: "",
-        username: "",
-        email: "",
-        password: "",
-        role: "",
-        gender: "",
-        location: "",
-        dateOfBirth: "",
-    });
     const [showPassword, setShowPassword] = useState(false);
-    function handleChange(event) {
-        const { name, value } = event.target;
 
-        setFormData((currentData) => ({
-            ...currentData,
-            [name]: value,
-        }));
-    }
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+    } = useForm({
+        resolver: zodResolver(registerSchema),
+        mode: "onTouched",
+        defaultValues: {
+            name: "",
+            username: "",
+            jobTitle: "",
+            gender: "",
+            dateOfBirth: "",
+            location: "",
+            email: "",
+            password: "",
+        },
+    });
 
-    function handleSubmit(event) {
-        event.preventDefault();
-        if (
-            !formData.name.trim() ||
-            !formData.username.trim() ||
-            !formData.email.trim() ||
-            !formData.password.trim()
-        ) {
-            toast.error("Please fill in the required fields.");
-            return;
+    async function onSubmit(values) {
+        try {
+            const response = await registerUser(values);
+            toast.success(response.message || "Account created successfully");
+            navigate("/verify-email", { state: { email: values.email } });
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message ||
+                error.message ||
+                "Could not create account"
+            );
         }
-        const newUser = {
-            id: Date.now(),
-            name: formData.name.trim(),
-            username: formData.username.trim(),
-            email: formData.email.trim(),
-            role: formData.role.trim() || "CircleHub Member",
-            avatar: getAvatarImage(),
-            coverImage: getCoverImage(),
-            bio: "New to CircleHub and ready to connect.",
-            location: formData.location.trim() || "Not set",
-            website: "",
-            dateOfBirth: formData.dateOfBirth,
-            gender: formData.gender,
-            followersCount: 0,
-            followingCount: 0,
-            postsCount: 0,
-            joinedAt: "Just now",
-            mutualConnections: [],
-            skills: [],
-        };
-        setUserData(newUser);
-        setCommunities(resetCommunitiesForNewUser);
-        setIsAuthenticated(true);
-        toast.success("Account created successfully");
-        navigate("/feed", { replace: true });
     }
 
     return (
@@ -87,7 +62,7 @@ export default function Register() {
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="space-y-3 sm:col-span-2">
                             <label htmlFor="name" className="type-label-md mb-3 block text-primary">
@@ -96,13 +71,18 @@ export default function Register() {
 
                             <input
                                 id="name"
-                                name="name"
                                 type="text"
-                                value={formData.name}
-                                onChange={handleChange}
                                 placeholder="Your name"
+                                aria-invalid={Boolean(errors.name)}
                                 className="input-surface type-body-sm w-full rounded-xl py-3 pl-4 pr-10"
+                                {...register("name")}
                             />
+                            {errors.name && (
+                                <p className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--error)">
+                                    <AlertCircle size={14} />
+                                    {errors.name.message}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-3">
@@ -112,29 +92,42 @@ export default function Register() {
 
                             <input
                                 id="username"
-                                name="username"
                                 type="text"
-                                value={formData.username}
-                                onChange={handleChange}
                                 placeholder="Choose a username"
+                                aria-invalid={Boolean(errors.username)}
                                 className="input-surface type-body-sm w-full rounded-xl px-4 py-3"
+                                {...register("username")}
                             />
+                            {errors.username && (
+                                <p className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--error)">
+                                    <AlertCircle size={14} />
+                                    {errors.username.message}
+                                </p>
+                            )}
+                            <p className="type-label-sm text-secondary">
+                                Your username can't be changed after you create your account.
+                            </p>
                         </div>
 
                         <div className="space-y-3">
-                            <label htmlFor="role" className="type-label-md mb-3 block text-primary">
-                                Role
+                            <label htmlFor="jobTitle" className="type-label-md mb-3 block text-primary">
+                                Job Title
                             </label>
 
                             <input
-                                id="role"
-                                name="role"
+                                id="jobTitle"
                                 type="text"
-                                value={formData.role}
-                                onChange={handleChange}
-                                placeholder="Your role or title"
+                                placeholder="Your job title"
+                                aria-invalid={Boolean(errors.jobTitle)}
                                 className="input-surface type-body-sm w-full rounded-xl px-4 py-3"
+                                {...register("jobTitle")}
                             />
+                            {errors.jobTitle && (
+                                <p className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--error)">
+                                    <AlertCircle size={14} />
+                                    {errors.jobTitle.message}
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -147,14 +140,14 @@ export default function Register() {
                             <div className="relative">
                                 <select
                                     id="gender"
-                                    name="gender"
-                                    value={formData.gender}
-                                    onChange={handleChange}
+                                    aria-invalid={Boolean(errors.gender)}
                                     className="input-surface type-body-sm w-full appearance-none rounded-xl py-3 pl-4 pr-12"
+                                    {...register("gender")}
                                 >
                                     <option value="">Select gender</option>
                                     <option value="male">Male</option>
                                     <option value="female">Female</option>
+                                    <option value="other">Other</option>
                                 </select>
 
                                 <ChevronDown
@@ -162,6 +155,12 @@ export default function Register() {
                                     className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-secondary"
                                 />
                             </div>
+                            {errors.gender && (
+                                <p className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--error)">
+                                    <AlertCircle size={14} />
+                                    {errors.gender.message}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-3">
@@ -171,12 +170,17 @@ export default function Register() {
 
                             <input
                                 id="dateOfBirth"
-                                name="dateOfBirth"
                                 type="date"
-                                value={formData.dateOfBirth}
-                                onChange={handleChange}
+                                aria-invalid={Boolean(errors.dateOfBirth)}
                                 className="input-surface type-body-sm w-full rounded-xl px-4 py-3"
+                                {...register("dateOfBirth")}
                             />
+                            {errors.dateOfBirth && (
+                                <p className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--error)">
+                                    <AlertCircle size={14} />
+                                    {errors.dateOfBirth.message}
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -187,13 +191,18 @@ export default function Register() {
 
                         <input
                             id="location"
-                            name="location"
                             type="text"
-                            value={formData.location}
-                            onChange={handleChange}
                             placeholder="City, Country"
+                            aria-invalid={Boolean(errors.location)}
                             className="input-surface type-body-sm w-full rounded-xl px-4 py-3"
+                            {...register("location")}
                         />
+                        {errors.location && (
+                            <p className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--error)">
+                                <AlertCircle size={14} />
+                                {errors.location.message}
+                            </p>
+                        )}
                     </div>
 
                     <div className="space-y-3">
@@ -203,13 +212,19 @@ export default function Register() {
 
                         <input
                             id="email"
-                            name="email"
                             type="email"
-                            value={formData.email}
-                            onChange={handleChange}
+                            autoComplete="email"
                             placeholder="you@example.com"
+                            aria-invalid={Boolean(errors.email)}
                             className="input-surface type-body-sm w-full rounded-xl px-4 py-3"
+                            {...register("email")}
                         />
+                        {errors.email && (
+                            <p className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--error)">
+                                <AlertCircle size={14} />
+                                {errors.email.message}
+                            </p>
+                        )}
                     </div>
 
                     <div className="space-y-3">
@@ -220,12 +235,12 @@ export default function Register() {
                         <div className="input-surface flex w-full items-center rounded-xl px-4 py-3">
                             <input
                                 id="password"
-                                name="password"
                                 type={showPassword ? "text" : "password"}
-                                value={formData.password}
-                                onChange={handleChange}
+                                autoComplete="new-password"
                                 placeholder="Create a password"
+                                aria-invalid={Boolean(errors.password)}
                                 className="type-body-sm min-w-0 flex-1 bg-transparent outline-none placeholder:text-(--text-secondary)"
+                                {...register("password")}
                             />
 
                             <button
@@ -245,14 +260,25 @@ export default function Register() {
                                 </motion.span>
                             </button>
                         </div>
+                        {errors.password && (
+                            <p className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--error)">
+                                <AlertCircle size={14} />
+                                {errors.password.message}
+                            </p>
+                        )}
                     </div>
 
                     <button
                         type="submit"
-                        className="button-primary type-button flex w-full items-center justify-center gap-2 px-5 py-3"
+                        disabled={isSubmitting}
+                        className="button-primary type-button flex w-full items-center justify-center gap-2 px-5 py-3 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        <UserPlus size={18} />
-                        Create Account
+                        {isSubmitting ? (
+                            <LoaderCircle size={18} className="animate-spin" />
+                        ) : (
+                            <UserPlus size={18} />
+                        )}
+                        {isSubmitting ? "Creating Account..." : "Create Account"}
                     </button>
                 </form>
 

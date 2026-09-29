@@ -1,8 +1,9 @@
-
+﻿
 import { useAuth } from "@/hooks/useAuth";
 import { MapPin, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import FollowButton from "./FollowButton";
+import Avatar from "@/components/profileimages/Avatar";
 
 export default function FollowUserCard({ user }) {
     const { userData } = useAuth()
@@ -13,8 +14,8 @@ export default function FollowUserCard({ user }) {
         <div className="content-card-padded flex min-w-0 flex-col gap-4">
             <div className="flex items-start justify-between gap-4">
                 <Link to={`/profile/${user.username}`} className="flex min-w-0 items-start gap-3">
-                    <img
-                        src={user.avatar}
+                    <Avatar
+                        src={user.avatarUrl}
                         alt={user.name}
                         className="h-14 w-14 shrink-0 rounded-full object-cover"
                     />
@@ -25,7 +26,7 @@ export default function FollowUserCard({ user }) {
                         </h3>
 
                         <p className="truncate text-(length:--text-label-sm) font-medium text-(--primary)">
-                            {user.role}
+                            {user.jobTitle}
                         </p>
 
                         <p className="truncate text-(length:--text-label-sm) text-(--text-secondary)">

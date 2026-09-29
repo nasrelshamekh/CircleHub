@@ -1,6 +1,7 @@
-import { Grid2X2, Heart, Image, Info } from "lucide-react";
+﻿import { Grid2X2, Heart, Image, Info } from "lucide-react";
 
 import PostCard from "@/components/post/Post";
+import PostSkeleton from "@/components/Skeletons/PostSkeleton";
 import {
     Tabs,
     TabsContent,
@@ -32,10 +33,16 @@ const tabs = [
     },
 ];
 
-export default function ProfileTabs({ user, posts, onToggleLike }) {
+export default function ProfileTabs({
+    user,
+    posts,
+    likedPosts,
+    isLoadingPosts,
+    isLoadingLikedPosts,
+    onToggleLike,
+}) {
     const userPosts = posts.filter((post) => post.author.id === user.id);
-    const mediaPosts = posts.filter((post) => post.author.id === user.id && post.image);
-    const likedPosts = posts.filter((post) => post.likedBy?.includes(user.id));
+    const mediaPosts = posts.filter((post) => post.author.id === user.id && post.imageUrl);
 
     return (
         <Tabs defaultValue="posts" className="min-w-0">
@@ -55,7 +62,12 @@ export default function ProfileTabs({ user, posts, onToggleLike }) {
             </div>
 
             <TabsContent value="posts" className="space-y-5">
-                {userPosts.length > 0 ? (
+                {isLoadingPosts ? (
+                    <>
+                        <PostSkeleton />
+                        <PostSkeleton />
+                    </>
+                ) : userPosts.length > 0 ? (
                     userPosts.map((post) => <PostCard key={post.id} post={post} onToggleLike={onToggleLike} />)
                 ) : (
                     <div className="content-card-padded flex flex-col items-center justify-center py-10 text-center">
@@ -85,7 +97,7 @@ export default function ProfileTabs({ user, posts, onToggleLike }) {
                             {mediaPosts.map((post) => (
                                 <img
                                     key={post.id}
-                                    src={post.image}
+                                    src={post.imageUrl}
                                     alt="Post media"
                                     className="aspect-square w-full rounded-lg object-cover"
                                 />
@@ -110,7 +122,12 @@ export default function ProfileTabs({ user, posts, onToggleLike }) {
             </TabsContent>
 
             <TabsContent value="liked" className="space-y-5">
-                {likedPosts.length > 0 ? (
+                {isLoadingLikedPosts ? (
+                    <>
+                        <PostSkeleton />
+                        <PostSkeleton />
+                    </>
+                ) : likedPosts.length > 0 ? (
                     likedPosts.map((post) => <PostCard key={post.id} post={post} onToggleLike={onToggleLike} />)
                 ) : (
                     <div className="content-card-padded flex flex-col items-center justify-center py-10 text-center">
@@ -174,16 +191,6 @@ export default function ProfileTabs({ user, posts, onToggleLike }) {
 
                             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
                                 <span className="type-label-md w-32 text-(--primary)">
-                                    Email:
-                                </span>
-
-                                <span className="type-body-sm-readable flex-1 break-all text-secondary">
-                                    {user.email}
-                                </span>
-                            </div>
-
-                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
-                                <span className="type-label-md w-32 text-(--primary)">
                                     Date of Birth:
                                 </span>
 
@@ -199,11 +206,11 @@ export default function ProfileTabs({ user, posts, onToggleLike }) {
                         <div className="space-y-4">
                             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
                                 <span className="type-label-md w-32 text-(--primary)">
-                                    Role:
+                                    Job Title:
                                 </span>
 
                                 <span className="type-body-sm-readable flex-1 text-secondary">
-                                    {user.role}
+                                    {user.jobTitle}
                                 </span>
                             </div>
 
@@ -223,7 +230,7 @@ export default function ProfileTabs({ user, posts, onToggleLike }) {
                                 </span>
 
                                 <span className="type-body-sm-readable flex-1 text-secondary">
-                                    {user.joinedAt}
+                                    {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                                 </span>
                             </div>
 

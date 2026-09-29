@@ -1,21 +1,33 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+
+import { useDeleteComment } from "@/hooks/mutations/useDeleteComment";
+import Avatar from "@/components/profileimages/Avatar";
 
 export default function CommentItem({
   id,
   postId,
-  author: { name, avatar, username },
+  author: { name, avatarUrl, username },
   content,
   createdAt,
   isCommentOwner,
-  onDeleteComment,
 }) {
+  const deleteComment = useDeleteComment();
+
+  function handleDelete() {
+    if (deleteComment.isPending) return;
+
+    deleteComment.mutate(
+      { postId, commentId: id });
+  }
+
   return (
     <div className="flex gap-3">
       <Link to={`/profile/${username}`}>
-        <img
-          src={avatar}
+        <Avatar
+          src={avatarUrl}
           alt={name}
           className="avatar-md"
         />
@@ -32,7 +44,11 @@ export default function CommentItem({
                 <MoreHorizontal size={18} />
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-20" align="center">
-                <DropdownMenuItem variant="destructive" onClick={() => onDeleteComment(postId, id)}>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={deleteComment.isPending}
+                >
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -44,7 +60,7 @@ export default function CommentItem({
             {content}
           </p>
           <span className="type-label-sm text-secondary">
-            {createdAt}
+            {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
           </span>
         </div>
       </div>

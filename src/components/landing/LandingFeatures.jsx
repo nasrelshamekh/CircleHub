@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+﻿import { motion } from "motion/react";
 import { Sparkles } from "lucide-react";
 
 import { fadeUp } from "./landingAnimations";

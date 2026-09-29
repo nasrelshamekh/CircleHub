@@ -1,50 +1,41 @@
-import { useParams } from "react-router-dom";
+﻿import { useParams } from "react-router-dom";
 
 import CommunityHeader from "@/components/communitydetails/CommunityHeader";
 import CommunityInfoPanels from "@/components/communitydetails/CommunityInfoPanels";
 import CommunityTabs from "@/components/communitydetails/CommunityTabs";
+import CommunityDetailsSkeleton from "@/components/Skeletons/CommunityDetailsSkeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { useCommunityMembers } from "@/hooks/useCommunityMembers";
 import { useCommunityPosts } from "@/hooks/useCommunityPosts";
-import { useCommunities } from "@/hooks/useCommunities";
-import { getCommunityMembershipToast, updateCommunityMembership } from "@/lib/communityMembership";
-import { togglePostLikeInList } from "@/lib/postLikes";
-import { toast } from "sonner";
+import { useCommunityDetails } from "@/hooks/useCommunityDetails";
+import { useToggleLike } from '@/hooks/mutations/useToggleLike'
+import { useDeletePost } from '@/hooks/mutations/useDeletePost'
+import { useToggleCommunityMembership } from '@/hooks/mutations/useToggleCommunityMembership'
 
 export default function CommunitiesDetails() {
     const { slug } = useParams();
-    const { communities, setCommunities } = useCommunities();
-    const { communityPosts, setCommunityPosts } = useCommunityPosts();
+    const { community, isLoading } = useCommunityDetails(slug);
+    const { posts } = useCommunityPosts(community?.id);
+    const { members } = useCommunityMembers(community?.id);
     const { userData } = useAuth();
-    const community = communities.find((item) => item.slug === slug);
+
+    const toggleLike = useToggleLike();
+    const deletePost = useDeletePost();
+    const toggleMembership = useToggleCommunityMembership();
 
     function handleDeleteCommunityPost(postId) {
-        setCommunityPosts((currentPosts) =>
-            currentPosts.filter((post) => post.id !== postId)
-        );
-
-        toast.success("Community post deleted successfully");
+        const post = posts.find((p) => p.id === postId);
+        if (!post) return;
+        deletePost.mutate(post);
     }
 
-    function handleCreateCommunityPost(newPost) {
-        setCommunityPosts((currentPosts) => [newPost, ...currentPosts]);
+    function handleCommunityMembershipChange() {
+        if (!community) return;
+        toggleMembership.mutate({ community });
     }
 
-    function handleCommunityMembershipChange(communityId) {
-        const selectedCommunity = communities.find((item) => item.id === communityId);
-
-        if (!selectedCommunity) return;
-
-        setCommunities((currentCommunities) =>
-            updateCommunityMembership(currentCommunities, communityId, userData)
-        );
-
-        toast.success(getCommunityMembershipToast(selectedCommunity));
-    }
-
-    function toggleCommunityPostLike(postId) {
-        setCommunityPosts((currentPosts) =>
-            togglePostLikeInList(currentPosts, postId, userData.id)
-        );
+    if (isLoading) {
+        return <CommunityDetailsSkeleton />;
     }
 
     if (!community) {
@@ -60,9 +51,6 @@ export default function CommunitiesDetails() {
         );
     }
 
-    const members = community.members || [community.admin];
-    const posts = communityPosts
-        .filter((post) => post.communitySlug === community.slug);
     const isAdmin = community.admin.id === userData.id;
     const currentUserMember = members.find((member) => member.id === userData.id);
     const isModerator = currentUserMember?.communityRole === "moderator";
@@ -73,10 +61,9 @@ export default function CommunitiesDetails() {
         <section className="w-full pb-20 lg:pb-0">
             <CommunityHeader
                 community={community}
-                membersCount={members.length}
-                postsCount={posts.length}
+                membersCount={community.membersCount}
+                postsCount={community.postsCount}
                 onMembershipChange={handleCommunityMembershipChange}
-                isAdmin={isAdmin}
             />
 
             <div className="mx-auto grid w-full max-w-7xl grid-cols-4 gap-6 p-6">
@@ -88,14 +75,13 @@ export default function CommunitiesDetails() {
                         userData={userData}
                         canManagePosts={canManagePosts}
                         onDeletePost={handleDeleteCommunityPost}
-                        onToggleLike={toggleCommunityPostLike}
+                        onToggleLike={(id) => toggleLike.mutate(id)}
                         canCreatePost={isCommunityMember}
-                        onCreatePost={handleCreateCommunityPost}
                     />
                 </div>
 
                 <div className="order-1 col-span-4 lg:order-2 lg:col-span-1">
-                    <CommunityInfoPanels community={community} members={members} membersCount={members.length} posts={posts} />
+                    <CommunityInfoPanels community={community} members={members} membersCount={community.membersCount} posts={posts} />
                 </div>
             </div>
         </section>

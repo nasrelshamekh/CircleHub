@@ -1,30 +1,21 @@
-import { FileText, Lock, Plus, ShieldCheck, Users } from "lucide-react";
+﻿import { FileText, Lock, Plus, ShieldUser, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { useAuth } from "@/hooks/useAuth";
-import { useCommunityPosts } from "@/hooks/useCommunityPosts";
+import CommunityImage from "@/components/communityimages/CommunityImage";
 import { useCommunities } from "@/hooks/useCommunities";
-import { getCommunityMembershipToast, updateCommunityMembership } from "@/lib/communityMembership";
-import { toast } from "sonner";
+import { useToggleCommunityMembership } from "@/hooks/mutations/useToggleCommunityMembership";
 
 export default function SuggestedCommunitiesCard() {
-    const { communities, setCommunities } = useCommunities();
-    const { communityPosts } = useCommunityPosts();
-    const { userData } = useAuth();
+    const { communities } = useCommunities();
+    const toggleMembership = useToggleCommunityMembership();
     const suggestedCommunities = communities
         .filter((community) => community.membershipStatus === "not_joined")
         .slice(0, 3);
 
     function handleCommunityMembershipChange(communityId) {
-        const selectedCommunity = communities.find((community) => community.id === communityId);
-
-        if (!selectedCommunity) return;
-
-        setCommunities((currentCommunities) =>
-            updateCommunityMembership(currentCommunities, communityId, userData)
-        );
-
-        toast.success(getCommunityMembershipToast(selectedCommunity));
+        const community = communities.find((c) => c.id === communityId);
+        if (!community) return;
+        toggleMembership.mutate({ community });
     }
 
     if (suggestedCommunities.length === 0) return null;
@@ -38,14 +29,14 @@ export default function SuggestedCommunitiesCard() {
             <div className="space-y-4">
                 {suggestedCommunities.map((community) => {
                     const isPrivate = community.visibility === "private";
-                    const membersCount = community.members.length;
-                    const postsCount = communityPosts.filter((post) => post.communitySlug === community.slug).length;
+                    const membersCount = community.membersCount;
+                    const postsCount = community.postsCount;
 
                     return (
                         <article key={community.id} className="rounded-xl bg-(--surface-low) p-3 transition hover:bg-(--hover)">
                             <Link to={`/communities/${community.slug}`} className="flex items-start gap-3">
-                                <img
-                                    src={community.image}
+                                <CommunityImage
+                                    src={community.imageUrl}
                                     alt={community.name}
                                     className="h-14 w-14 shrink-0 rounded-lg object-cover"
                                 />
@@ -60,7 +51,7 @@ export default function SuggestedCommunitiesCard() {
                                     </p>
 
                                     <p className="type-label-sm mt-1 flex items-center gap-1 truncate text-secondary">
-                                        <ShieldCheck size={13} />
+                                        <ShieldUser size={13} />
                                         {community.admin.name}
                                     </p>
                                 </div>

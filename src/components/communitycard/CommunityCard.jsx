@@ -1,4 +1,4 @@
-import { Network } from "lucide-react";
+﻿import { Network } from "lucide-react";
 
 import CommunityCardItem from "./CommunityCardItem";
 
@@ -9,7 +9,6 @@ export default function CommunityCard({
     description = "Communities you joined or are waiting to join.",
     emptyTitle = "No communities yet",
     emptyDescription = "Join a public community or request access to a private one from the suggestions.",
-    showAdminBadge = false,
 }) {
     return (
         <section className="content-card-padded">
@@ -33,7 +32,8 @@ export default function CommunityCard({
                             key={community.id}
                             community={community}
                             onMembershipChange={onMembershipChange}
-                            showAdminBadge={showAdminBadge}
+                            showAdminBadge={community.viewerRole === "admin"}
+                            showModeratorBadge={community.viewerRole === "moderator"}
                         />
                     ))}
                 </div>

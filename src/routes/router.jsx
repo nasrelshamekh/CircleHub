@@ -1,5 +1,7 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+﻿import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 
+import ScrollToTop from "@/components/scrolltotop/ScrollToTop";
+import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PublicOnlyRoute from "@/components/auth/PublicOnlyRoute";
 import AuthLayout from "@/layouts/AuthLayout";
@@ -19,58 +21,74 @@ import Notifications from "@/pages/Notifications/Notifications";
 import NotFound from "@/pages/NotFound/NotFound";
 import PostDetails from "@/pages/PostDetails/PostDetails";
 import Profile from "@/pages/Profile/Profile";
+import VerifyEmail from "@/pages/VerifyEmail/VerifyEmail";
 
 const router = createBrowserRouter([
   {
-    path: "/",
-    element: <PublicOnlyRoute />,
-    children: [
-      { index: true, element: <Landing /> },
-      {
-        element: <AuthLayout />,
-        children: [
-          { path: "register", element: <Register /> },
-          { path: "signin", element: <Signin /> },
-        ],
-      },
-    ],
-  },
-  {
-    path: "/",
-    element: <ProtectedRoute />,
+    element: (
+      <>
+        <ScrollToTop />
+        <Outlet />
+        <ScrollToTopButton />
+      </>
+    ),
     children: [
       {
-        element: <AppLayout />,
+        path: "/",
+        element: <PublicOnlyRoute />,
         children: [
-          { index: true, element: <Navigate to="/feed" replace /> },
-          { path: "feed", element: <Feed /> },
+          { index: true, element: <Landing /> },
+          {
+            element: <AuthLayout />,
+            children: [
+              { path: "register", element: <Register /> },
+              { path: "signin", element: <Signin /> },
+            ],
+          },
         ],
       },
-    ],
-  },
-  {
-    path: "/",
-    element: <ProtectedRoute />,
-    children: [
       {
-        element: <FocusLayout />,
+        path: "/",
+        element: <ProtectedRoute />,
         children: [
-          { path: "post/:id", element: <PostDetails /> },
-          { path: "profile/:username", element: <Profile /> },
-          { path: "explore", element: <Explore /> },
-          { path: "settings/profile", element: <EditProfile /> },
-          { path: "followers/:username", element: <Followers /> },
-          { path: "notifications", element: <Notifications /> },
-          { path: "communities", element: <Communities /> },
-          { path: "communities/:slug", element: <CommunitiesDetails /> },
-          { path: "communities/:slug/manage", element: <ManageCommunity /> },
+          {
+            element: <AppLayout />,
+            children: [
+              { index: true, element: <Navigate to="/feed" replace /> },
+              { path: "feed", element: <Feed /> },
+            ],
+          },
         ],
       },
+      {
+        path: "verify-email",
+        element: <VerifyEmail />,
+      },
+      {
+        path: "/",
+        element: <ProtectedRoute />,
+        children: [
+          {
+            element: <FocusLayout />,
+            children: [
+              { path: "post/:id", element: <PostDetails /> },
+              { path: "profile/:username", element: <Profile /> },
+              { path: "explore", element: <Explore /> },
+              { path: "settings/profile", element: <EditProfile /> },
+              { path: "followers/:username", element: <Followers /> },
+              { path: "notifications", element: <Notifications /> },
+              { path: "communities", element: <Communities /> },
+              { path: "communities/:slug", element: <CommunitiesDetails /> },
+              { path: "communities/:slug/manage", element: <ManageCommunity /> },
+            ],
+          },
+        ],
+      },
+      {
+        path: "*",
+        element: <NotFound />,
+      },
     ],
-  },
-  {
-    path: "*",
-    element: <NotFound />,
   },
 ]);
 

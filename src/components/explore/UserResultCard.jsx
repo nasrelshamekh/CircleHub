@@ -1,14 +1,15 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { MapPin, Users } from "lucide-react";
 import FollowButton from "../followers/FollowButton";
+import Avatar from "@/components/profileimages/Avatar";
 
 export default function UserResultCard({ user }) {
   return (
     <div className="content-card-padded flex min-w-0 flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
         <Link to={`/profile/${user.username}`} className="flex min-w-0 items-start gap-3">
-          <img
-            src={user.avatar}
+          <Avatar
+            src={user.avatarUrl}
             alt={user.name}
             className="h-14 w-14 shrink-0 rounded-full object-cover"
           />
@@ -19,7 +20,7 @@ export default function UserResultCard({ user }) {
             </h3>
 
             <p className="truncate text-(length:--text-label-sm) font-medium text-(--primary)">
-              {user.role}
+              {user.jobTitle}
             </p>
 
             <p className="truncate text-(length:--text-label-sm) text-(--text-secondary)">
@@ -43,7 +44,7 @@ export default function UserResultCard({ user }) {
 
         <span className="flex items-center gap-1.5">
           <Users size={15} />
-          {user.followersCount.toLocaleString()} followers
+          {user.followersCount} followers
         </span>
       </div>
 
@@ -54,7 +55,7 @@ export default function UserResultCard({ user }) {
 
         <div className="flex items-center gap-2">
           <span className="text-(length:--text-label-sm) text-(--text-secondary)">
-            {user.followingCount.toLocaleString()} following
+            {user.followingCount} following
           </span>
         </div>
       </div>

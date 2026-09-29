@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+﻿import { Link } from "react-router-dom"
 
 export default function PostContent({ post }) {
 
@@ -10,9 +10,9 @@ export default function PostContent({ post }) {
           {post.content}
         </p>
 
-        {post.image && (
+        {post.imageUrl && (
           <Link to={`/post/${post.id}`}>
-            <img src={post.image} alt="Post" className="w-full rounded-2xl object-cover max-h-125" />
+            <img src={post.imageUrl} alt="Post" className="w-full rounded-2xl object-cover max-h-125" />
           </Link>)}
 
       </div>

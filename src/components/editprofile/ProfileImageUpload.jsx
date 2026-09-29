@@ -1,15 +1,16 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 import { PencilIcon, X } from "lucide-react";
 import { toast } from "sonner";
-import { getAvatarImage, getCoverImage } from "@/lib/profileImages";
+import Avatar from "@/components/profileimages/Avatar";
+import CoverImage from "@/components/profileimages/CoverImage";
 
 export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc = imageSrc, alt, onImageChange }) {
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
 
   const isCover = variant === "cover";
-  const placeholderImage = isCover ? getCoverImage(imageSrc) : getAvatarImage(imageSrc);
-  const visibleImage = previewUrl || placeholderImage;
+  const ImageComponent = isCover ? CoverImage : Avatar;
+  const visibleSrc = previewUrl || imageSrc;
 
   function openFilePicker() {
     fileInputRef.current?.click();
@@ -25,7 +26,7 @@ export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc
 
       reader.onloadend = () => {
         setPreviewUrl(reader.result);
-        onImageChange?.(reader.result);
+        onImageChange?.(reader.result, file);
       };
 
       reader.onerror = () => {
@@ -40,7 +41,7 @@ export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc
 
   function handleRemovePreview() {
     setPreviewUrl(null);
-    onImageChange?.(originalImageSrc);
+    onImageChange?.(originalImageSrc, null);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -56,8 +57,8 @@ export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc
             : "h-full w-full overflow-hidden rounded-full border-4 border-(--surface-lowest)"
         }
       >
-        <img
-          src={visibleImage}
+        <ImageComponent
+          src={visibleSrc}
           alt={alt}
           className="h-full w-full object-cover"
         />

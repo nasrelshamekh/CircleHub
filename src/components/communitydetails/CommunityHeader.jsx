@@ -1,7 +1,14 @@
-import { Check, Clock, FileText, Hash, Lock, Settings, Users } from "lucide-react";
+﻿import { Check, Clock, FileText, Hash, Lock, Settings, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
-export default function CommunityHeader({ community, membersCount, postsCount, onMembershipChange, isAdmin }) {
+import CommunityImage from "@/components/communityimages/CommunityImage";
+import CommunityCoverImage from "@/components/communityimages/CommunityCoverImage";
+
+export default function CommunityHeader({ community, membersCount, postsCount, onMembershipChange }) {
+    const isAdmin = community.communityRole === "admin";
+    const isModerator = community.communityRole === "moderator";
+    const canManage = isAdmin || isModerator;
+
     const isJoined = community.membershipStatus === "joined";
     const isRequested = community.membershipStatus === "requested";
     const isPrivate = community.visibility === "private";
@@ -9,9 +16,9 @@ export default function CommunityHeader({ community, membersCount, postsCount, o
 
     return (
         <section className="w-full">
-            <div className="relative h-48 w-full bg-(--surface-high) md:h-72">
-                <img
-                    src={community.image}
+            <div className="relative mt-4 h-56 w-full overflow-hidden rounded-xl bg-(--surface-high) md:h-96">
+                <CommunityCoverImage
+                    src={community.coverImageUrl || community.imageUrl}
                     alt={`${community.name} cover`}
                     className="h-full w-full object-cover object-center"
                 />
@@ -23,8 +30,8 @@ export default function CommunityHeader({ community, membersCount, postsCount, o
                     <div className="pointer-events-none absolute right-0 top-0 h-56 w-56 translate-x-1/3 -translate-y-1/2 rounded-full bg-(--active) blur-3xl" />
 
                     <div className="relative flex flex-col gap-5 md:flex-row md:items-center">
-                        <img
-                            src={community.image}
+                        <CommunityImage
+                            src={community.imageUrl}
                             alt={community.name}
                             className="h-28 w-28 rounded-xl border-4 border-(--surface-lowest) object-cover shadow-sm md:h-36 md:w-36"
                         />
@@ -48,31 +55,44 @@ export default function CommunityHeader({ community, membersCount, postsCount, o
                                     </p>
                                 </div>
 
-                                {isAdmin ? (
-                                    <Link
-                                        to={`/communities/${community.slug}/manage`}
-                                        className="button-primary flex w-full items-center justify-center gap-2 px-5 py-2 text-(length:--text-label-md) font-semibold md:w-auto"
-                                    >
-                                        <Settings size={16} />
-                                        Manage
-                                    </Link>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => onMembershipChange(community.id)}
-                                        className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl px-5 py-2 text-(length:--text-label-md) font-semibold transition md:w-auto ${
-                                            isJoined
-                                                ? "bg-(--surface-low) text-(--error) hover:bg-(--error-container) hover:text-(--on-error-container)"
-                                                : isRequested
+                                <div className="flex w-full gap-2 md:w-auto">
+                                    {canManage && (
+                                        <Link
+                                            to={`/communities/${community.slug}/manage`}
+                                            className="button-primary flex flex-1 items-center justify-center gap-2 px-5 py-2 text-(length:--text-label-md) font-semibold md:flex-none"
+                                        >
+                                            <Settings size={16} />
+                                            Manage
+                                        </Link>
+                                    )}
+                                    {/* Leave is available to moderators and regular members. Admins can't
+                                        leave without transferring ownership â€” no button. */}
+                                    {!isAdmin && isJoined && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onMembershipChange(community.id)}
+                                            className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-(--surface-low) px-5 py-2 text-(length:--text-label-md) font-semibold text-(--error) transition hover:bg-(--error-container) hover:text-(--on-error-container) md:flex-none"
+                                        >
+                                            <Check size={16} />
+                                            Leave
+                                        </button>
+                                    )}
+                                    {/* Not-yet-a-member states: Request pending, Join, or Request. */}
+                                    {!canManage && !isJoined && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onMembershipChange(community.id)}
+                                            className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-5 py-2 text-(length:--text-label-md) font-semibold transition md:flex-none ${
+                                                isRequested
                                                     ? "bg-(--surface-low) text-(--text-secondary) hover:bg-(--hover) hover:text-(--primary)"
                                                     : "button-primary"
-                                        }`}
-                                    >
-                                        {isJoined && <Check size={16} />}
-                                        {isRequested && <Clock size={16} />}
-                                        {actionLabel}
-                                    </button>
-                                )}
+                                            }`}
+                                        >
+                                            {isRequested && <Clock size={16} />}
+                                            {actionLabel}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             <p className="type-body-sm-readable max-w-3xl text-secondary">

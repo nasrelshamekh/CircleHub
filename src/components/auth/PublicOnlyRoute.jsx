@@ -1,11 +1,11 @@
-import { Navigate, Outlet } from "react-router-dom";
+﻿import { Navigate, Outlet } from "react-router-dom";
 
 import { useAuth } from "@/hooks/useAuth";
 
 export default function PublicOnlyRoute() {
-    const { isAuthenticated } = useAuth();
+    const { userData } = useAuth();
 
-    if (isAuthenticated) {
+    if (userData) {
         return <Navigate to="/feed" replace />;
     }
 

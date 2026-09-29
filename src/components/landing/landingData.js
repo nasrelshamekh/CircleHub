@@ -1,4 +1,4 @@
-import { Activity, Bell, Compass, Network, Users } from "lucide-react";
+﻿import { Activity, Bell, Compass, Network, Users } from "lucide-react";
 
 export const features = [
   {
@@ -46,7 +46,7 @@ export const floatingCards = [
 ];
 
 export const stats = [
-  { value: "25+", label: "members in your network", icon: Users },
-  { value: "8", label: "community spaces to explore", icon: Network },
-  { value: "Live", label: "feed actions and updates", icon: Activity },
+  { value: "25+", label: "Members in your network", icon: Users },
+  { value: "8", label: "Community spaces to explore", icon: Network },
+  { value: "Live", label: "Feed actions and updates", icon: Activity },
 ];

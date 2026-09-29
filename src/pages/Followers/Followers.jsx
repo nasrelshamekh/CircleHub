@@ -1,20 +1,26 @@
-import { useParams, useSearchParams } from "react-router-dom";
+﻿import { useParams, useSearchParams } from "react-router-dom";
 
 import FollowersTabs from "@/components/followers/FollowersTabs";
-import networks from "@/data/network";
-import users from "@/data/users";
-import { useAuth } from "@/hooks/useAuth";
+import { useUserFollowers } from "@/hooks/useUserFollowers";
+import { useUserFollowing } from "@/hooks/useUserFollowing";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 export default function Followers() {
     const { username } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
-    const { userData } = useAuth();
+    const { user: profileUser, isLoading: isLoadingProfile } = useUserProfile(username);
+    const { followers } = useUserFollowers(username);
+    const { following } = useUserFollowing(username);
+
+
     const activeTab = searchParams.get("tab") === "following" ? "following" : "followers";
-    const routeUser = users.find((user) => user.username === username);
-    const profileUser = username === userData.username || routeUser?.id === userData.id ? userData : routeUser;
 
     function handleTabChange(tab) {
         setSearchParams({ tab });
+    }
+
+    if (isLoadingProfile) {
+        return null;
     }
 
     if (!profileUser) {
@@ -29,21 +35,6 @@ export default function Followers() {
             </section>
         );
     }
-
-    const profileNetwork = networks.find((network) => network.userId === profileUser.id);
-    const followingIds = userData.followingIds || [];
-    const profileFollowing =
-        profileUser.id === userData.id
-            ? users.filter((user) => followingIds.includes(user.id))
-            : profileNetwork?.following || [];
-    const followers = (profileNetwork?.followers || []).map((user) => ({
-        ...(user.id === userData.id ? userData : user),
-        isFollowing: followingIds.includes(user.id),
-    }));
-    const following = profileFollowing.map((user) => ({
-        ...(user.id === userData.id ? userData : user),
-        isFollowing: followingIds.includes(user.id),
-    }));
 
     return (
         <section className="content-stack max-w-7xl">

@@ -1,10 +1,11 @@
-import { CheckCircle, MoveLeft, Settings, UserPlus, Users } from "lucide-react";
+﻿import { CheckCircle, MoveLeft, Settings, UserPlus, Users } from "lucide-react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { toast } from "sonner";
 
 import CommunityMembersManager from "@/components/managecommunity/CommunityMembersManager";
 import CommunityRequestsManager from "@/components/managecommunity/CommunityRequestsManager";
 import CommunitySettingsForm from "@/components/managecommunity/CommunitySettingsForm";
+import DeleteCommunityCard from "@/components/managecommunity/DeleteCommunityCard";
+import ManageCommunitySkeleton from "@/components/Skeletons/ManageCommunitySkeleton";
 import {
     Tabs,
     TabsContent,
@@ -13,22 +14,31 @@ import {
 } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommunities } from "@/hooks/useCommunities";
+import { useCommunityMembers } from "@/hooks/useCommunityMembers";
+import { useCommunityRequests } from "@/hooks/useCommunityRequests";
+import { useRemoveCommunityMember } from "@/hooks/mutations/useRemoveCommunityMember";
+import { useUpdateCommunityMemberRole } from "@/hooks/mutations/useUpdateCommunityMemberRole";
+import { useUpdateCommunity } from "@/hooks/mutations/useUpdateCommunity";
+import { useDecideCommunityJoinRequest } from "@/hooks/mutations/useDecideCommunityJoinRequest";
 
-const tabs = [
+const allTabs = [
     {
         value: "manage",
         label: "Manage",
         icon: Settings,
+        adminOnly: true,
     },
     {
         value: "members",
         label: "Members",
         icon: Users,
+        adminOnly: false,
     },
     {
         value: "requests",
         label: "Requests",
         icon: UserPlus,
+        adminOnly: false,
     },
 ];
 
@@ -37,14 +47,29 @@ export default function ManageCommunity() {
     const navigate = useNavigate();
     const {
         communities,
-        setCommunities,
+        isLoading: isLoadingCommunities,
     } = useCommunities();
     const { userData } = useAuth();
     const community = communities.find((item) => item.slug === slug);
-    const members = community?.members || [];
-    const requests = community?.requests || [];
+    const { members, isLoading: isLoadingMembers } = useCommunityMembers(community?.id);
+    const { requests } = useCommunityRequests(community?.id);
+    const removeMember = useRemoveCommunityMember();
+    const updateRole = useUpdateCommunityMemberRole();
+    const updateCommunity = useUpdateCommunity();
+    const decideRequest = useDecideCommunityJoinRequest();
+
+    const isAdmin = community?.admin.id === userData.id;
+    const currentUserMember = members.find((member) => member.id === userData.id);
+    const isModerator = currentUserMember?.communityRole === "moderator";
+    const canManage = isAdmin || isModerator;
+    const visibleTabs = allTabs.filter((tab) => isAdmin || !tab.adminOnly);
+    const defaultTab = isAdmin ? "manage" : "members";
 
     if (!community) {
+        if (isLoadingCommunities) {
+            return <ManageCommunitySkeleton />;
+        }
+
         return (
             <section className="content-stack max-w-4xl">
                 <div className="content-card-padded text-center">
@@ -57,81 +82,67 @@ export default function ManageCommunity() {
         );
     }
 
-    if (community.admin.id !== userData.id) {
+    if (!isAdmin && isLoadingMembers) {
+        return <ManageCommunitySkeleton />;
+    }
+
+    if (!canManage) {
         return <Navigate to={`/communities/${community.slug}`} replace />;
     }
 
     function handleSaveCommunity(formData) {
-        setCommunities((currentCommunities) =>
-            currentCommunities.map((currentCommunity) =>
-                currentCommunity.id === community.id
-                    ? { ...currentCommunity, ...formData }
-                    : currentCommunity
-            )
-        );
-        toast.success("Community updated successfully");
+        updateCommunity.mutate({
+            communityId: community.id,
+            slug: community.slug,
+            data: formData,
+        });
     }
 
-    function handleRoleChange(username, role) {
-        setCommunities((currentCommunities) =>
-            currentCommunities.map((currentCommunity) =>
-                currentCommunity.id === community.id
-                    ? {
-                        ...currentCommunity,
-                        members: currentCommunity.members.map((member) =>
-                            member.username === username
-                                ? { ...member, communityRole: role }
-                                : member
-                        ),
-                    }
-                    : currentCommunity
-            )
-        );
-        toast.success("Member role updated");
+    function handleRoleChange(membershipId, role) {
+        const target = members.find((m) => m.membershipId === membershipId);
+        if (!target || target.communityRole === role) return Promise.resolve();
+
+        return new Promise((resolve, reject) => {
+            updateRole.mutate(
+                { communityId: community.id, membershipId, role },
+                {
+                    onSuccess: () => resolve(),
+                    onError: (err) => reject(err),
+                }
+            );
+        });
+    }
+
+    function handleRemoveMember(communityId, membershipId) {
+        return new Promise((resolve, reject) => {
+            removeMember.mutate(
+                { communityId, membershipId, communitySlug: community.slug },
+                {
+                    onSuccess: () => resolve(),
+                    onError: (err) => reject(err),
+                }
+            );
+        });
     }
 
     function handleAcceptRequest(request) {
-        setCommunities((currentCommunities) =>
-            currentCommunities.map((currentCommunity) => {
-                if (currentCommunity.id !== community.id) return currentCommunity;
-
-                const alreadyMember = currentCommunity.members.some(
-                    (member) => member.username === request.user.username
-                );
-                const newMember = {
-                    ...request.user,
-                    communityRole: "member",
-                };
-
-                return {
-                    ...currentCommunity,
-                    members: alreadyMember
-                        ? currentCommunity.members
-                        : [...currentCommunity.members, newMember],
-                    requests: currentCommunity.requests.filter(
-                        (currentRequest) => currentRequest.id !== request.id
-                    ),
-                };
-            })
-        );
-
-        toast.success(`${request.user.name} was accepted`);
+        return new Promise((resolve, reject) => {
+            decideRequest.mutate(
+                { community, request, decision: "approve" },
+                { onSuccess: () => resolve(), onError: (err) => reject(err) },
+            );
+        });
     }
 
     function handleRejectRequest(requestId) {
-        setCommunities((currentCommunities) =>
-            currentCommunities.map((currentCommunity) =>
-                currentCommunity.id === community.id
-                    ? {
-                        ...currentCommunity,
-                        requests: currentCommunity.requests.filter(
-                            (request) => request.id !== requestId
-                        ),
-                    }
-                    : currentCommunity
-            )
-        );
-        toast.success("Request rejected");
+        const request = requests.find((r) => r.id === requestId);
+        if (!request) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            decideRequest.mutate(
+                { community, request, decision: "reject" },
+                { onSuccess: () => resolve(), onError: (err) => reject(err) },
+            );
+        });
     }
 
     return (
@@ -162,10 +173,10 @@ export default function ManageCommunity() {
                 </div>
             </div>
 
-            <Tabs defaultValue="manage" className="min-w-0">
+            <Tabs defaultValue={defaultTab} className="min-w-0">
                 <div className="py-2">
-                    <TabsList className="sm:grid-cols-3">
-                        {tabs.map((tab) => {
+                    <TabsList className={visibleTabs.length === 1 ? "sm:grid-cols-1" : visibleTabs.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}>
+                        {visibleTabs.map((tab) => {
                             const Icon = tab.icon;
 
                             return (
@@ -178,15 +189,23 @@ export default function ManageCommunity() {
                     </TabsList>
                 </div>
 
-                <TabsContent value="manage">
-                    <CommunitySettingsForm community={community} onSave={handleSaveCommunity} />
-                </TabsContent>
+                {isAdmin && (
+                    <TabsContent value="manage">
+                        <div className="flex flex-col gap-6">
+                            <CommunitySettingsForm community={community} onSave={handleSaveCommunity} />
+                            <DeleteCommunityCard community={community} />
+                        </div>
+                    </TabsContent>
+                )}
 
                 <TabsContent value="members">
                     <CommunityMembersManager
                         members={members}
+                        community={community}
                         adminUsername={community.admin.username}
+                        viewerIsAdmin={isAdmin}
                         onRoleChange={handleRoleChange}
+                        onRemoveMember={handleRemoveMember}
                     />
                 </TabsContent>
 

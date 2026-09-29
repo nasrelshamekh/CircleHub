@@ -1,24 +1,24 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, FileText, Hash, Lock, Plus, ShieldUser, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, Hash, Lock, Plus, ShieldUser, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useCommunityPosts } from "@/hooks/useCommunityPosts";
+import Avatar from "@/components/profileimages/Avatar";
+import CommunityCoverImage from "@/components/communityimages/CommunityCoverImage";
 
 export default function SuggestedCommunityItem({ community, onMembershipChange }) {
     const { userData } = useAuth();
     const [isExpanded, setIsExpanded] = useState(false);
     const isPrivate = community.visibility === "private";
     const displayAdmin = community.admin.id === userData.id ? userData : community.admin;
-    const membersCount = community.members.length;
-    const { communityPosts } = useCommunityPosts();
-    const postsCount = communityPosts.filter((post) => post.communitySlug === community.slug).length;
+    const membersCount = community.membersCount;
+    const postsCount = community.postsCount;
 
     return (
         <article className="rounded-lg bg-(--surface-low) p-3">
             <Link to={`/communities/${community.slug}`} className="block overflow-hidden rounded-lg">
-                <img
-                    src={community.image}
+                <CommunityCoverImage
+                    src={community.coverImageUrl || community.imageUrl}
                     alt={community.name}
                     className="h-24 w-full object-cover"
                 />
@@ -55,10 +55,15 @@ export default function SuggestedCommunityItem({ community, onMembershipChange }
                 aria-expanded={isExpanded}
             >
                 <span>{isExpanded ? "Hide details" : "View details"}</span>
-                <ChevronDown
-                    size={16}
-                    className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                />
+                <motion.span
+                    key={isExpanded ? "hide" : "show"}
+                    initial={{ opacity: 0, scale: 0.8, rotate: -12 }}
+                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="flex"
+                >
+                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </motion.span>
             </button>
 
             <AnimatePresence initial={false}>
@@ -82,8 +87,8 @@ export default function SuggestedCommunityItem({ community, onMembershipChange }
                                 to={`/profile/${displayAdmin.username}`}
                                 className="flex items-center gap-2 rounded-lg bg-(--surface-lowest) px-3 py-2 transition hover:bg-(--hover)"
                             >
-                                <img
-                                    src={displayAdmin.avatar}
+                                <Avatar
+                                    src={displayAdmin.avatarUrl}
                                     alt={displayAdmin.name}
                                     className="h-8 w-8 shrink-0 rounded-full object-cover"
                                 />

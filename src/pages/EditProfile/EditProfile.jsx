@@ -1,4 +1,4 @@
-import EditProfileForm from "@/components/editprofile/EditProfileForm";
+﻿import EditProfileForm from "@/components/editprofile/EditProfileForm";
 import ProfileSettingsForm from "@/components/editprofile/ProfileSettingsForm";
 import {
     Tabs,
@@ -7,8 +7,12 @@ import {
     TabsTrigger,
 } from "@/components/ui/tabs";
 import { Settings, UserRound } from "lucide-react";
+import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { updateProfile } from "@/services/userApi";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 const tabs = [
     {
@@ -27,13 +31,29 @@ export default function EditProfile() {
     const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get("tab") === "settings" ? "settings" : "profile";
     const { userData, setUserData } = useAuth();
+    const queryClient = useQueryClient();
 
     function handleTabChange(tab) {
         setSearchParams({ tab });
     }
 
-    function handleProfileUpdate(formData) {
-        setUserData({ ...userData, ...formData });
+    async function handleProfileUpdate(formData) {
+        try {
+            const response = await updateProfile(formData);
+
+            setUserData(response.data);
+
+            const username = response.data?.username ?? userData?.username;
+            if (username) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.user(username) });
+            }
+
+            toast.success(response.message || "Profile updated successfully");
+        } catch (error) {
+            const message = error.response?.data?.message || "Failed to update profile";
+
+            toast.error(message);
+        }
     }
     return (
         <>

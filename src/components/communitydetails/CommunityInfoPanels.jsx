@@ -1,12 +1,15 @@
-import { FileText, Lock, LockOpen, Users } from "lucide-react";
+﻿import { FileText, Lock, LockOpen, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import Avatar from "@/components/profileimages/Avatar";
 
 export default function CommunityInfoPanels({ community, members, membersCount, posts }) {
     const { userData } = useAuth();
 
     const displayAdmin =
         community.admin.id === userData.id ? userData : community.admin;
+    const isPrivateLocked =
+        community.visibility === "private" && !community.communityRole;
 
     return (
         <aside className="space-y-5">
@@ -25,7 +28,7 @@ export default function CommunityInfoPanels({ community, members, membersCount, 
 
                     <p className="flex items-center gap-2">
                         <FileText size={18} />
-                        {posts.length} posts
+                        {community.postsCount} posts
                     </p>
 
                     {community.visibility === "private" ? (
@@ -49,8 +52,8 @@ export default function CommunityInfoPanels({ community, members, membersCount, 
                     to={`/profile/${displayAdmin.username}`}
                     className="mt-4 flex items-center gap-3 rounded-xl p-2 transition hover:bg-(--hover)"
                 >
-                    <img
-                        src={displayAdmin.avatar}
+                    <Avatar
+                        src={displayAdmin.avatarUrl}
                         alt={displayAdmin.name}
                         className="avatar-lg"
                     />
@@ -61,7 +64,7 @@ export default function CommunityInfoPanels({ community, members, membersCount, 
                         </h3>
 
                         <p className="type-label-sm truncate text-secondary">
-                            {displayAdmin.role}
+                            {displayAdmin.jobTitle}
                         </p>
                     </div>
                 </Link>
@@ -70,36 +73,48 @@ export default function CommunityInfoPanels({ community, members, membersCount, 
             <div className="content-card-padded">
                 <h2 className="type-title-lg text-primary">Active Members</h2>
 
-                <div className="mt-4 space-y-2">
-                    {members.slice(0, 4).map((member) => {
-                        const displayMember =
-                            member.id === userData.id ? userData : member;
+                {isPrivateLocked ? (
+                    <div className="mt-4 flex flex-col items-center justify-center rounded-xl bg-(--surface-low) py-6 text-center">
+                        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">
+                            <Lock size={20} />
+                        </div>
 
-                        return (
-                            <Link
-                                key={member.id}
-                                to={`/profile/${displayMember.username}`}
-                                className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-(--hover)"
-                            >
-                                <img
-                                    src={displayMember.avatar}
-                                    alt={displayMember.name}
-                                    className="h-10 w-10 rounded-full object-cover"
-                                />
+                        <p className="type-body-sm-readable max-w-sm px-4 text-secondary">
+                            Request to join {community.name} to view its active members.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="mt-4 space-y-2">
+                        {members.slice(0, 4).map((member) => {
+                            const displayMember =
+                                member.id === userData.id ? userData : member;
 
-                                <div className="min-w-0">
-                                    <h3 className="type-label-md truncate text-primary">
-                                        {displayMember.name}
-                                    </h3>
+                            return (
+                                <Link
+                                    key={member.id}
+                                    to={`/profile/${displayMember.username}`}
+                                    className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-(--hover)"
+                                >
+                                    <Avatar
+                                        src={displayMember.avatarUrl}
+                                        alt={displayMember.name}
+                                        className="h-10 w-10 rounded-full object-cover"
+                                    />
 
-                                    <p className="type-label-sm truncate text-secondary">
-                                        {displayMember.role}
-                                    </p>
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </div>
+                                    <div className="min-w-0">
+                                        <h3 className="type-label-md truncate text-primary">
+                                            {displayMember.name}
+                                        </h3>
+
+                                        <p className="type-label-sm truncate text-secondary">
+                                            {displayMember.jobTitle}
+                                        </p>
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             <div className="content-card-padded">
@@ -108,7 +123,7 @@ export default function CommunityInfoPanels({ community, members, membersCount, 
                 <div className="mt-4 flex flex-wrap gap-2">
                     {[
                         community.category,
-                        `${posts.length} featured posts`,
+                        `${community.postsCount} featured posts`,
                         community.visibility,
                     ].map((tag) => (
                         <span

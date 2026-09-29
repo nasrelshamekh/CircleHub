@@ -1,25 +1,30 @@
-import { Check, Clock, FileText, Hash, Lock, ShieldUser, Users } from "lucide-react";
+﻿import { Check, Clock, FileText, Hash, Lock, Shield, ShieldUser, Users } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useCommunityPosts } from "@/hooks/useCommunityPosts";
+
+import CommunityCoverImage from "@/components/communityimages/CommunityCoverImage";
 
 export default function CommunityCardItem({
     community,
     onMembershipChange,
     showAdminBadge = false,
+    showModeratorBadge = false,
     displayOnly = false,
     adminBadgeLabel = "Admin",
+    moderatorBadgeLabel = "Moderator",
 }) {
     const isRequested = community.membershipStatus === "requested";
     const isPrivate = community.visibility === "private";
-    const membersCount = community.members.length;
-    const { communityPosts } = useCommunityPosts();
-    const postsCount = communityPosts.filter((post) => post.communitySlug === community.slug).length;
+    const membersCount = community.membersCount;
+    const postsCount = community.postsCount;
+    const hasRoleBadge = showAdminBadge || showModeratorBadge;
+    const roleBadgeLabel = showAdminBadge ? adminBadgeLabel : moderatorBadgeLabel;
+    const RoleBadgeIcon = showAdminBadge ? ShieldUser : Shield;
 
     return (
         <article className="flex min-w-0 flex-col overflow-hidden rounded-lg bg-(--surface-low)">
             <Link to={`/communities/${community.slug}`}>
-                <img
-                    src={community.image}
+                <CommunityCoverImage
+                    src={community.coverImageUrl || community.imageUrl}
                     alt={community.name}
                     className="h-36 w-full object-cover"
                 />
@@ -40,10 +45,10 @@ export default function CommunityCardItem({
                                 {community.category}
                             </span>
 
-                            {showAdminBadge && (
+                            {hasRoleBadge && (
                                 <span className="flex items-center gap-1.5 type-label-sm rounded-full bg-(--surface-lowest) px-3 py-1 text-(--primary)">
-                                    <ShieldUser size={14} />
-                                    {adminBadgeLabel}
+                                    <RoleBadgeIcon size={14} />
+                                    {roleBadgeLabel}
                                 </span>
                             )}
                         </div>
@@ -80,9 +85,12 @@ export default function CommunityCardItem({
                 <div className="mt-auto flex items-center justify-between gap-3 border-t border-(--border) pt-3">
                     <span className="flex items-center gap-1.5 text-(length:--text-label-sm) text-(--text-secondary)">
                         {isRequested ? <Clock size={15} /> : <Check size={15} />}
-                        {showAdminBadge ? adminBadgeLabel : isRequested ? "Request pending" : "Member"}
+                        {hasRoleBadge ? roleBadgeLabel : isRequested ? "Request pending" : "Member"}
                     </span>
 
+                    {/* Admins can't leave without transferring ownership, so no
+                        Leave button on admin cards. Moderators and regular members
+                        can leave (backend accepts, mods lose their role too). */}
                     {!showAdminBadge && !displayOnly && (
                         <button
                             type="button"

@@ -1,10 +1,10 @@
-import { motion } from "motion/react";
+﻿import { motion } from "motion/react";
 import { ChevronDown, ChevronUp, Link as LinkIcon, MapPin, Network } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 
 import CommunityCardItem from "@/components/communitycard/CommunityCardItem";
-import { useCommunities } from "@/hooks/useCommunities";
+import Avatar from "@/components/profileimages/Avatar";
 
 const CONNECTIONS_PREVIEW_LIMIT = 5;
 
@@ -12,21 +12,14 @@ export default function ProfileInfoPanels({
   user,
   connections = [],
   connectionsTitle = "Mutual Connections",
+  userCommunities = [],
 }) {
-  const { communities } = useCommunities();
   const [showAllConnections, setShowAllConnections] = useState(false);
   const skills = user.skills || [];
   const connectionsCount = connections.length;
   const previewConnections = connections.slice(0, CONNECTIONS_PREVIEW_LIMIT);
   const extraConnections = connections.slice(CONNECTIONS_PREVIEW_LIMIT);
   const hasMoreConnections = connectionsCount > CONNECTIONS_PREVIEW_LIMIT;
-  const userCommunities = communities.filter((community) => {
-    const members = community.members || [];
-    const isMember = members.some((member) => member.id === user.id);
-    const isAdmin = community.admin.id === user.id;
-
-    return isMember || isAdmin;
-  });
 
   return (
     <aside className="space-y-5">
@@ -82,8 +75,8 @@ export default function ProfileInfoPanels({
                     title={connectionUser.name}
                     className="transition-transform duration-200 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-(--primary)"
                   >
-                    <img
-                      src={connectionUser.avatar}
+                    <Avatar
+                      src={connectionUser.avatarUrl}
                       alt={connectionUser.name}
                       className="h-10 w-10 rounded-full border-2 border-(--surface-lowest) object-cover"
                     />
@@ -118,8 +111,8 @@ export default function ProfileInfoPanels({
                         title={connectionUser.name}
                         className="transition-transform duration-200 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-(--primary)"
                       >
-                        <img
-                          src={connectionUser.avatar}
+                        <Avatar
+                          src={connectionUser.avatarUrl}
                           alt={connectionUser.name}
                           className="h-10 w-10 rounded-full border-2 border-(--surface-lowest) object-cover"
                         />
@@ -156,18 +149,15 @@ export default function ProfileInfoPanels({
 
         {userCommunities.length > 0 ? (
           <div className="mt-4 space-y-3">
-            {userCommunities.map((community) => {
-              const isAdmin = community.admin.id === user.id;
-
-              return (
-                <CommunityCardItem
-                  key={community.id}
-                  community={community}
-                  displayOnly
-                  showAdminBadge={isAdmin}
-                />
-              );
-            })}
+            {userCommunities.map((community) => (
+              <CommunityCardItem
+                key={community.id}
+                community={community}
+                displayOnly
+                showAdminBadge={community.userRole === "admin"}
+                showModeratorBadge={community.userRole === "moderator"}
+              />
+            ))}
           </div>
         ) : (
           <div className="mt-4 flex flex-col items-center justify-center rounded-xl bg-(--surface-low) px-4 py-8 text-center">

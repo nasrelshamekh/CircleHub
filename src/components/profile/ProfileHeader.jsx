@@ -1,4 +1,4 @@
-import {
+﻿import {
     CalendarDays,
     MapPin,
     MessageCircle,
@@ -6,7 +6,8 @@ import {
     Settings,
 } from "lucide-react";
 import FollowButton from "@/components/followers/FollowButton";
-import { getAvatarImage, getCoverImage } from "@/lib/profileImages";
+import Avatar from "@/components/profileimages/Avatar";
+import CoverImage from "@/components/profileimages/CoverImage";
 import { useNavigate } from "react-router-dom";
 
 export default function ProfileHeader({ user, isCurrentUser, postsCount, followsMe }) {
@@ -29,14 +30,12 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount, follows
     ];
 
     const navigate = useNavigate();
-    const avatarImage = getAvatarImage(user.avatar);
-    const coverImage = getCoverImage(user.coverImage);
 
     return (
         <section className="w-full">
-            <div className="relative h-48 w-full bg-(--surface-high) md:h-72">
-                <img
-                    src={coverImage}
+            <div className="relative mt-4 h-56 w-full overflow-hidden rounded-xl bg-(--surface-high) md:h-96">
+                <CoverImage
+                    src={user.coverImageUrl}
                     alt={`${user.name} cover`}
                     className="h-full w-full object-cover object-center"
                 />
@@ -50,8 +49,8 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount, follows
 
                     <div className="relative flex flex-col gap-5 md:flex-row md:items-center">
                         <div>
-                            <img
-                                src={avatarImage}
+                            <Avatar
+                                src={user.avatarUrl}
                                 alt={user.name}
                                 className="h-30 w-30 rounded-full border-4 border-(--surface-lowest) object-cover shadow-sm md:h-40 md:w-40"
                             />
@@ -71,7 +70,7 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount, follows
                                         )}
                                     </div>
                                     <p className="type-body-sm mt-1 text-secondary">
-                                        @{user.username} &bull; {user.role}
+                                        @{user.username} &bull; {user.jobTitle}
                                     </p>
                                 </div>
 
@@ -94,7 +93,7 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount, follows
                                         </>
                                     ) : (
                                         <>
-                                            <FollowButton user={user} variant="text" />
+                                            <FollowButton key={user.id} user={user} variant="text" />
 
                                             <button type="button" className="type-button flex flex-1 items-center justify-center gap-2 rounded-xl bg-(--surface-low) px-4 py-2 text-(--primary) transition hover:bg-(--hover) md:flex-none">
                                                 <MessageCircle size={16} />
@@ -121,7 +120,7 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount, follows
 
                                 <span className="flex items-center gap-1.5">
                                     <CalendarDays size={16} />
-                                    Joined {user.joinedAt}
+                                    Joined {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                                 </span>
                             </div>
 

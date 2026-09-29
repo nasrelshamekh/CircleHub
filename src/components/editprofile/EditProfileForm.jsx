@@ -1,22 +1,40 @@
-import { toast } from "sonner";
-import { Save } from "lucide-react";
-import ProfileImageUpload from "./ProfileImageUpload";
+﻿import { Save } from "lucide-react";
 import { useState } from "react";
+import ProfileImageUpload from "./ProfileImageUpload";
+
+function toDateInputValue(value) {
+    if (!value) return "";
+
+    if (typeof value === "string") {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+    }
+
+    if (value instanceof Date && !isNaN(value.getTime())) {
+        return value.toISOString().slice(0, 10);
+    }
+
+    return "";
+}
 
 export default function EditProfileForm({ onProfileUpdate, currentUser }) {
 
     const [formData, setFormData] = useState({
-        coverImage: currentUser.coverImage,
-        avatar: currentUser.avatar,
+        coverImageUrl: currentUser.coverImageUrl,
+        avatarUrl: currentUser.avatarUrl,
         name: currentUser.name,
         username: currentUser.username,
-        role: currentUser.role,
+        jobTitle: currentUser.jobTitle,
         location: currentUser.location,
         website: currentUser.website,
-        dateOfBirth: currentUser.dateOfBirth,
+        dateOfBirth: toDateInputValue(currentUser.dateOfBirth),
         bio: currentUser.bio,
         skills: (currentUser.skills || []).join(", "),
     });
+
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [coverFile, setCoverFile] = useState(null);
 
     function handleChange(event) {
         const { name, value } = event.target;
@@ -29,14 +47,23 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
 
     function handleSubmit(event) {
         event.preventDefault();
+
+        const skills = formData.skills
+            .split(",")
+            .map((skill) => skill.trim())
+            .filter(Boolean);
+
         onProfileUpdate({
-            ...formData,
-            skills: formData.skills
-                .split(",")
-                .map((skill) => skill.trim())
-                .filter(Boolean),
+            name: formData.name,
+            jobTitle: formData.jobTitle,
+            location: formData.location,
+            website: formData.website,
+            bio: formData.bio,
+            dateOfBirth: formData.dateOfBirth,
+            skills,
+            avatarImage: avatarFile,
+            coverImage: coverFile,
         });
-        toast.success("Profile updated successfully");
     }
     
 
@@ -46,17 +73,23 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
                 <div>
                     <ProfileImageUpload
                         variant="cover"
-                        imageSrc={formData.coverImage}
-                        originalImageSrc={currentUser.coverImage}
-                        onImageChange={(imageUrl) => setFormData((currentData) => ({ ...currentData, coverImage: imageUrl }))}
+                        imageSrc={formData.coverImageUrl}
+                        originalImageSrc={currentUser.coverImageUrl}
+                        onImageChange={(imageUrl, file) => {
+                            setCoverFile(file);
+                            setFormData((currentData) => ({ ...currentData, coverImageUrl: imageUrl }));
+                        }}
                         alt="Profile Cover"
                     />
 
                     <ProfileImageUpload
                         variant="avatar"
-                        imageSrc={formData.avatar}
-                        originalImageSrc={currentUser.avatar}
-                        onImageChange={(imageUrl) => setFormData((currentData) => ({ ...currentData, avatar: imageUrl }))}
+                        imageSrc={formData.avatarUrl}
+                        originalImageSrc={currentUser.avatarUrl}
+                        onImageChange={(imageUrl, file) => {
+                            setAvatarFile(file);
+                            setFormData((currentData) => ({ ...currentData, avatarUrl: imageUrl }));
+                        }}
                         alt="Profile Avatar"
                     />
                 </div>
@@ -90,21 +123,23 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
                             placeholder="Username"
                             value={formData.username}
                             onChange={handleChange}
+                            disabled
+                            title="Username can't be changed"
                             className="input-surface type-body-sm w-full rounded-lg px-4 py-3 text-primary outline-none placeholder:text-(--text-secondary)"
                         />
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="role" className="type-body-sm text-(--primary)">
-                            Role
+                        <label htmlFor="jobTitle" className="type-body-sm text-(--primary)">
+                            Job Title
                         </label>
 
                         <input
-                            id="role"
-                            name="role"
+                            id="jobTitle"
+                            name="jobTitle"
                             type="text"
-                            placeholder="Role"
-                            value={formData.role}
+                            placeholder="Job Title"
+                            value={formData.jobTitle}
                             onChange={handleChange}
                             className="input-surface type-body-sm w-full rounded-lg px-4 py-3 text-primary outline-none placeholder:text-(--text-secondary)"
                         />
