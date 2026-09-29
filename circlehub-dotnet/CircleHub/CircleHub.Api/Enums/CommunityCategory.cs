@@ -1,0 +1,30 @@
+namespace CircleHub.Api.Enums
+{
+    public enum CommunityCategory
+    {
+        Technology,
+        Programming,
+        Gaming,
+        Sports,
+        Music,
+        Art,
+        Movies,
+        TVShows,
+        Books,
+        Science,
+        Travel,
+        Food,
+        Cooking,
+        Health,
+        Fitness,
+        Education,
+        Business,
+        News,
+        Photography,
+        Fashion,
+        Nature,
+        Design,
+        Memes,
+        Podcasts
+    }
+}

@@ -1,0 +1,23 @@
+@CircleHub.Api_HostAddress = http://localhost:5289
+
+GET {{CircleHub.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+POST {{CircleHub.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Nasr",
+  "username": "nasr",
+  "email": "nasr@example.com",
+  "password": "Password123!"
+}
+###
+POST {{CircleHub.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "nasr@example.com",
+  "password": "Password123!"
+}
