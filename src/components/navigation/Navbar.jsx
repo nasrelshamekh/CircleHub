@@ -1,5 +1,5 @@
 ﻿import logo from '@/assets/circlehub-logo.png'
-import { Bell, MessageCircleMore, Moon, Sun } from 'lucide-react'
+import { Bell, MessageCircleMore, Moon, Network, Sun } from 'lucide-react'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -46,20 +46,23 @@ export default function Navbar() {
                         </button>
                         <button
                             type="button"
-                            onClick={toggleTheme}
-                            className="icon-button"
-                            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                            onClick={() => navigate("/communities")}
+                            className='icon-button lg:hidden'
+                            aria-label="Open communities"
                         >
-                            {theme === "dark" ? <Sun size={22} /> : <Moon size={22} />}
+                            <Network size={22} />
                         </button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <button
                                     type="button"
-                                    className="size-10 shrink-0 overflow-hidden rounded-full"
+                                    className="flex shrink-0 items-center gap-2 rounded-full"
                                     aria-label="Open account menu"
                                 >
-                                    <Avatar src={userData.avatarUrl} alt={userData.name} className="size-10 rounded-full object-cover cursor-pointer" />
+                                    <span className="hidden max-w-40 truncate lg:inline-block type-label-md">{userData.name}</span>
+                                    <span className="size-10 shrink-0 overflow-hidden rounded-full">
+                                        <Avatar src={userData.avatarUrl} alt={userData.name} className="size-10 rounded-full object-cover cursor-pointer" />
+                                    </span>
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-40" align="start">
@@ -74,6 +77,10 @@ export default function Navbar() {
                                         <NavLink className="icon-button" to="/settings/profile">
                                             Settings
                                         </NavLink>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={toggleTheme}>
+                                        {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                                        {theme === "dark" ? <Sun size={16} className="ml-auto" /> : <Moon size={16} className="ml-auto" />}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={handleSignout}>
                                         Sign Out
