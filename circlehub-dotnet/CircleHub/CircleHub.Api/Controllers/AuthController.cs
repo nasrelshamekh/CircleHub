@@ -62,7 +62,7 @@ namespace CircleHub.Api.Controllers
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
-            await _verification.IssueVerificationAsync(user, $"{Request.Scheme}://{Request.Host}");
+            await _verification.IssueVerificationAsync(user);
 
             return StatusCode(StatusCodes.Status201Created, new ApiResponse<AuthResponseDto>
             {
@@ -136,7 +136,7 @@ namespace CircleHub.Api.Controllers
         [HttpPost("resend-verification")]
         public async Task<IActionResult> ResendVerification(ResendVerificationDto dto)
         {
-            await _verification.ResendAsync(dto.Email, $"{Request.Scheme}://{Request.Host}");
+            await _verification.ResendAsync(dto.Email);
 
             return Ok(new ApiResponse<string>
             {

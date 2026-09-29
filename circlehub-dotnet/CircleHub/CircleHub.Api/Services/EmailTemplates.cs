@@ -4,11 +4,10 @@ namespace CircleHub.Api.Services
 {
     public static class EmailTemplates
     {
-        public static string Verification(string name, string verifyUrl, string iconUrl)
+        public static string Verification(string name, string verifyUrl)
         {
             var safeName = WebUtility.HtmlEncode(name);
             var safeUrl = WebUtility.HtmlEncode(verifyUrl);
-            var safeIconUrl = WebUtility.HtmlEncode(iconUrl);
 
             return $"""
                 <!DOCTYPE html>
@@ -22,12 +21,7 @@ namespace CircleHub.Api.Services
                       <td align="center" style="padding:40px 16px;">
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;font-family:'Inter','Segoe UI',Helvetica,Arial,sans-serif;">
                           <tr>
-                            <td align="center" style="background-color:#6d5df6;background-image:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px 16px 0 0;padding:28px 40px;">
-                              <img src="{safeIconUrl}" width="42" height="42" alt="CircleHub" border="0" style="display:inline-block;width:42px;height:auto;border:0;outline:none;">
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style="background-color:#ffffff;border-radius:0 0 16px 16px;padding:40px 40px 32px;">
+                            <td style="background-color:#ffffff;border-radius:16px;padding:40px 40px 32px;">
                               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                 <tr>
                                   <td align="center" style="padding-bottom:20px;">

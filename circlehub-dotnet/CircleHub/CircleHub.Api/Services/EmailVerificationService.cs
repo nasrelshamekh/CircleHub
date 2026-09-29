@@ -48,7 +48,7 @@ namespace CircleHub.Api.Services
         private int ResendCooldownSeconds =>
             int.TryParse(_configuration["Verification:ResendCooldownSeconds"], out var v) ? v : 60;
 
-        public async Task IssueVerificationAsync(User user, string apiBaseUrl)
+        public async Task IssueVerificationAsync(User user)
         {
             var rawToken = GenerateToken();
             user.EmailVerified = false;
@@ -59,8 +59,7 @@ namespace CircleHub.Api.Services
             await _db.SaveChangesAsync();
 
             var verifyUrl = $"{FrontendUrl}/verify-email?userId={user.Id}&token={rawToken}";
-            var iconUrl = $"{apiBaseUrl.TrimEnd('/')}/images/circlehub-icon.png";
-            await SendVerificationEmailAsLoggedAsync(user, verifyUrl, iconUrl);
+            await SendVerificationEmailAsLoggedAsync(user, verifyUrl);
         }
 
         public async Task<VerifyEmailResult> VerifyAsync(Guid userId, string token)
@@ -90,7 +89,7 @@ namespace CircleHub.Api.Services
             return VerifyEmailResult.Verified;
         }
 
-        public async Task<ResendVerificationResult> ResendAsync(string email, string apiBaseUrl)
+        public async Task<ResendVerificationResult> ResendAsync(string email)
         {
             var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email.Trim().ToLowerInvariant());
             if (user is null)
@@ -105,18 +104,18 @@ namespace CircleHub.Api.Services
                 return ResendVerificationResult.TooSoon;
             }
 
-            await IssueVerificationAsync(user, apiBaseUrl);
+            await IssueVerificationAsync(user);
             return ResendVerificationResult.Sent;
         }
 
-        private async Task SendVerificationEmailAsLoggedAsync(User user, string verifyUrl, string iconUrl)
+        private async Task SendVerificationEmailAsLoggedAsync(User user, string verifyUrl)
         {
             try
             {
                 await _emailService.SendAsync(
                     user.Email,
                     "Verify your CircleHub email",
-                    EmailTemplates.Verification(user.Name, verifyUrl, iconUrl));
+                    EmailTemplates.Verification(user.Name, verifyUrl));
             }
             catch (Exception ex)
             {

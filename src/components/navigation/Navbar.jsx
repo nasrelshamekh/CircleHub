@@ -56,7 +56,7 @@ export default function Navbar() {
                             <DropdownMenuTrigger asChild>
                                 <button
                                     type="button"
-                                    className="flex shrink-0 items-center gap-2 rounded-full"
+                                    className="flex shrink-0 items-center gap-2 rounded-full outline-none"
                                     aria-label="Open account menu"
                                 >
                                     <span className="hidden max-w-40 truncate lg:inline-block type-label-md">{userData.name}</span>
