@@ -16,5 +16,14 @@ export default defineConfig({
   },
   server: {
     host: true, // bind to 0.0.0.0 so other devices on the LAN can reach it
+    proxy: {
+      "/api": {
+        target: "http://localhost:5289",
+        changeOrigin: true,
+      },
+    },
+    watch: {
+      ignored: ["**/circlehub-dotnet/**", "**/.vs/**"],
+    },
   },
 })
