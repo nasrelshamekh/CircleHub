@@ -435,10 +435,10 @@ namespace CircleHub.Api.Controllers
             }
 
             if (uploadedImage is not null)
-                entity.ImageUrl = AbsoluteUrl(uploadedImage);
+                entity.ImageUrl = uploadedImage;
 
             if (uploadedCover is not null)
-                entity.CoverImageUrl = AbsoluteUrl(uploadedCover);
+                entity.CoverImageUrl = uploadedCover;
 
             if (dto.Visibility is not null)
             {
@@ -1212,7 +1212,7 @@ namespace CircleHub.Api.Controllers
             var post = new Post
             {
                 Content = dto.Content,
-                ImageUrl = imageUrl is null ? null : AbsoluteUrl(imageUrl),
+                ImageUrl = imageUrl,
                 CommunityId = communityId,
                 AuthorId = currentUserId,
                 CreatedAt = DateTime.UtcNow,
@@ -1328,8 +1328,5 @@ namespace CircleHub.Api.Controllers
             !string.IsNullOrWhiteSpace(category) &&
             Enum.GetNames<CommunityCategory>().Any(name =>
                 string.Equals(name, category.Trim(), StringComparison.OrdinalIgnoreCase));
-
-        private string AbsoluteUrl(string relative) =>
-            $"{Request.Scheme}://{Request.Host}{relative}";
     }
 }

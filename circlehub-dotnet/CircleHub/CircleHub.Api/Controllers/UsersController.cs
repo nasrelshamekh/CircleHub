@@ -381,9 +381,9 @@ namespace CircleHub.Api.Controllers
             }
 
             if (avatarRelative is not null)
-                user.AvatarUrl = AbsoluteUrl(avatarRelative);
+                user.AvatarUrl = avatarRelative;
             if (coverRelative is not null)
-                user.CoverImageUrl = AbsoluteUrl(coverRelative);
+                user.CoverImageUrl = coverRelative;
 
             user.UpdatedAt = DateTime.UtcNow;
 
@@ -403,9 +403,6 @@ namespace CircleHub.Api.Controllers
                 Data = UserDto.FromEntity(user)
             });
         }
-
-        private string AbsoluteUrl(string relative) =>
-            $"{Request.Scheme}://{Request.Host}{relative}";
 
         [HttpPost("{id}/follow")]
         public async Task<IActionResult> FollowUser(Guid id)

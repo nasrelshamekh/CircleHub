@@ -108,7 +108,7 @@ namespace CircleHub.Api.Controllers
             var post = new Post
             {
                 Content = dto.Content,
-                ImageUrl = imageUrl is null ? null : AbsoluteUrl(imageUrl),
+                ImageUrl = imageUrl,
                 AuthorId = userId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -172,9 +172,9 @@ namespace CircleHub.Api.Controllers
             if (newImageRelative is not null)
             {
                 if (!string.IsNullOrEmpty(post.ImageUrl))
-                    _uploadService.DeletePostImage(new Uri(post.ImageUrl).AbsolutePath);
+                    _uploadService.DeletePostImage(post.ImageUrl);
 
-                post.ImageUrl = AbsoluteUrl(newImageRelative);
+                post.ImageUrl = newImageRelative;
             }
 
             post.Content = dto.Content;
@@ -272,8 +272,5 @@ namespace CircleHub.Api.Controllers
                 Data = new { postId = id, likesCount, isLikedByMe }
             });
         }
-
-        private string AbsoluteUrl(string relative) =>
-            $"{Request.Scheme}://{Request.Host}{relative}";
     }
 }
