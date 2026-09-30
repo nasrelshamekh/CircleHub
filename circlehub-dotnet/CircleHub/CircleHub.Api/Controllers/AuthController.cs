@@ -64,14 +64,10 @@ namespace CircleHub.Api.Controllers
 
             await _verification.IssueVerificationAsync(user);
 
-            return StatusCode(StatusCodes.Status201Created, new ApiResponse<AuthResponseDto>
+            return StatusCode(StatusCodes.Status201Created, new ApiResponse<UserDto>
             {
                 Message = "User registered successfully. Please check your inbox to verify your email.",
-                Data = new AuthResponseDto
-                {
-                    User = UserDto.FromEntity(user),
-                    Token = _tokenService.CreateToken(user)
-                }
+                Data = UserDto.FromEntity(user)
             });
         }
 
