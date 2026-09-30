@@ -39,7 +39,7 @@ export default function LandingFooter() {
               to="/register"
               className="button-primary type-button inline-flex items-center gap-2 px-6 py-3"
             >
-              Create an account
+              Get started now
               <ArrowRight size={18} />
             </Link>
 

@@ -49,7 +49,7 @@ export default function LandingHero() {
               to="/register"
               className="button-primary type-button hidden px-5 py-2.5 sm:inline-flex"
             >
-              Create an account
+              Sign up
             </Link>
           </nav>
         </motion.header>
