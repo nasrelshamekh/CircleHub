@@ -3,3 +3,6 @@ obj/
 .vs/
 **/wwwroot/uploads/
 *.user
+
+# machine-local helpers
+open-api-in-vs.bat
