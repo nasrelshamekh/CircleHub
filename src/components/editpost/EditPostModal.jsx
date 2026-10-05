@@ -11,6 +11,7 @@ import { toast } from "sonner"
 
 import { useUpdatePost } from "@/hooks/mutations/useUpdatePost"
 import Avatar from "@/components/profileimages/Avatar"
+import { ACCEPTED_IMAGE_TYPES, validateImageFile } from "@/lib/imageUpload"
 
 export function EditPostModal({ open, onOpenChange, post }) {
     const [content, setContent] = useState(post.content);
@@ -70,13 +71,10 @@ export function EditPostModal({ open, onOpenChange, post }) {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        if (!file.type.startsWith("image/")) {
-            toast.error("Only image files are allowed.");
-            return;
-        }
+        const error = validateImageFile(file);
 
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error("Image must be 5MB or smaller.");
+        if (error) {
+            toast.error(error);
             return;
         }
 
@@ -159,7 +157,7 @@ export function EditPostModal({ open, onOpenChange, post }) {
                     >
                         <Images size={22} />
                     </button>
-                    <input onChange={handleModalPhotoSelect} ref={modalFileInput} type="file" accept="image/*" className="hidden" />
+                    <input onChange={handleModalPhotoSelect} ref={modalFileInput} type="file" accept={ACCEPTED_IMAGE_TYPES} className="hidden" />
                 </div>
                 <button
                     type="button"

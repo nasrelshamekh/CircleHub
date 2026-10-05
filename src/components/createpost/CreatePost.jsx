@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { CreatePostModal } from "./CreatePostModal"
 import { useAuth } from "@/hooks/useAuth"
 import Avatar from "@/components/profileimages/Avatar"
+import { ACCEPTED_IMAGE_TYPES, validateImageFile } from "@/lib/imageUpload"
 
 export default function CreatePost({ community }) {
     const [open, setOpen] = useState(false);
@@ -21,13 +22,10 @@ export default function CreatePost({ community }) {
         const file = event.target.files?.[0]
         if (!file) return;
 
-        if (!file.type.startsWith("image/")) {
-            toast.error("Only image files are allowed.");
-            return;
-        }
+        const error = validateImageFile(file);
 
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error("Image must be 5MB or smaller.");
+        if (error) {
+            toast.error(error);
             return;
         }
 
@@ -94,7 +92,7 @@ export default function CreatePost({ community }) {
             >
                 <Image size={22} />
             </button>
-            <input onChange={handlePhotoSelect} ref={fileInput} type="file" accept="image/*" className="hidden" />
+            <input onChange={handlePhotoSelect} ref={fileInput} type="file" accept={ACCEPTED_IMAGE_TYPES} className="hidden" />
         </div>
     )
 }

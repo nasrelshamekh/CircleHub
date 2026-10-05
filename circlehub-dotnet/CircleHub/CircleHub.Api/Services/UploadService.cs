@@ -7,7 +7,7 @@ namespace CircleHub.Api.Services
         private const long MaxImageBytes = 5 * 1024 * 1024; // 5 MB
 
         private static readonly string[] AllowedExtensions =
-            { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            { ".jpg", ".jpeg", ".png", ".webp" };
 
         private static readonly Dictionary<string, byte[]> AllowedMagicBytes =
             new()
@@ -15,7 +15,6 @@ namespace CircleHub.Api.Services
                 [".jpg"] = new byte[] { 0xFF, 0xD8, 0xFF },
                 [".jpeg"] = new byte[] { 0xFF, 0xD8, 0xFF },
                 [".png"] = new byte[] { 0x89, 0x50, 0x4E, 0x47 },
-                [".gif"] = new byte[] { 0x47, 0x49, 0x46, 0x38 },
                 [".webp"] = new byte[] { 0x52, 0x49, 0x46, 0x46 }
             };
 
@@ -37,7 +36,7 @@ namespace CircleHub.Api.Services
             var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
 
             if (string.IsNullOrEmpty(extension) || !AllowedExtensions.Contains(extension))
-                throw new ArgumentException("Image must be a JPG, PNG, GIF or WebP file");
+                throw new ArgumentException("Image must be a JPG, PNG or WebP file");
 
             var stream = image.OpenReadStream();
             await using (stream)

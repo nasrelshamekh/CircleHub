@@ -46,7 +46,7 @@ namespace CircleHub.Api.Controllers
 
             return url.StartsWith("/uploads/", StringComparison.Ordinal)
                 && !url.Contains("..")
-                && extension is ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp";
+                && extension is ".jpg" or ".jpeg" or ".png" or ".webp";
         }
 
         private void CleanupUploads(params string?[] relatives)

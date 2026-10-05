@@ -184,7 +184,6 @@ contentTypeProvider.Mappings.Clear();
 contentTypeProvider.Mappings[".jpg"] = "image/jpeg";
 contentTypeProvider.Mappings[".jpeg"] = "image/jpeg";
 contentTypeProvider.Mappings[".png"] = "image/png";
-contentTypeProvider.Mappings[".gif"] = "image/gif";
 contentTypeProvider.Mappings[".webp"] = "image/webp";
 contentTypeProvider.Mappings[".ico"] = "image/x-icon";
 

@@ -3,6 +3,7 @@ import { PencilIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import CommunityImage from "@/components/communityimages/CommunityImage";
 import CommunityCoverImage from "@/components/communityimages/CommunityCoverImage";
+import { ACCEPTED_IMAGE_TYPES, validateImageFile } from "@/lib/imageUpload";
 
 export default function CommunityImageUpload({ variant, imageSrc, originalImageSrc = imageSrc, alt, onImageChange, className }) {
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -20,6 +21,14 @@ export default function CommunityImageUpload({ variant, imageSrc, originalImageS
         const file = event.target.files?.[0];
 
         if (!file) return;
+
+        const error = validateImageFile(file);
+
+        if (error) {
+            toast.error(error);
+            fileInputRef.current.value = "";
+            return;
+        }
 
         try {
             const reader = new FileReader();
@@ -96,7 +105,7 @@ export default function CommunityImageUpload({ variant, imageSrc, originalImageS
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept={ACCEPTED_IMAGE_TYPES}
                 onChange={handleFileChange}
                 className="hidden"
             />

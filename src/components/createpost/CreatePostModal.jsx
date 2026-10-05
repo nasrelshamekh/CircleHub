@@ -11,6 +11,7 @@ import { toast } from "sonner"
 
 import { useCreatePost } from "@/hooks/mutations/useCreatePost"
 import Avatar from "@/components/profileimages/Avatar"
+import { ACCEPTED_IMAGE_TYPES } from "@/lib/imageUpload"
 
 export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFile, handlePhotoSelect, handleRemovePhoto, community }) {
     const [content, setContent] = useState("");
@@ -100,7 +101,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                     >
                         <Images size={22} />
                     </button>
-                    <input onChange={handleModalPhotoSelect} ref={modalFileInput} type="file" accept="image/*" className="hidden" />
+                    <input onChange={handleModalPhotoSelect} ref={modalFileInput} type="file" accept={ACCEPTED_IMAGE_TYPES} className="hidden" />
                 </div>
                 <button
                     type="button"

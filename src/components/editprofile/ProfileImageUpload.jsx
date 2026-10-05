@@ -3,6 +3,7 @@ import { PencilIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import Avatar from "@/components/profileimages/Avatar";
 import CoverImage from "@/components/profileimages/CoverImage";
+import { ACCEPTED_IMAGE_TYPES, validateImageFile } from "@/lib/imageUpload";
 
 export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc = imageSrc, alt, onImageChange }) {
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -20,6 +21,14 @@ export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc
     const file = event.target.files?.[0];
 
     if (!file) return;
+
+    const error = validateImageFile(file);
+
+    if (error) {
+      toast.error(error);
+      fileInputRef.current.value = "";
+      return;
+    }
 
     try {
       const reader = new FileReader();
@@ -96,7 +105,7 @@ export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPTED_IMAGE_TYPES}
         onChange={handleFileChange}
         className="hidden"
       />
