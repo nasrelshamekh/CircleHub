@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import Avatar from "@/components/profileimages/Avatar";
 
-export default function CommunityInfoPanels({ community, members, membersCount, posts }) {
+export default function CommunityInfoPanels({ community, members, membersCount }) {
     const { userData } = useAuth();
 
     const displayAdmin =

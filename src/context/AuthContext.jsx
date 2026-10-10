@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 
 import logo from "@/assets/circlehub-logo.png";
@@ -6,7 +6,11 @@ import { authContext } from "@/hooks/useAuth";
 import { getCurrentUser } from "@/services/authApi";
 
 export default function AuthContextProvider({ children }) {
+    // Ignore any stale cached profile when there is no session; the provider
+    // should start in the signed-out state in that case.
     const [userData, setUserData] = useState(() => {
+        if (!localStorage.getItem("token")) return null;
+
         try {
             const cached = localStorage.getItem("user-data");
             return cached ? JSON.parse(cached) : null;
@@ -18,21 +22,31 @@ export default function AuthContextProvider({ children }) {
         () => Boolean(localStorage.getItem("token"))
     );
 
+    // Whether a session existed on the previous render. The persistence effect
+    // uses this to only clear the token on an actual sign-out — not on initial
+    // mount, where a valid token with a missing profile cache should still get
+    // a chance to be verified.
+    const hadSessionRef = useRef(Boolean(userData));
+
     useEffect(() => {
         if (userData) {
             localStorage.setItem("user-data", JSON.stringify(userData));
         } else {
             localStorage.removeItem("user-data");
-            localStorage.removeItem("token");
+
+            if (hadSessionRef.current) {
+                localStorage.removeItem("token");
+            }
         }
+
+        hadSessionRef.current = Boolean(userData);
     }, [userData]);
 
     useEffect(() => {
-        if (!localStorage.getItem("token")) {
-            setUserData(null);
-            setIsVerifying(false);
-            return;
-        }
+        // No token at mount: nothing to verify. isVerifying already starts
+        // false in that case, so the provider falls straight through to the
+        // signed-out UI without setting any state here.
+        if (!localStorage.getItem("token")) return;
 
         let ignore = false;
 
@@ -43,6 +57,7 @@ export default function AuthContextProvider({ children }) {
             } catch (error) {
                 if (ignore) return;
                 if (error.response?.status === 401) {
+                    localStorage.removeItem("token");
                     setUserData(null);
                 }
             } finally {

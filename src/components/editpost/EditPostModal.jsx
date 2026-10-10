@@ -21,12 +21,20 @@ export function EditPostModal({ open, onOpenChange, post }) {
     const textareaRef = useRef(null);
     const updatePost = useUpdatePost();
 
-    useEffect(() => {
-        if (!open) return;
-
+    // Reset the form whenever the dialog opens for a (possibly different) post.
+    // Done during render (the "adjust state during render" pattern) instead of
+    // inside an effect, so opening the dialog doesn't cascade renders.
+    const [formKey, setFormKey] = useState(() => `${post.id}:${open}`);
+    if (`${post.id}:${open}` !== formKey) {
+        setFormKey(`${post.id}:${open}`);
         setContent(post.content);
         setPreviewUrl(null);
         setImageFile(null);
+    }
+
+    // Once the dialog is visible, focus the textarea with the caret at the end.
+    useEffect(() => {
+        if (!open) return;
 
         requestAnimationFrame(() => {
             const el = textareaRef.current;
@@ -36,7 +44,7 @@ export function EditPostModal({ open, onOpenChange, post }) {
             el.focus();
             el.setSelectionRange(length, length);
         });
-    }, [open, post.content]);
+    }, [open]);
 
     function handleSubmit() {
         const trimmed = content.trim();
