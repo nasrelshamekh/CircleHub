@@ -54,7 +54,7 @@ CircleHub/
 
 - Node.js 20+ and npm
 - .NET 10 SDK
-- MySQL 8 (e.g. running on `localhost:3305`)
+- MySQL 8 (e.g. running on `localhost:3306`)
 
 ## Getting Started
 
@@ -64,7 +64,7 @@ CircleHub/
 cd circlehub-dotnet/CircleHub/CircleHub.Api
 
 # configure local secrets (never commit these)
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "server=localhost;port=3305;database=circlehub;user=root;password=YOUR_PASSWORD"
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "server=localhost;port=3306;database=circlehub;user=root;password=YOUR_PASSWORD"
 dotnet user-secrets set "Jwt:Key" "SOME_LONG_RANDOM_STRING"
 dotnet user-secrets set "Jwt:Issuer" "CircleHubApi"
 dotnet user-secrets set "Jwt:Audience" "CircleHubClient"
