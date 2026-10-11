@@ -45,3 +45,12 @@ export async function resetPassword(userId, token, password) {
 
   return response.data;
 }
+
+export async function changePassword(currentPassword, newPassword) {
+  const response = await apiClient.post("/auth/change-password", {
+    currentPassword,
+    newPassword,
+  });
+
+  return response.data;
+}

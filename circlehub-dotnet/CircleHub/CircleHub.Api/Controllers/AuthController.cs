@@ -204,5 +204,44 @@ namespace CircleHub.Api.Controllers
 
             return Ok(new ApiResponse<UserDto> { Data = UserDto.FromEntity(user) });
         }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
+        {
+            var userId = User.FindFirstValue("sub");
+            if (userId is null || !Guid.TryParse(userId, out var id))
+                return Unauthorized(new ApiErrorResponse
+                {
+                    Success = false,
+                    Message = "Not authorized, no token"
+                });
+
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user is null)
+                return Unauthorized(new ApiErrorResponse
+                {
+                    Success = false,
+                    Message = "Not authorized, user not found"
+                });
+
+            if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+                return BadRequest(new ApiErrorResponse
+                {
+                    Success = false,
+                    Message = "Your current password is incorrect"
+                });
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return Ok(new ApiResponse<string>
+            {
+                Success = true,
+                Message = "Your password has been changed successfully"
+            });
+        }
     }
 }

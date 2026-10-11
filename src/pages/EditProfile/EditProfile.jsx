@@ -1,4 +1,5 @@
 ﻿import EditProfileForm from "@/components/editprofile/EditProfileForm";
+import ChangePasswordForm from "@/components/editprofile/ChangePasswordForm";
 import ProfileSettingsForm from "@/components/editprofile/ProfileSettingsForm";
 import {
     Tabs,
@@ -84,7 +85,10 @@ export default function EditProfile() {
                     </div>
 
                     <TabsContent value="profile">
-                        <EditProfileForm onProfileUpdate={handleProfileUpdate} currentUser={userData} />
+                        <div className="flex flex-col gap-6">
+                            <EditProfileForm onProfileUpdate={handleProfileUpdate} currentUser={userData} />
+                            <ChangePasswordForm />
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="settings">
