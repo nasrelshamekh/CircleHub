@@ -76,12 +76,29 @@ builder.Services
 
         options.Events = new JwtBearerEvents
         {
-            OnTokenValidated = context =>
+            OnTokenValidated = async context =>
             {
                 var sub = context.Principal?.FindFirst("sub");
-                if (sub is null || !Guid.TryParse(sub.Value, out _))
+                if (sub is null || !Guid.TryParse(sub.Value, out var userId))
+                {
                     context.Fail("Invalid sub claim");
-                return Task.CompletedTask;
+                    return;
+                }
+
+                // Tokens minted before the latest password change carry a stale version.
+                var tokenVersion = 0;
+                var versionClaim = context.Principal?.FindFirst("tokenVersion");
+                if (versionClaim is not null)
+                    int.TryParse(versionClaim.Value, out tokenVersion);
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var currentVersion = await db.Users
+                    .Where(u => u.Id == userId)
+                    .Select(u => (int?)u.TokenVersion)
+                    .FirstOrDefaultAsync();
+
+                if (currentVersion is null || currentVersion.Value != tokenVersion)
+                    context.Fail("Token has been revoked");
             },
             OnChallenge = async context =>
             {

@@ -7,6 +7,8 @@
         public required string Username { get; set; }
         public required string Email { get; set; }
         public required string PasswordHash { get; set; }
+        // Bumped on every password change; tokens carrying an older version are rejected.
+        public int TokenVersion { get; set; }
         public string? Gender { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public string? JobTitle { get; set; }

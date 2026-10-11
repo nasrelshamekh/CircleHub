@@ -25,7 +25,8 @@ namespace CircleHub.Api.Services
             var claims = new List<Claim>
             {
                 new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new(JwtRegisteredClaimNames.UniqueName, user.Username)
+                new(JwtRegisteredClaimNames.UniqueName, user.Username),
+                new("tokenVersion", user.TokenVersion.ToString())
             };
 
             var token = new JwtSecurityToken(

@@ -234,6 +234,7 @@ namespace CircleHub.Api.Controllers
                 });
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            user.TokenVersion++;
             user.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 

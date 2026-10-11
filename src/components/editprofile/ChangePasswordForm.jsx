@@ -1,17 +1,21 @@
 import { LoaderCircle, Save } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import PasswordInput from "@/components/ui/PasswordInput";
+import { useAuth } from "@/hooks/useAuth";
 import { changePasswordSchema } from "@/lib/authValidation";
 import { changePassword } from "@/services/authApi";
 
 export default function ChangePasswordForm() {
+    const { setUserData } = useAuth();
+    const navigate = useNavigate();
+
     const {
         register,
         handleSubmit,
-        reset,
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: zodResolver(changePasswordSchema),
@@ -25,13 +29,12 @@ export default function ChangePasswordForm() {
 
     async function onSubmit(values) {
         try {
-            const response = await changePassword(
-                values.currentPassword,
-                values.newPassword
-            );
+            await changePassword(values.currentPassword, values.newPassword);
 
-            toast.success(response.message || "Your password has been changed");
-            reset();
+            // Changing the password revokes every session, this one included.
+            setUserData(null);
+            toast.success("Password changed. Please sign in again.");
+            navigate("/signin", { replace: true });
         } catch (error) {
             toast.error(
                 error.response?.data?.message ||

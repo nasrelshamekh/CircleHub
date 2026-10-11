@@ -94,6 +94,7 @@ namespace CircleHub.Api.Services
             user.PasswordResetTokenHash = null;
             user.PasswordResetTokenExpires = null;
             user.PasswordResetEmailSentAt = null;
+            user.TokenVersion++;
             user.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
