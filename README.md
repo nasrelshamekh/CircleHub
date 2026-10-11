@@ -6,7 +6,7 @@ Built as a monorepo: a React frontend plus an ASP.NET Core Web API backend backe
 
 ## Features
 
-- **Accounts** — register/login with email + username, JWT authentication, email verification (with resend cooldown), forgot/reset password, and signed-in password change
+- **Accounts** — register/login with email + username, JWT authentication, email verification (with resend cooldown), forgot/reset password, and signed-in password change (which signs out every session)
 - **Profiles** — avatar & cover uploads, bio, job title, dates, profile visibility
 - **Posts** — text and image posts, edit content and replace images, delete, like/unlike
 - **Comments** — thread comments on posts
@@ -137,6 +137,6 @@ All protected endpoints require a `Bearer` token. Auth is username-or-email + pa
 ## Security Notes
 
 - Passwords are hashed with BCrypt.
-- JWT `sub` claims are validated as GUIDs on every request.
+- JWT `sub` claims are validated as GUIDs on every request, and a per-user token version rejects tokens minted before the latest password change.
 - Uploads are validated by file type magic bytes and size, and are served only through an allow-listed static file content-type map.
 - Email credentials, DB connection string, and the JWT signing key are never committed.
