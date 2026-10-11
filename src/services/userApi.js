@@ -62,7 +62,7 @@ export async function updateProfile({ name, jobTitle, bio, location, website, ge
   if (bio != null) formData.append("bio", bio);
   if (location != null) formData.append("location", location);
   if (website != null) formData.append("website", website);
-  if (gender != null) formData.append("gender", gender);
+  if (gender != null && gender !== "") formData.append("gender", gender);
   if (dateOfBirth != null && dateOfBirth !== "") formData.append("dateOfBirth", dateOfBirth);
 
   if (Array.isArray(skills)) {

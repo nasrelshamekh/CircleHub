@@ -1,6 +1,7 @@
 ﻿import { Save } from "lucide-react";
 import { useState } from "react";
 import ProfileImageUpload from "./ProfileImageUpload";
+import ThemedDropdownSelect from "@/components/ui/ThemedDropdownSelect";
 
 function toDateInputValue(value) {
     if (!value) return "";
@@ -18,6 +19,21 @@ function toDateInputValue(value) {
     return "";
 }
 
+const genderOptions = [
+    {
+        value: "male",
+        label: "Male",
+    },
+    {
+        value: "female",
+        label: "Female",
+    },
+    {
+        value: "other",
+        label: "Other",
+    },
+];
+
 export default function EditProfileForm({ onProfileUpdate, currentUser }) {
 
     const [formData, setFormData] = useState({
@@ -28,6 +44,7 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
         jobTitle: currentUser.jobTitle,
         location: currentUser.location,
         website: currentUser.website,
+        gender: currentUser.gender || "",
         dateOfBirth: toDateInputValue(currentUser.dateOfBirth),
         bio: currentUser.bio,
         skills: (currentUser.skills || []).join(", "),
@@ -45,6 +62,13 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
         }));
     }
 
+    function handleGenderChange(value) {
+        setFormData((currentData) => ({
+            ...currentData,
+            gender: value,
+        }));
+    }
+
     function handleSubmit(event) {
         event.preventDefault();
 
@@ -58,6 +82,7 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
             jobTitle: formData.jobTitle,
             location: formData.location,
             website: formData.website,
+            gender: formData.gender,
             bio: formData.bio,
             dateOfBirth: formData.dateOfBirth,
             skills,
@@ -189,6 +214,23 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
                             value={formData.dateOfBirth}
                             onChange={handleChange}
                             className="input-surface type-body-sm w-full rounded-lg px-4 py-3 text-primary outline-none placeholder:text-(--text-secondary)"
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <label htmlFor="gender" className="type-body-sm text-(--primary)">
+                            Gender
+                        </label>
+                        <ThemedDropdownSelect
+                            id="gender"
+                            value={formData.gender}
+                            options={
+                                formData.gender
+                                    ? genderOptions
+                                    : [{ value: "", label: "Select gender" }, ...genderOptions]
+                            }
+                            ariaLabel="Select gender"
+                            onChange={handleGenderChange}
                         />
                     </div>
 
