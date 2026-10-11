@@ -4,7 +4,10 @@ import SigninBG from "@/assets/signinpage.png"
 
 export default function AuthLayout() {
   const { pathname } = useLocation();
-  const authBackground = pathname === "/signin" ? SigninBG : RegisterBG;
+  const authBackground =
+    pathname === "/signin" || pathname === "/forgot-password"
+      ? SigninBG
+      : RegisterBG;
 
   return (
     <>

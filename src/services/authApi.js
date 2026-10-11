@@ -29,3 +29,19 @@ export async function resendVerificationEmail(email) {
 
   return response.data;
 }
+
+export async function forgotPassword(email) {
+  const response = await apiClient.post("/auth/forgot-password", { email });
+
+  return response.data;
+}
+
+export async function resetPassword(userId, token, password) {
+  const response = await apiClient.post("/auth/reset-password", {
+    userId,
+    token,
+    password,
+  });
+
+  return response.data;
+}

@@ -40,6 +40,7 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<UploadService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<EmailVerificationService>();
+builder.Services.AddScoped<PasswordResetService>();
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {

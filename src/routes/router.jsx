@@ -15,12 +15,14 @@ import EditProfile from "@/pages/EditProfile/EditProfile";
 import Explore from "@/pages/Explore/Explore";
 import Feed from "@/pages/Feed/Feed";
 import Followers from "@/pages/Followers/Followers";
+import ForgotPassword from "@/pages/ForgotPassword/ForgotPassword";
 import Landing from "@/pages/Landing/Landing";
 import ManageCommunity from "@/pages/ManageCommunity/ManageCommunity";
 import Notifications from "@/pages/Notifications/Notifications";
 import NotFound from "@/pages/NotFound/NotFound";
 import PostDetails from "@/pages/PostDetails/PostDetails";
 import Profile from "@/pages/Profile/Profile";
+import ResetPassword from "@/pages/ResetPassword/ResetPassword";
 import VerifyEmail from "@/pages/VerifyEmail/VerifyEmail";
 
 const router = createBrowserRouter([
@@ -43,6 +45,7 @@ const router = createBrowserRouter([
             children: [
               { path: "register", element: <Register /> },
               { path: "signin", element: <Signin /> },
+              { path: "forgot-password", element: <ForgotPassword /> },
             ],
           },
         ],
@@ -63,6 +66,10 @@ const router = createBrowserRouter([
       {
         path: "verify-email",
         element: <VerifyEmail />,
+      },
+      {
+        path: "reset-password",
+        element: <ResetPassword />,
       },
       {
         path: "/",

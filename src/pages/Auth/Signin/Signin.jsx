@@ -97,9 +97,14 @@ export default function Signin() {
                     </div>
 
                     <div className="space-y-3">
-                        <label htmlFor="password" className="type-label-md mb-3 block text-primary">
-                            Password
-                        </label>
+                        <div className="flex items-center justify-between">
+                            <label htmlFor="password" className="type-label-md block text-primary">
+                                Password
+                            </label>
+                            <Link to="/forgot-password" className="type-label-sm font-semibold text-(--primary) hover:underline">
+                                Forgot password?
+                            </Link>
+                        </div>
 
                         <div className="input-surface flex w-full items-center rounded-xl px-4 py-3">
                             <input

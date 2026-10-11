@@ -20,6 +20,9 @@
         public string? EmailVerificationTokenHash { get; set; }
         public DateTime? EmailVerificationTokenExpires { get; set; }
         public DateTime? VerificationEmailSentAt { get; set; }
+        public string? PasswordResetTokenHash { get; set; }
+        public DateTime? PasswordResetTokenExpires { get; set; }
+        public DateTime? PasswordResetEmailSentAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 

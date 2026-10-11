@@ -16,12 +16,18 @@ namespace CircleHub.Api.Controllers
         private readonly AppDbContext _db;
         private readonly TokenService _tokenService;
         private readonly EmailVerificationService _verification;
+        private readonly PasswordResetService _passwordReset;
 
-        public AuthController(AppDbContext db, TokenService tokenService, EmailVerificationService verification)
+        public AuthController(
+            AppDbContext db,
+            TokenService tokenService,
+            EmailVerificationService verification,
+            PasswordResetService passwordReset)
         {
             _db = db;
             _tokenService = tokenService;
             _verification = verification;
+            _passwordReset = passwordReset;
         }
 
         [HttpPost("register")]
@@ -138,6 +144,39 @@ namespace CircleHub.Api.Controllers
             {
                 Success = true,
                 Message = "If your email is registered with CircleHub and not verified yet, we emailed you a new verification link."
+            });
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)
+        {
+            await _passwordReset.RequestAsync(dto.Email);
+
+            // Same response whether or not the email exists, so the endpoint
+            // can't be used to discover registered accounts.
+            return Ok(new ApiResponse<string>
+            {
+                Success = true,
+                Message = "If an account exists for that email, we've sent a password reset link."
+            });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
+        {
+            var result = await _passwordReset.ResetAsync(dto.UserId, dto.Token, dto.Password);
+
+            if (result == ResetPasswordResult.InvalidToken)
+                return BadRequest(new ApiErrorResponse
+                {
+                    Success = false,
+                    Message = "This password reset link is invalid or has expired."
+                });
+
+            return Ok(new ApiResponse<string>
+            {
+                Success = true,
+                Message = "Your password has been reset. You can now sign in."
             });
         }
 

@@ -47,3 +47,23 @@ export const registerSchema = z.object({
         .string()
         .min(8, "Password must be at least 8 characters"),
 });
+
+export const forgotPasswordSchema = z.object({
+    email: z
+        .string()
+        .trim()
+        .email("Enter a valid email")
+        .transform((value) => value.toLowerCase()),
+});
+
+export const resetPasswordSchema = z
+    .object({
+        password: z
+            .string()
+            .min(8, "Password must be at least 8 characters"),
+        confirmPassword: z.string().min(1, "Confirm your password"),
+    })
+    .refine((values) => values.password === values.confirmPassword, {
+        message: "Passwords don't match",
+        path: ["confirmPassword"],
+    });
