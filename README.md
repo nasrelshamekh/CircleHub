@@ -6,7 +6,7 @@ Built as a monorepo: a React frontend plus an ASP.NET Core Web API backend backe
 
 ## Features
 
-- **Accounts** — register/login with email + username, JWT authentication, email verification (with resend cooldown)
+- **Accounts** — register/login with email + username, JWT authentication, email verification (with resend cooldown), forgot/reset password, and signed-in password change
 - **Profiles** — avatar & cover uploads, bio, job title, dates, profile visibility
 - **Posts** — text and image posts, edit content and replace images, delete, like/unlike
 - **Comments** — thread comments on posts
