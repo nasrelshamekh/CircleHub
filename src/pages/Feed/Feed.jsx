@@ -69,7 +69,7 @@ export default function Feed() {
                     />
                 ))}
 
-                {/* Invisible sentinel â€” triggers loadMore when it enters view. */}
+                {/* Invisible sentinel — triggers loadMore when it enters view. */}
                 {!isLoading && hasMore && (
                     <div ref={sentinelRef} className="h-1" />
                 )}

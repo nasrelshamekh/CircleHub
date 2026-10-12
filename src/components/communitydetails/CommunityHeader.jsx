@@ -66,7 +66,7 @@ export default function CommunityHeader({ community, membersCount, postsCount, o
                                         </Link>
                                     )}
                                     {/* Leave is available to moderators and regular members. Admins can't
-                                        leave without transferring ownership â€” no button. */}
+                                        leave without transferring ownership — no button. */}
                                     {!isAdmin && isJoined && (
                                         <button
                                             type="button"

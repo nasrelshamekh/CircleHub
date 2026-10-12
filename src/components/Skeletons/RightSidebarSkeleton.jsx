@@ -3,7 +3,7 @@
 export default function RightSidebarSkeleton() {
     return (
         <div className="space-y-6" aria-hidden="true">
-            {/* Suggested People â€” 5 ghost rows */}
+            {/* Suggested People — 5 ghost rows */}
             <div className="content-card p-4">
                 <Skeleton className="mb-4 h-6 w-40" />
 
@@ -23,7 +23,7 @@ export default function RightSidebarSkeleton() {
                 </div>
             </div>
 
-            {/* Suggested Communities â€” 2 ghost cards */}
+            {/* Suggested Communities — 2 ghost cards */}
             <div className="content-card p-4">
                 <Skeleton className="mb-4 h-6 w-52" />
 

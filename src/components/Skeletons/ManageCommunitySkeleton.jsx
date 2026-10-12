@@ -28,7 +28,7 @@ export default function ManageCommunitySkeleton() {
                 ))}
             </div>
 
-            {/* Content panel â€” approximates the shape of the Members tab. */}
+            {/* Content panel — approximates the shape of the Members tab. */}
             <div className="content-card-padded space-y-3">
                 <div className="mb-5 space-y-2">
                     <Skeleton className="h-5 w-40" />

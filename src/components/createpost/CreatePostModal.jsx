@@ -110,7 +110,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                     className="button-primary flex justify-center items-center gap-2 py-3 disabled:opacity-60"
                 >
                     <CirclePlus size={20} />
-                    {createPost.isPending ? "Postingâ€¦" : "Post"}
+                    {createPost.isPending ? "Posting…" : "Post"}
                 </button>
             </DialogContent>
         </Dialog>
