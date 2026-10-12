@@ -45,6 +45,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                     // Community posts stay in their community.
                     if (!community) {
                         navigate("/feed");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
                     }
                 },
             }
