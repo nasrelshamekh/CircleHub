@@ -7,6 +7,7 @@
 } from "@/components/ui/dialog"
 import { CirclePlus, Images, X } from "lucide-react"
 import { useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
 import { useCreatePost } from "@/hooks/mutations/useCreatePost"
@@ -17,6 +18,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
     const [content, setContent] = useState("");
     const modalFileInput = useRef(null);
     const createPost = useCreatePost();
+    const navigate = useNavigate();
 
     function handleSubmit() {
         const trimmed = content.trim();
@@ -37,6 +39,13 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                     setContent("");
                     handleRemovePhoto();
                     onOpenChange(false);
+
+                    // Public posts land in the feed so the new post is visible,
+                    // no matter which page the composer was opened from.
+                    // Community posts stay in their community.
+                    if (!community) {
+                        navigate("/feed");
+                    }
                 },
             }
         );
