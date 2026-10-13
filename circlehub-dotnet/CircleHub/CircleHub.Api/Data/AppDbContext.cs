@@ -18,6 +18,9 @@ namespace CircleHub.Api.Data
         public DbSet<CommunityJoinRequest> CommunityJoinRequests => Set<CommunityJoinRequest>();
         public DbSet<CommunityPostModerationLog> CommunityModerationLogs => Set<CommunityPostModerationLog>();
         public DbSet<Follow> Follows => Set<Follow>();
+        public DbSet<Conversation> Conversations => Set<Conversation>();
+        public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
+        public DbSet<Message> Messages => Set<Message>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -34,6 +37,36 @@ namespace CircleHub.Api.Data
                 .WithMany(u => u.Followers)
                 .HasForeignKey(f => f.FollowingId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ConversationParticipant>()
+                .HasOne(p => p.Conversation)
+                .WithMany(c => c.Participants)
+                .HasForeignKey(p => p.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ConversationParticipant>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.Conversation)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(m => m.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.Sender)
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.Post)
+                .WithMany()
+                .HasForeignKey(m => m.PostId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<User>().Property(u => u.ProfileVisibility).HasConversion<string>().HasMaxLength(20);
             modelBuilder.Entity<User>().Property(u => u.MessagesFrom).HasConversion<string>().HasMaxLength(20);
@@ -53,6 +86,9 @@ namespace CircleHub.Api.Data
             modelBuilder.Entity<Follow>().HasIndex(f => new { f.FollowerId, f.FollowingId }).IsUnique();
             modelBuilder.Entity<CommunityMember>().HasIndex(m => new { m.CommunityId, m.UserId }).IsUnique();
             modelBuilder.Entity<CommunityJoinRequest>().HasIndex(r => new { r.CommunityId, r.UserId }).IsUnique();
+            modelBuilder.Entity<ConversationParticipant>().HasIndex(p => new { p.ConversationId, p.UserId }).IsUnique();
+            modelBuilder.Entity<Conversation>().HasIndex(c => c.LastMessageAt);
+            modelBuilder.Entity<Message>().HasIndex(m => new { m.ConversationId, m.CreatedAt });
         }
     }
 }

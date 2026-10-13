@@ -203,6 +203,50 @@ namespace CircleHub.Api.Migrations
                     b.ToTable("CommunityModerationLogs");
                 });
 
+            modelBuilder.Entity("CircleHub.Api.Entities.Conversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("LastMessageAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastMessageAt");
+
+                    b.ToTable("Conversations");
+                });
+
+            modelBuilder.Entity("CircleHub.Api.Entities.ConversationParticipant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("LastReadAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ConversationId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ConversationParticipants");
+                });
+
             modelBuilder.Entity("CircleHub.Api.Entities.Follow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -251,6 +295,38 @@ namespace CircleHub.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Likes");
+                });
+
+            modelBuilder.Entity("CircleHub.Api.Entities.Message", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Content")
+                        .HasColumnType("longtext");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("PostId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("ConversationId", "CreatedAt");
+
+                    b.ToTable("Messages");
                 });
 
             modelBuilder.Entity("CircleHub.Api.Entities.Post", b =>
@@ -486,6 +562,25 @@ namespace CircleHub.Api.Migrations
                     b.Navigation("Community");
                 });
 
+            modelBuilder.Entity("CircleHub.Api.Entities.ConversationParticipant", b =>
+                {
+                    b.HasOne("CircleHub.Api.Entities.Conversation", "Conversation")
+                        .WithMany("Participants")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CircleHub.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CircleHub.Api.Entities.Follow", b =>
                 {
                     b.HasOne("CircleHub.Api.Entities.User", "Follower")
@@ -524,6 +619,32 @@ namespace CircleHub.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CircleHub.Api.Entities.Message", b =>
+                {
+                    b.HasOne("CircleHub.Api.Entities.Conversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CircleHub.Api.Entities.Post", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CircleHub.Api.Entities.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("Post");
+
+                    b.Navigation("Sender");
+                });
+
             modelBuilder.Entity("CircleHub.Api.Entities.Post", b =>
                 {
                     b.HasOne("CircleHub.Api.Entities.User", "Author")
@@ -550,6 +671,13 @@ namespace CircleHub.Api.Migrations
                     b.Navigation("Posts");
 
                     b.Navigation("Requests");
+                });
+
+            modelBuilder.Entity("CircleHub.Api.Entities.Conversation", b =>
+                {
+                    b.Navigation("Messages");
+
+                    b.Navigation("Participants");
                 });
 
             modelBuilder.Entity("CircleHub.Api.Entities.Post", b =>
