@@ -11,6 +11,7 @@
         public string? Bio { get; set; }
         public string? Location { get; set; }
         public string? Website { get; set; }
+        public string ProfileVisibility { get; set; } = string.Empty;
         public List<string> Skills { get; set; } = new();
         public string? Gender { get; set; }
         public DateTime? DateOfBirth { get; set; }
@@ -22,5 +23,12 @@
         public bool IsCurrentUser { get; set; }
         public bool IsFollowedByMe { get; set; }
         public bool FollowsMe { get; set; }
+
+        /// <summary>
+        /// True when the viewer may not see this user's posts and lists because
+        /// of their profile visibility setting. The header stays visible so the
+        /// viewer can still follow them.
+        /// </summary>
+        public bool IsProfileLocked { get; set; }
     }
 }

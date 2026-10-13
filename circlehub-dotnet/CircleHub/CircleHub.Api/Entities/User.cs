@@ -1,4 +1,6 @@
-﻿namespace CircleHub.Api.Entities
+﻿using CircleHub.Api.Enums;
+
+namespace CircleHub.Api.Entities
 {
     public class User
     {
@@ -17,6 +19,11 @@
         public string? Bio { get; set; }
         public string? Location { get; set; }
         public string? Website { get; set; }
+        // Privacy and notification preferences, all managed from the Settings tab.
+        public ProfileVisibility ProfileVisibility { get; set; } = ProfileVisibility.Public;
+        public MessagesFrom MessagesFrom { get; set; } = MessagesFrom.Followers;
+        public bool EmailNotifications { get; set; } = true;
+        public bool CommunityUpdates { get; set; } = true;
         public List<string> Skills { get; set; } = new();
         public bool EmailVerified { get; set; }
         public string? EmailVerificationTokenHash { get; set; }

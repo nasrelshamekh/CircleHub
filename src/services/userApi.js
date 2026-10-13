@@ -76,3 +76,14 @@ export async function updateProfile({ name, jobTitle, bio, location, website, ge
 
   return response.data;
 }
+
+export async function updateSettings({ profileVisibility, messagesFrom, emailNotifications, communityUpdates }) {
+  const response = await apiClient.patch("/users/me/settings", {
+    profileVisibility,
+    messagesFrom,
+    emailNotifications,
+    communityUpdates,
+  });
+
+  return response.data;
+}

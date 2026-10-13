@@ -302,6 +302,9 @@ namespace CircleHub.Api.Migrations
                     b.Property<string>("Bio")
                         .HasColumnType("longtext");
 
+                    b.Property<bool>("CommunityUpdates")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<string>("CoverImageUrl")
                         .HasColumnType("longtext");
 
@@ -315,6 +318,9 @@ namespace CircleHub.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
+
+                    b.Property<bool>("EmailNotifications")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTime?>("EmailVerificationTokenExpires")
                         .HasColumnType("datetime(6)");
@@ -334,6 +340,11 @@ namespace CircleHub.Api.Migrations
                     b.Property<string>("Location")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("MessagesFrom")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -350,6 +361,11 @@ namespace CircleHub.Api.Migrations
 
                     b.Property<string>("PasswordResetTokenHash")
                         .HasColumnType("longtext");
+
+                    b.Property<string>("ProfileVisibility")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.PrimitiveCollection<string>("Skills")
                         .IsRequired()

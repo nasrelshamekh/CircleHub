@@ -1,4 +1,4 @@
-﻿import { Grid2X2, Heart, Image, Info } from "lucide-react";
+﻿import { Grid2X2, Heart, Image, Info, Lock } from "lucide-react";
 
 import PostCard from "@/components/post/Post";
 import PostSkeleton from "@/components/Skeletons/PostSkeleton";
@@ -43,6 +43,28 @@ export default function ProfileTabs({
 }) {
     const userPosts = posts.filter((post) => post.author.id === user.id);
     const mediaPosts = posts.filter((post) => post.author.id === user.id && post.imageUrl);
+
+    if (user.isProfileLocked) {
+        const isFollowersOnly = user.profileVisibility === "followers";
+
+        return (
+            <div className="content-card-padded flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">
+                    <Lock size={24} />
+                </div>
+
+                <h3 className="type-title-lg text-primary">
+                    {isFollowersOnly ? "Followers only" : "This account is private"}
+                </h3>
+
+                <p className="type-body-sm-readable mt-2 max-w-sm text-secondary">
+                    {isFollowersOnly
+                        ? "Follow this account to see their posts and activity."
+                        : "This account only shares their posts with themselves."}
+                </p>
+            </div>
+        );
+    }
 
     return (
         <Tabs defaultValue="posts" className="min-w-0">

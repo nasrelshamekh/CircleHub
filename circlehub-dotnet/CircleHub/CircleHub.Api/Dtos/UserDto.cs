@@ -17,6 +17,10 @@ namespace CircleHub.Api.Dtos
         public string? Bio { get; set; }
         public string? Website { get; set; }
         public List<string> Skills { get; set; } = new();
+        public string ProfileVisibility { get; set; } = string.Empty;
+        public string MessagesFrom { get; set; } = string.Empty;
+        public bool EmailNotifications { get; set; }
+        public bool CommunityUpdates { get; set; }
         public bool EmailVerified { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
@@ -35,6 +39,10 @@ namespace CircleHub.Api.Dtos
             CoverImageUrl = user.CoverImageUrl,
             Bio = user.Bio,
             Website = user.Website,
+            ProfileVisibility = user.ProfileVisibility.ToString().ToLower(),
+            MessagesFrom = user.MessagesFrom.ToString().ToLower(),
+            EmailNotifications = user.EmailNotifications,
+            CommunityUpdates = user.CommunityUpdates,
             Skills = user.Skills,
             EmailVerified = user.EmailVerified,
             CreatedAt = user.CreatedAt,

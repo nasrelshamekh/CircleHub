@@ -56,6 +56,25 @@ namespace CircleHub.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Whether the viewer may see the user's posts, media and lists, per the
+        /// user's profile visibility. The user always sees their own content.
+        /// </summary>
+        private async Task<bool> CanViewUserContent(User user, Guid viewerId)
+        {
+            if (user.Id == viewerId)
+                return true;
+
+            if (user.ProfileVisibility == ProfileVisibility.Public)
+                return true;
+
+            if (user.ProfileVisibility != ProfileVisibility.Followers)
+                return false;
+
+            return await _db.Follows
+                .AnyAsync(f => f.FollowerId == viewerId && f.FollowingId == user.Id);
+        }
+
         [HttpGet("suggested")]
         public async Task<IActionResult> GetSuggestedUsers()
         {
@@ -99,6 +118,7 @@ namespace CircleHub.Api.Controllers
                 return Fail(StatusCodes.Status404NotFound, "User not found");
 
             var isCurrentUser = user.Id == currentUserId;
+            var canViewContent = await CanViewUserContent(user, currentUserId);
 
             var followersCount = await _db.Follows.CountAsync(f => f.FollowingId == user.Id);
             var followingCount = await _db.Follows.CountAsync(f => f.FollowerId == user.Id);
@@ -136,7 +156,9 @@ namespace CircleHub.Api.Controllers
                     PostsCount = postsCount,
                     IsCurrentUser = isCurrentUser,
                     IsFollowedByMe = isFollowedByMe,
-                    FollowsMe = followsMe
+                    FollowsMe = followsMe,
+                    IsProfileLocked = !canViewContent,
+                    ProfileVisibility = user.ProfileVisibility.ToString().ToLower()
                 }
             });
         }
@@ -204,6 +226,13 @@ namespace CircleHub.Api.Controllers
             if (user == null)
                 return Fail(StatusCodes.Status404NotFound, "User not found");
 
+            if (!await CanViewUserContent(user, currentUserId))
+                return Ok(new ApiResponse<List<UserCommunityDto>>
+                {
+                    Count = 0,
+                    Data = new List<UserCommunityDto>()
+                });
+
             var memberships = await _db.CommunityMembers
                 .Where(m => m.UserId == user.Id)
                 .OrderBy(m => m.JoinedAt)
@@ -256,6 +285,13 @@ namespace CircleHub.Api.Controllers
             if (user == null)
                 return Fail(StatusCodes.Status404NotFound, "User not found");
 
+            if (!await CanViewUserContent(user, currentUserId))
+                return Ok(new ApiResponse<List<FollowUserDto>>
+                {
+                    Count = 0,
+                    Data = new List<FollowUserDto>()
+                });
+
             var followers = await _db.Follows
                 .Where(f => f.FollowingId == user.Id)
                 .OrderByDescending(f => f.CreatedAt)
@@ -290,6 +326,13 @@ namespace CircleHub.Api.Controllers
 
             if (user == null)
                 return Fail(StatusCodes.Status404NotFound, "User not found");
+
+            if (!await CanViewUserContent(user, currentUserId))
+                return Ok(new ApiResponse<List<FollowUserDto>>
+                {
+                    Count = 0,
+                    Data = new List<FollowUserDto>()
+                });
 
             var following = await _db.Follows
                 .Where(f => f.FollowerId == user.Id)
@@ -400,6 +443,67 @@ namespace CircleHub.Api.Controllers
             return Ok(new ApiResponse<UserDto>
             {
                 Message = "Profile updated successfully",
+                Data = UserDto.FromEntity(user)
+            });
+        }
+
+        [HttpPatch("me/settings")]
+        public async Task<IActionResult> UpdateMySettings([FromBody] UpdateSettingsDto dto)
+        {
+            var currentUserId = CurrentUserId!.Value;
+
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == currentUserId);
+
+            if (user == null)
+                return Fail(StatusCodes.Status404NotFound, "User not found");
+
+            if (dto.ProfileVisibility is not null)
+            {
+                var visibility = dto.ProfileVisibility.Trim().ToLowerInvariant();
+
+                if (visibility is not ("public" or "followers" or "private"))
+                    return Fail(
+                        StatusCodes.Status400BadRequest,
+                        "Profile visibility must be public, followers, or private");
+
+                user.ProfileVisibility = visibility switch
+                {
+                    "followers" => ProfileVisibility.Followers,
+                    "private" => ProfileVisibility.Private,
+                    _ => ProfileVisibility.Public
+                };
+            }
+
+            if (dto.MessagesFrom is not null)
+            {
+                var messagesFrom = dto.MessagesFrom.Trim().ToLowerInvariant();
+
+                if (messagesFrom is not ("everyone" or "followers" or "none"))
+                    return Fail(
+                        StatusCodes.Status400BadRequest,
+                        "Messages from must be everyone, followers, or none");
+
+                user.MessagesFrom = messagesFrom switch
+                {
+                    "everyone" => MessagesFrom.Everyone,
+                    "none" => MessagesFrom.None,
+                    _ => MessagesFrom.Followers
+                };
+            }
+
+            if (dto.EmailNotifications is not null)
+                user.EmailNotifications = dto.EmailNotifications.Value;
+
+            if (dto.CommunityUpdates is not null)
+                user.CommunityUpdates = dto.CommunityUpdates.Value;
+
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new ApiResponse<UserDto>
+            {
+                Message = "Settings updated successfully",
                 Data = UserDto.FromEntity(user)
             });
         }

@@ -1,7 +1,21 @@
-﻿import { Save } from "lucide-react";
+﻿import { useQueryClient } from "@tanstack/react-query";
+import { Save } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import ThemedDropdownSelect from "@/components/ui/ThemedDropdownSelect";
+import { useAuth } from "@/hooks/useAuth";
+import { queryKeys } from "@/lib/queryKeys";
+import { updateSettings } from "@/services/userApi";
+
+function settingsFromUser(user) {
+    return {
+        profileVisibility: user?.profileVisibility ?? "public",
+        messagesFrom: user?.messagesFrom ?? "followers",
+        emailNotifications: user?.emailNotifications ?? true,
+        communityUpdates: user?.communityUpdates ?? true,
+    };
+}
 
 const profileVisibilityOptions = [
     {
@@ -34,18 +48,39 @@ const messageOptions = [
 ];
 
 export default function ProfileSettingsForm() {
-    const [settings, setSettings] = useState({
-        profileVisibility: "public",
-        messagesFrom: "followers",
-        emailNotifications: true,
-        communityUpdates: true,
-    });
+    const { userData, setUserData } = useAuth();
+    const queryClient = useQueryClient();
+    const [settings, setSettings] = useState(() => settingsFromUser(userData));
+    const [isSaving, setIsSaving] = useState(false);
 
     function updateSetting(name, value) {
         setSettings((currentSettings) => ({
             ...currentSettings,
             [name]: value,
         }));
+    }
+
+    async function handleSave() {
+        if (isSaving) return;
+
+        setIsSaving(true);
+
+        try {
+            const response = await updateSettings(settings);
+
+            setUserData(response.data);
+
+            const username = response.data?.username ?? userData?.username;
+            if (username) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.user(username) });
+            }
+
+            toast.success(response.message || "Settings updated successfully");
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to update settings");
+        } finally {
+            setIsSaving(false);
+        }
     }
 
     return (
@@ -120,9 +155,14 @@ export default function ProfileSettingsForm() {
                     </label>
                 </div>
 
-                <button type="button" className="button-primary mx-auto flex w-50 items-center justify-center gap-2 p-3">
+                <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="button-primary mx-auto flex w-50 items-center justify-center gap-2 p-3 disabled:opacity-60"
+                >
                     <Save size={18} />
-                    Save Changes
+                    {isSaving ? "Saving..." : "Save Changes"}
                 </button>
             </div>
         </section>
