@@ -198,14 +198,17 @@ namespace CircleHub.Api.Controllers
             if (user == null)
                 return Fail(StatusCodes.Status404NotFound, "User not found");
 
-            var likedPosts = await _db.Likes
-                .Where(l => l.UserId == user.Id)
-                .Where(l => _db.Posts
-                    .Where(p => p.Id == l.PostId)
-                    .WhereVisibleTo(currentUserId)
-                    .Any())
-                .OrderByDescending(l => l.CreatedAt)
-                .Select(l => l.Post)
+            if (!await CanViewUserContent(user, currentUserId))
+                return Ok(new ApiResponse<List<PostDto>>
+                {
+                    Count = 0,
+                    Data = new List<PostDto>()
+                });
+
+            var likedPosts = await _db.Posts
+                .Where(p => p.Likes.Any(l => l.UserId == user.Id))
+                .WhereVisibleTo(currentUserId)
+                .OrderByDescending(p => p.CreatedAt)
                 .Select(PostDto.Projection(currentUserId, includeCommunity: true))
                 .ToListAsync();
 
