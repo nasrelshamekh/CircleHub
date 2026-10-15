@@ -33,7 +33,12 @@ export default function Navbar() {
                         <img src={logo} alt="CircleHub Logo" className='w-40 max-w-full lg:w-50' />
                     </NavLink>
                     <div className='flex shrink-0 items-center gap-3'>
-                        <button type="button" className='icon-button' aria-label="Open messages">
+                        <button
+                            type="button"
+                            onClick={() => navigate("/messages")}
+                            className='icon-button'
+                            aria-label="Open messages"
+                        >
                             <MessageCircleMore size={22} />
                         </button>
                         <button

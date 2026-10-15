@@ -1,0 +1,35 @@
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { getConversation } from "@/services/messageApi";
+import { queryKeys } from "@/lib/queryKeys";
+
+export function useConversation(id) {
+    const queryClient = useQueryClient();
+
+    const query = useQuery({
+        queryKey: queryKeys.conversation(id),
+        queryFn: async () => {
+            const { data } = await getConversation(id);
+            return data;
+        },
+        enabled: Boolean(id),
+    });
+
+    // Fetching a thread marks it read, so as soon as it arrives refresh the list
+    // to drop that conversation's unread badge. The list and the thread share a
+    // page and window-focus refetching is off, so nothing else would.
+    useEffect(() => {
+        if (!query.data) return;
+
+        queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
+    }, [query.data, queryClient]);
+
+    return {
+        conversation: query.data,
+        messages: query.data?.messages ?? [],
+        otherUser: query.data?.otherUser,
+        isLoading: query.isPending,
+        isError: query.isError,
+    };
+}

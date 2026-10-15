@@ -7,11 +7,14 @@ import {
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 
+import { SharePostDialog } from "@/components/messages/SharePostDialog";
+
 export default function PostActions({ post, onToggleLike }) {
 
   const navigate = useNavigate();
   const isLiked = post.isLikedByMe;
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   function handleToggleLike() {
     setHasInteracted(true);
@@ -49,11 +52,17 @@ export default function PostActions({ post, onToggleLike }) {
           <span>{post.commentsCount}</span>
         </button>
 
-        <button type="button" className="post-action-button" aria-label="Share post">
+        <button type="button" onClick={() => setShareOpen(true)} className="post-action-button" aria-label="Send post">
           <Send size={20} />
         </button>
 
       </div>
+
+      <SharePostDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        post={post}
+      />
     </>
   )
 }

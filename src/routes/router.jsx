@@ -18,6 +18,7 @@ import Followers from "@/pages/Followers/Followers";
 import ForgotPassword from "@/pages/ForgotPassword/ForgotPassword";
 import Landing from "@/pages/Landing/Landing";
 import ManageCommunity from "@/pages/ManageCommunity/ManageCommunity";
+import Messages from "@/pages/Messages/Messages";
 import Notifications from "@/pages/Notifications/Notifications";
 import NotFound from "@/pages/NotFound/NotFound";
 import PostDetails from "@/pages/PostDetails/PostDetails";
@@ -59,6 +60,8 @@ const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="/feed" replace /> },
               { path: "feed", element: <Feed /> },
+              { path: "messages", element: <Messages /> },
+              { path: "messages/:id", element: <Messages /> },
             ],
           },
         ],

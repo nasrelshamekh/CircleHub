@@ -5,7 +5,8 @@
   Bell,
   Settings,
   CircleUser,
-  Network
+  Network,
+  MessageCircleMore
 } from "lucide-react";
 import SidebarNavItem from './SidebarNavItem';
 import { useAuth } from "@/hooks/useAuth";
@@ -39,6 +40,11 @@ export default function SidebarNav({ isExpanded }) {
       label: "Communities",
       to: `/communities`,
       icon: Network,
+    },
+    {
+      label: "Messages",
+      to: "/messages",
+      icon: MessageCircleMore,
     },
     {
       label: "Notifications",

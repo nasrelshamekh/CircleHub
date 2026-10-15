@@ -151,6 +151,11 @@ export function useToggleFollow() {
                     queryKey: queryKeys.userFollowing(myUsername),
                 });
             }
+            // The "send post to a friend" picker lists people you follow, so it
+            // goes stale the moment the follow graph changes.
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.messageRecipients(),
+            });
         },
     });
 }

@@ -21,4 +21,8 @@
     communityRequests: (id) => ["community", id, "requests"],
 
     search: (query) => ["search", query],
+
+    conversations: () => ["messages", "conversations"],
+    conversation: (id) => ["messages", "conversations", id],
+    messageRecipients: () => ["messages", "recipients"],
 };
