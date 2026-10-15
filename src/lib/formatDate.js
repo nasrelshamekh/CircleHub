@@ -26,3 +26,20 @@ export function formatShortTime(date) {
 
   return format(d, "MMM d");
 }
+
+// Stamp revealed under a message bubble; matches the mobile thread.
+export function formatMessageTime(date) {
+  return format(new Date(date), "MMM d, h:mm a");
+}
+
+// Day separator in the message thread, e.g. "October 13th" (year only when it
+// is not the current one).
+export function formatMessageDate(date) {
+  const d = new Date(date);
+
+  if (isThisYear(d)) {
+    return format(d, "MMMM do");
+  }
+
+  return format(d, "MMMM do, yyyy");
+}

@@ -1,49 +1,128 @@
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { isSameDay } from "date-fns";
+import { toast } from "sonner";
 
 import Avatar from "@/components/profileimages/Avatar";
 import MessageComposer from "./MessageComposer";
 import SharedPostCard from "./SharedPostCard";
+import { formatMessageDate, formatMessageTime } from "@/lib/formatDate";
 
-function MessageBubble({ message }) {
+// The avatar lines up with the bubble, not the stamp row, so it only sits next
+// to the text it belongs to. Tap/click a message to reveal when it was sent
+// (and copy it) — the stamp stays hidden otherwise so the thread reads as
+// bubbles only.
+function MessageBubble({ message, otherUser }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    const hasContent = Boolean(message.content);
+
+    function toggleDetails() {
+        setIsExpanded((expanded) => !expanded);
+    }
+
+    function handleKeyDown(event) {
+        if (event.key !== "Enter" && event.key !== " ") return;
+
+        event.preventDefault();
+        toggleDetails();
+    }
+
+    async function handleCopy(event) {
+        event.stopPropagation();
+
+        try {
+            await navigator.clipboard.writeText(message.content);
+            toast.success("Message copied");
+        } catch {
+            toast.error("Could not copy the message.");
+        }
+    }
+
     return (
-        <div className={`flex ${message.isMine ? "justify-end" : "justify-start"}`}>
+        <div
+            role="button"
+            tabIndex={0}
+            aria-expanded={isExpanded}
+            onClick={toggleDetails}
+            onKeyDown={handleKeyDown}
+            className="flex cursor-pointer flex-col"
+        >
             <div
-                className={`flex max-w-[80%] flex-col ${
-                    message.isMine ? "items-end" : "items-start"
+                className={`flex items-end gap-2 ${
+                    message.isMine ? "justify-end" : "justify-start"
                 }`}
             >
-                {message.content && (
-                    <div
-                        className={`type-body-sm whitespace-pre-wrap break-words rounded-2xl px-4 py-2 ${
-                            message.isMine
-                                ? "bg-(--primary) text-(--surface-lowest)"
-                                : "bg-(--surface-container) text-primary"
-                        }`}
-                    >
-                        {message.content}
-                    </div>
+                {!message.isMine && (
+                    <Avatar
+                        src={otherUser?.avatarUrl}
+                        alt={otherUser?.name}
+                        className="avatar-sm shrink-0"
+                    />
                 )}
 
-                {message.postId && <SharedPostCard post={message.post} />}
+                <div
+                    className={`flex max-w-[80%] flex-col ${
+                        message.isMine ? "items-end" : "items-start"
+                    }`}
+                >
+                    {hasContent && (
+                        <div
+                            className={`type-body-sm whitespace-pre-wrap break-words rounded-2xl px-4 py-2 ${
+                                message.isMine
+                                    ? "bg-(--primary) text-(--on-primary)"
+                                    : "bg-(--surface-container) text-primary"
+                            }`}
+                        >
+                            {message.content}
+                        </div>
+                    )}
 
-                <span className="type-label-sm mt-1 text-secondary">
-                    {formatPostTime(message.createdAt)}
-                </span>
+                    {message.postId && <SharedPostCard post={message.post} />}
+                </div>
             </div>
+
+            {isExpanded && (
+                <div
+                    className={`type-label-sm mt-1 flex items-center gap-3 text-secondary ${
+                        message.isMine ? "justify-end" : "pl-10"
+                    }`}
+                >
+                    <span>{formatMessageTime(message.createdAt)}</span>
+
+                    {hasContent && (
+                        <button
+                            type="button"
+                            onClick={handleCopy}
+                            className="font-semibold text-(--primary) hover:underline"
+                        >
+                            Copy
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
 
-function formatPostTime(value) {
-    const date = new Date(value);
-    return date.toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-    });
+// Day separator so a long thread reads as dated groups.
+function DateDivider({ value }) {
+    return (
+        <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-(--border)" />
+            <span className="type-label-sm text-secondary">
+                {formatMessageDate(value)}
+            </span>
+            <span className="h-px flex-1 bg-(--border)" />
+        </div>
+    );
+}
+
+function isNewDay(current, previous) {
+    if (!previous) return true;
+
+    return !isSameDay(new Date(current), new Date(previous));
 }
 
 export default function MessageThread({
@@ -60,7 +139,7 @@ export default function MessageThread({
 
     return (
         <div className="flex h-full flex-col">
-            <div className="flex items-center gap-3 border-b border-(--surface-high) px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-(--border) px-4 py-3">
                 <Link
                     to="/messages"
                     aria-label="Back to conversations"
@@ -102,8 +181,15 @@ export default function MessageThread({
                     </p>
                 )}
 
-                {messages.map((message) => (
-                    <MessageBubble key={message.id} message={message} />
+                {messages.map((message, index) => (
+                    <Fragment key={message.id}>
+                        {isNewDay(
+                            message.createdAt,
+                            messages[index - 1]?.createdAt
+                        ) && <DateDivider value={message.createdAt} />}
+
+                        <MessageBubble message={message} otherUser={otherUser} />
+                    </Fragment>
                 ))}
 
                 <div ref={bottomRef} />
