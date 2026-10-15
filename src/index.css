@@ -242,7 +242,7 @@
   ========================= */
 
   --outline: #908f9e;
-  --border: #fafafd;
+  --border: #464554;
 
   /* =========================
      ERROR
@@ -387,6 +387,13 @@ img {
 .surface-panel {
   background: var(--surface-low);
   border: 1px solid var(--border);
+}
+
+.avatar-sm {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  object-fit: cover;
 }
 
 .avatar-md {

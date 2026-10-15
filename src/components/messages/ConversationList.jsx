@@ -79,7 +79,7 @@ export default function ConversationList({ conversations, activeId }) {
                                     </span>
 
                                     {unread && (
-                                        <span className="type-label-sm flex min-w-5 items-center justify-center rounded-full bg-(--primary) px-1.5 py-0.5 text-(--surface-lowest)">
+                                        <span className="type-label-sm flex min-w-5 items-center justify-center rounded-full bg-(--primary) px-1.5 py-0.5 text-(--on-primary)">
                                             {conversation.unreadCount}
                                         </span>
                                     )}
