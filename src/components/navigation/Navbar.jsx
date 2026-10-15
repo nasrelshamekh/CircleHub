@@ -13,11 +13,13 @@ import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/hooks/useAuth'
 import Avatar from '@/components/profileimages/Avatar'
 import { toast } from 'sonner'
+import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 
 export default function Navbar() {
     const { toggleTheme, theme } = useTheme();
     const { userData, setUserData } = useAuth();
     const navigate = useNavigate();
+    const unreadCount = useUnreadMessages();
 
     function handleSignout() {
         setUserData(null);
@@ -36,10 +38,20 @@ export default function Navbar() {
                         <button
                             type="button"
                             onClick={() => navigate("/messages")}
-                            className='icon-button'
-                            aria-label="Open messages"
+                            className='icon-button relative'
+                            aria-label={
+                                unreadCount > 0
+                                    ? `Open messages, ${unreadCount} unread`
+                                    : "Open messages"
+                            }
                         >
                             <MessageCircleMore size={22} />
+
+                            {unreadCount > 0 && (
+                                <span className="type-label-sm absolute -right-1.5 -top-1 flex min-w-5 items-center justify-center rounded-full bg-(--primary) px-1 py-0.5 font-semibold text-(--on-primary)">
+                                    {unreadCount}
+                                </span>
+                            )}
                         </button>
                         <button
                             type="button"

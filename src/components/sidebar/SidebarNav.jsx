@@ -10,11 +10,13 @@
 } from "lucide-react";
 import SidebarNavItem from './SidebarNavItem';
 import { useAuth } from "@/hooks/useAuth";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 
 
 
 export default function SidebarNav({ isExpanded }) {
   const { userData } = useAuth();
+  const unreadCount = useUnreadMessages();
   const navItems = [
     {
       label: "Home",
@@ -45,6 +47,7 @@ export default function SidebarNav({ isExpanded }) {
       label: "Messages",
       to: "/messages",
       icon: MessageCircleMore,
+      badge: unreadCount,
     },
     {
       label: "Notifications",
@@ -67,6 +70,7 @@ export default function SidebarNav({ isExpanded }) {
             icon={item.icon}
             label={isExpanded ? item.label : undefined}
             title={item.label}
+            badge={item.badge}
           />
         ))}
       </nav>
