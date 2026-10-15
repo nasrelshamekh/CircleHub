@@ -60,7 +60,7 @@ export default function MessageThread({
 
     return (
         <div className="flex h-full flex-col">
-            <div className="flex items-center gap-3 px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-(--surface-high) px-4 py-3">
                 <Link
                     to="/messages"
                     aria-label="Back to conversations"

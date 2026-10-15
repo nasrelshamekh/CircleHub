@@ -5,7 +5,7 @@ import Avatar from "@/components/profileimages/Avatar";
 export default function SharedPostCard({ post }) {
     if (!post) {
         return (
-            <div className="mt-2 rounded-xl bg-(--surface-low) px-3 py-2">
+            <div className="mt-2 rounded-xl border border-(--surface-high) bg-(--surface-low) px-3 py-2">
                 <p className="type-body-sm text-secondary">
                     This post is no longer available.
                 </p>
@@ -16,7 +16,7 @@ export default function SharedPostCard({ post }) {
     return (
         <Link
             to={`/post/${post.id}`}
-            className="mt-2 block overflow-hidden rounded-xl bg-(--surface-low) transition-colors hover:bg-(--surface-high)"
+            className="mt-2 block overflow-hidden rounded-xl border border-(--surface-high) bg-(--surface-container) transition-colors hover:bg-(--surface-high)"
         >
             <div className="flex items-center gap-2 px-3 py-2">
                 <Avatar

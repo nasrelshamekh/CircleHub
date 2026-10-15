@@ -39,8 +39,8 @@ export default function ConversationList({ conversations, activeId }) {
                             to={`/messages/${conversation.id}`}
                             className={`flex items-center gap-3 px-4 py-3 transition-colors ${
                                 isActive
-                                    ? "bg-(--surface-container)"
-                                    : "hover:bg-(--surface)"
+                                    ? "bg-(--active)"
+                                    : "hover:bg-(--hover)"
                             }`}
                         >
                             <Avatar
@@ -51,7 +51,13 @@ export default function ConversationList({ conversations, activeId }) {
 
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-2">
-                                    <span className="type-label-md truncate text-primary">
+                                    <span
+                                        className={`type-label-md truncate ${
+                                            isActive
+                                                ? "text-(--primary)"
+                                                : "text-primary"
+                                        }`}
+                                    >
                                         {conversation.otherUser.name}
                                     </span>
                                     <span className="type-label-sm shrink-0 text-secondary">

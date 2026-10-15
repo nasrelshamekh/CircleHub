@@ -32,7 +32,7 @@ export default function MessageComposer({ recipientUsername }) {
     return (
         <form
             onSubmit={handleSubmit}
-            className="flex items-center gap-2 bg-(--surface-lowest) p-3"
+            className="flex items-center gap-2 border-t border-(--surface-high) bg-(--surface-lowest) p-3"
         >
             <input
                 value={text}
@@ -40,7 +40,7 @@ export default function MessageComposer({ recipientUsername }) {
                 placeholder="Write a message..."
                 aria-label="Message"
                 maxLength={2000}
-                className="input-surface type-body-sm min-w-0 flex-1 rounded-full px-4 py-2.5"
+                className="input-surface type-body-sm min-w-0 flex-1 rounded-full border border-(--surface-high) px-4 py-2.5"
             />
 
             <button
