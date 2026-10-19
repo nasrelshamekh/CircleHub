@@ -97,6 +97,21 @@ not lost.
 The registry is process-local state: an instance can only deliver to the connections it owns. Running more
 than one API instance therefore needs a shared backplane (Redis) and sticky sessions at the proxy.
 
+`Users.LastSeenAt` is the durable half: it is stamped when a user's **first** connection opens and when their
+**last** one closes, so a process that dies without running `OnDisconnectedAsync` still leaves a believable
+time behind. `Services/PresenceService` owns both halves — `IsOnline` for the REST projections, the stamping,
+and the fan-out — and pushes `ChatHub.PresenceChangedMethod` (`PresenceChanged`) carrying
+`Dtos/PresenceChangedEnvelope` `{ userId, isOnline, lastSeenAt }`.
+
+Only a *transition* is announced: a second tab belongs to a user who is already shown online, and the offline
+event (the only one that carries a timestamp) is sent only when the connection count reaches zero. The
+audience is the other participants of the user's existing conversations, so presence is never visible to
+strangers; on the REST side it only exists on `ConversationUserDto` (`ConversationDto.OtherUser`,
+`ConversationThreadDto.OtherUser`), never on `AuthorDto`, which every post and comment also returns.
+
+`OnDisconnectedAsync` stamps with `CancellationToken.None` on purpose: `Context.ConnectionAborted` is already
+cancelled at that point, so passing it would cancel the write that records when the user was last around.
+
 ### CORS
 
 SignalR requires credentials on the cross-origin negotiation request, which is incompatible with the global
@@ -137,6 +152,17 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
 - `useUnreadTitle` (mounted in the authenticated layout, not at the app root — the conversations query has no
   auth guard) prefixes the tab title with `(n)` while unread messages exist.
 - The sender id is not part of the payload call — it is added by the server.
+- `PresenceChanged` is *patched* into the caches (`withPresence` in the context) rather than invalidated. One
+  helper covers both shapes React Query holds under the `conversations()` prefix — the list is an array, a
+  thread is `{ pages }` — and returns its input untouched when nothing matched, so unrelated caches keep their
+  identity. A refetch still follows from `useConversation`'s invalidate-on-change effect; the patch is what
+  makes the change visible without waiting for a round trip.
+- `PresenceLabel` is the only place the wording lives ("Online" / "Last seen 12 minutes ago" / "Offline" for a
+  user who has never connected) and `PresenceDot` the avatar dot; the list row and the thread header both use
+  them, so the two cannot drift apart. The relative text re-renders on a 60s interval while the other person
+  is away — a frozen "12 minutes ago" is wrong within a minute — and nothing ticks while they are online.
+- `onreconnected` invalidates `conversations()`: presence moved while the socket was down and no event was
+  delivered to us for that window.
 - In development, React StrictMode mounts effects twice, so the first connect is stopped mid-negotiation and
   SignalR logs "The connection was stopped during negotiation" before the second one succeeds. That is
   expected dev-only noise, not a failure.
@@ -149,6 +175,12 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
   limit needs extending").
 - The fan-out targets the recipient only. The sender's other tabs are not notified; the web client updates
   its own cache from the `POST /api/messages` response.
+- Presence is process-local, so with more than one API instance a user connected to instance B reads as
+  offline on instance A and only receives events raised by the instance they are connected to. Same
+  backplane + sticky-session caveat as the connection registry.
+- A presence event also costs one refetch of the list and of the open thread (`useConversation` invalidates
+  the `conversations()` prefix whenever its data changes). Narrowing that effect to "the messages changed"
+  would remove it; it was left alone to keep the presence step's blast radius small.
 
 ## Environment notes / gotchas
 
@@ -177,6 +209,10 @@ database by the throwaway harness in `%TEMP%\opencode` (started so it does not d
 - `web-test-setup.ps1` + `web-test-badge.ps1` — mint a session for a real user and a sender the policy
   allows, for driving the browser against a running dev server (inject the token into `localStorage`, then
   open the thread and watch it update).
+- `mint-token.ps1 -Username <u> -OutFile <f>` — mint a real JWT for any dev user.
+- `sigtest\presence-client.mjs` — connect one user to the hub and print every `PresenceChanged` envelope
+  received. Used to watch a browser flip between "Online" and "Last seen …", and to prove that a user with no
+  shared conversation receives nothing.
 
 It requires MySQL running locally plus `npm install @microsoft/signalr` in that directory. Keep it in sync
 with the hub contract when the contract changes.

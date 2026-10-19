@@ -19,6 +19,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 6 | Expo Push Service fallback for offline recipients | deferred to the mobile phase |
 | 7 | Web client: `@microsoft/signalr` connection, live thread + unread badge, then polish (status, optimistic send, scroll, tab title) | done, verified |
 | 8 | Mobile client (SignalR + Expo push) | deferred until the web app is accepted |
+| 9 | Presence: online / last seen in the thread header and the conversation list | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
 pieces (5 and 6) land together with the mobile client (8), because Expo push only has a consumer there.
@@ -213,6 +214,64 @@ Browser-driving notes (they cost time to rediscover): the programmatic `el.scrol
 browser tool does, and that is what the scroll checks used. React-controlled inputs need the native value
 setter plus an `input` event (or the fill tool) before `requestSubmit()`.
 
+### Step 9 — Presence (done, verified)
+
+The owner asked for the `@username` under the other person's name in the thread header to become presence
+("Online" / "Last seen …"), and for the same information in the conversation list. Confirmed wording:
+**"Online"**, **"Last seen 12 minutes ago"**, and "Offline" for a user who has never connected. Visible only to
+people who already share a conversation with that user.
+
+Added:
+
+- `Entities/User.cs` + migration `20261019182004_AddUserLastSeenAt` — nullable `LastSeenAt`. Stamped on the
+  first connection and on the last disconnect, so it is durable across a restart, unlike the in-memory
+  registry.
+- `Services/PresenceService.cs` — `IsOnline` for the REST projections, the stamping, and the fan-out to the
+  other participants of the user's conversations via `IHubContext<ChatHub>` + `Clients.Users(...)`.
+- `Hubs/ChatHub.cs` — `PresenceChangedMethod` (`PresenceChanged`) and the connect/disconnect hooks. Only a
+  transition is announced (first connection / last disconnect). The disconnect path passes
+  `CancellationToken.None`, because `Context.ConnectionAborted` is already cancelled there and would cancel
+  the `LastSeenAt` write.
+- `Dtos/PresenceChangedEnvelope.cs` — `{ userId, isOnline, lastSeenAt }` (the timestamp only on the offline
+  event).
+- `Dtos/ConversationUserDto.cs` — replaces `AuthorDto` as `OtherUser` in `ConversationDto` and
+  `ConversationThreadDto`, adding `IsOnline` + `LastSeenAt`. `AuthorDto` is untouched, so posts, comments and
+  the recipient picker are unaffected. `IsOnline` cannot be projected by SQL, so `MessagesController`
+  fills it in after the query and drops `LastSeenAt` while the user is online (consistent with the event).
+- `src/components/messages/PresenceLabel.jsx` + `PresenceDot.jsx` — the wording and the avatar dot.
+- `src/components/messages/MessageThread.jsx` — the header's second line is now presence, replacing
+  `@username`.
+- `src/components/messages/ConversationList.jsx` — presence line + dot on the avatar.
+- `src/context/ChatConnectionContext.jsx` — handles `PresenceChanged` by patching the list and thread caches
+  (both shapes under the `conversations()` prefix, left untouched when nothing matched), and resyncs via
+  `invalidateQueries` on reconnect, since presence moved while the socket was down.
+- `src/lib/formatDate.js` — `formatLastSeen`, with "Last seen just now" under a minute (date-fns's "less than a
+  minute ago" reads badly under a name).
+- `src/index.css` — `--presence-online` in both themes (green light / `#4ade80` dark); the palette has no
+  success colour to borrow.
+
+Verification: `dotnet build` 0 warnings; `npx eslint .` exits 0; `npm run build` succeeds; migration applied.
+Behaviour was driven in a real browser against the running API + dev server, with a real hub client
+(`sigtest\presence-client.mjs`) as the second user.
+
+| Check | Result |
+| --- | --- |
+| Header, never-connected user | "Offline" (was `@bob_builder`), grey dot in the list |
+| `bob_builder` connects over the hub | header and list row flipped to green "Online" live, **no reload** |
+| `bob_builder` drops (process killed) | header and row flipped to "Last seen just now", dot back to grey |
+| Raw envelopes | `{userId, isOnline:true}` then `{userId, isOnline:false, lastSeenAt:"…Z"}` |
+| `GET /api/messages/conversations` | online → `isOnline:true`, `lastSeenAt` omitted; offline → timestamp; never seen → omitted |
+| `GET /api/messages/conversations/{id}` | same shape on `otherUser` |
+| Relative time | `LastSeenAt` set to 12 min ago → "Last seen 12 minutes ago" in the header **and** the row |
+| 60s tick | 50s-old stamp → "Last seen just now", then "2 minutes ago" ~66s later with the API call count unchanged (4 → 4), i.e. no refetch |
+| Privacy | a user with no conversation with `bob_builder` received **no** presence events while he came online and went away |
+| Row layout | 80px, three lines, presence line 765x16 unclipped, dot 10x10 |
+| No refetch loop | API calls stable at 4 over 66s; one presence event costs one list + one thread call |
+
+Presence only ever reaches conversation partners, and it added no rows to the dev database. Harness:
+`%TEMP%\opencode\presence-setup.ps1` (bob's token + the Alice↔bob conversation id),
+`%TEMP%\opencode\mint-token.ps1` (a token for any dev user), `sigtest\presence-client.mjs`.
+
 ## Open questions
 
 - Where does the client-side key exchange live (per-device key bundles, WebCrypto ECDH), and does the
@@ -236,3 +295,6 @@ setter plus an `input` event (or the fill tool) before `requestSubmit()`.
   alice`, `title-check`, `reconnect-check`) and one in her `nasrdev` conversation (`badge-check`). They are
   harness artefacts, not seed data; delete them when the thread should look clean again (their unread
   contribution follows the rows, so re-open the conversation afterwards).
+- `bob_builder.LastSeenAt` was set by the presence checks (12 minutes ago, then ~1 minute ago) to exercise the
+  wording. The next time he connects it is overwritten with a real value; until then his row reads a
+  plausible-but-invented time.
