@@ -76,6 +76,14 @@ export default function Notifications() {
         onError: () => toast.error("Couldn't delete that notification."),
     });
 
+    // Opening a row counts as reading it: the reader is being taken to the thing it points at, so the dot
+    // must not still be there when they come back. The same mutation as the check button — one path, one
+    // invalidation moves pill, dot, check button and both badges together — and a row that is already read
+    // costs no request. The navigation proceeds either way.
+    const openRow = (notification) => {
+        if (notification.unread) readMutation.mutate(notification.id);
+    };
+
     useEffect(() => {
         const el = sentinelRef.current;
         if (!el || !hasMore) return undefined;
@@ -201,6 +209,7 @@ export default function Notifications() {
                                         {to ? (
                                             <Link
                                                 to={to}
+                                                onClick={() => openRow(notification)}
                                                 className="flex min-w-0 flex-1 items-center gap-4"
                                             >
                                                 {content}

@@ -3,6 +3,9 @@ import { toast } from "sonner";
 import MessageToast from "@/components/messages/MessageToast";
 import { MESSAGE_TOASTER_ID } from "@/lib/messageToast";
 import { notificationLink, notificationSentence } from "@/lib/notificationCopy";
+import { queryClient } from "@/lib/queryClient";
+import { queryKeys } from "@/lib/queryKeys";
+import { markNotificationRead } from "@/services/notificationApi";
 import router from "@/routes/router";
 
 // Same duration and stack as a message toast: the card reads like one because it *is* one — same component,
@@ -22,7 +25,8 @@ export function shouldToastNotification() {
 /**
  * Raises "someone did something" in the corner as a card that opens the row's target when clicked. A row
  * with nothing left to open (a post that vanished, a community that is gone) still toasts — the click then
- * just dismisses, because there is nowhere to go and the information itself was the point.
+ * just marks it read and dismisses, because there is nowhere to go and the information itself was the
+ * point.
  */
 export function showNotificationToast(notification) {
     if (!notification?.id) return;
@@ -34,6 +38,22 @@ export function showNotificationToast(notification) {
 
     const open = () => {
         toast.dismiss(toastId);
+
+        // Seeing the card *is* reading the notification: mark the row behind it so the badge does not keep
+        // asking about something the reader has already dealt with. Fire-and-forget — the POST survives the
+        // router navigation below, and a failure just leaves the badge where it was, the same rule as a
+        // failed seen-stamp. The invalidation refetches pill, bell and sidebar from the server; nothing is
+        // patched by hand.
+        if (notification.unread) {
+            markNotificationRead(notification.id)
+                .then(() =>
+                    queryClient.invalidateQueries({
+                        queryKey: queryKeys.notifications(),
+                    })
+                )
+                .catch(() => {});
+        }
+
         if (link) router.navigate(link);
     };
 
