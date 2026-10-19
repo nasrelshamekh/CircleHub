@@ -21,7 +21,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 8 | Mobile client (SignalR + Expo push) | deferred until the web app is accepted |
 | 9 | Presence: online / last seen in the thread header and the conversation list | done, verified |
 | 10 | Typing indicator: `SendTyping` hub signal + web client (thread header + conversation list) | done, verified |
-| 11 | Incoming-message sound: committed chime, silent while the reader is looking at that thread | done, verified |
+| 11 | Incoming-message sound: committed sound file (the owner's own), silent while the reader is looking at that thread | done, verified |
 | 12 | Message toast away from the messages page: themed card, click to open | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -338,7 +338,8 @@ Harness: `%TEMP%\opencode\typing-setup.ps1`, `sigtest\typing-test.mjs`, `sigtest
 
 The owner asked for a sound when a message arrives. Three choices were put to them and confirmed: play unless
 the reader is already looking at that thread in a focused, visible tab; no mute control yet; a short committed
-chime rather than a sound file they would supply.
+chime rather than a sound file they would supply. (The third was later reversed — see the Step 11 follow-up
+below.)
 
 Added:
 
@@ -454,6 +455,35 @@ element silently drops the clamp - the first version of the card grew to 349px o
 
 Harness: `%TEMP%\opencode\toast-cleanup.ps1` (the same shape as `chime-cleanup.ps1`), reusing `send-message.ps1`
 for the sends.
+
+### Step 11 follow-up — The owner's own sound (done, verified)
+
+The owner changed their mind about the sound: instead of the generated chime they supplied their own file
+(`mixkit-message-pop-alert-2354.mp3`, a Mixkit "message pop alert"). It was copied in as
+`public/message-chime.mp3` and `CHIME_URL` in `src/lib/messageChime.js` now points at it. `public/message-chime.wav`
+and the script that generated it (`gen-chime.mjs`) are gone, so the asset is a committed download whose source
+is recorded here rather than a reproducible script — the honest replacement for that bullet, not a silencing of
+it.
+
+The sound is 1.07s and 46 KB (compressed mono; a pop and a short tail). That size is a *page-load* cost, not a
+per-message one — the `Audio` element is created at module load so the first arrival is never announced a fetch
+late — so a future replacement should stay a few hundred milliseconds of compressed mono audio.
+
+Nothing else changed. The policy (`shouldChime`), the one-element design, the still-ringing guard and the
+swallowed refusal are all untouched, so the swap only had to be checked for "does the new file decode and
+play".
+
+Verification: `npx eslint .` exits 0 and `npm run build` succeeds and copies `message-chime.mp3` into `dist/`
+(no `.wav` there). `GET /message-chime.mp3` → 200 `audio/mpeg`, 46,937 bytes with an `ID3` header, and a probe
+`Audio` read `duration` back as 1.07s. The real check: with `HTMLMediaElement.prototype.play` spied on in a
+`/feed` tab, one hub relay as `bob_builder` produced exactly one `play()` call on
+`http://localhost:5173/message-chime.mp3` whose promise **resolved** — a real playback, not a refused one —
+56ms after the relay was invoked. A pure hub relay persists nothing, so this left no rows behind and needed no
+clean-up.
+
+One trap worth knowing: `GET /message-chime.wav` still answers 200 (as `text/html`), because Vite's dev server
+falls back to `index.html` for any path that is not a real file. The wav is gone; the 200 is not evidence it
+survived.
 
 ## Open questions
 
