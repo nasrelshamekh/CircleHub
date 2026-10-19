@@ -10,6 +10,7 @@ import {
     sendTyping,
     TYPING_CHANGED_EVENT,
 } from "@/services/chatHub";
+import { chimeForIncomingMessage } from "@/lib/messageChime";
 import { queryKeys } from "@/lib/queryKeys";
 
 // `withAutomaticReconnect` only recovers a connection that was established once, so a tab opened while the
@@ -88,7 +89,11 @@ export default function ChatConnectionContextProvider({ children }) {
 
         connectionRef.current = connection;
 
-        connection.on(RECEIVE_MESSAGE_EVENT, () => {
+        connection.on(RECEIVE_MESSAGE_EVENT, (message) => {
+            // The sound is for a message the reader cannot see landing: it stays quiet while they are
+            // looking at that very thread with the tab in front.
+            chimeForIncomingMessage(message);
+
             // A message from someone else affects the conversation list, the open thread and the unread
             // badge. conversations() is a prefix of conversation(id), so one invalidation refreshes all
             // three and the server stays the source of truth for their contents.
