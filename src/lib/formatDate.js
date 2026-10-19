@@ -1,4 +1,4 @@
-﻿import { format, isToday, isThisYear } from "date-fns";
+﻿import { format, formatDistanceToNow, isToday, isThisYear } from "date-fns";
 
 export function formatPostDate(date) {
   const d = new Date(date);
@@ -24,6 +24,19 @@ export function formatShortTime(date) {
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d`;
 
   return format(d, "MMM d");
+}
+
+// Presence wording, deliberately not formatShortTime: "12m" already means "when this message was sent"
+// in this UI, and the offline case has to say that the time is when the person was last around.
+export function formatLastSeen(date) {
+  const d = new Date(date);
+
+  // date-fns has no short form for this window; "less than a minute ago" reads badly under a name.
+  if (Date.now() - d.getTime() < 60_000) {
+    return "Last seen just now";
+  }
+
+  return `Last seen ${formatDistanceToNow(d, { addSuffix: true })}`;
 }
 
 export function formatMessageTime(date) {

@@ -33,6 +33,13 @@ namespace CircleHub.Api.Entities
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 
+        /// <summary>
+        /// Last time the user was on the chat hub (set when their first connection opens and when their
+        /// last one closes). Null until they first connect. It is only ever returned to the other
+        /// participants of their conversations, never to strangers.
+        /// </summary>
+        public DateTime? LastSeenAt { get; set; }
+
         public ICollection<Post> Posts { get; set; } = new List<Post>();
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
         public ICollection<Like> Likes { get; set; } = new List<Like>();

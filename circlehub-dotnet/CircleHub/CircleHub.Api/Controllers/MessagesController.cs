@@ -20,12 +20,18 @@ namespace CircleHub.Api.Controllers
         private readonly AppDbContext _db;
         private readonly MessagePolicyService _policy;
         private readonly MessageDeliveryService _delivery;
+        private readonly PresenceService _presence;
 
-        public MessagesController(AppDbContext db, MessagePolicyService policy, MessageDeliveryService delivery)
+        public MessagesController(
+            AppDbContext db,
+            MessagePolicyService policy,
+            MessageDeliveryService delivery,
+            PresenceService presence)
         {
             _db = db;
             _policy = policy;
             _delivery = delivery;
+            _presence = presence;
         }
 
         private Guid? CurrentUserId
@@ -55,12 +61,13 @@ namespace CircleHub.Api.Controllers
                     Id = p.ConversationId,
                     OtherUser = p.Conversation.Participants
                         .Where(other => other.UserId != currentUserId)
-                        .Select(other => new AuthorDto
+                        .Select(other => new ConversationUserDto
                         {
                             Id = other.User.Id,
                             Name = other.User.Name,
                             Username = other.User.Username,
-                            AvatarUrl = other.User.AvatarUrl
+                            AvatarUrl = other.User.AvatarUrl,
+                            LastSeenAt = other.User.LastSeenAt
                         })
                         .FirstOrDefault()!,
                     LastMessageAt = p.Conversation.LastMessageAt,
@@ -81,6 +88,11 @@ namespace CircleHub.Api.Controllers
                 })
                 .OrderByDescending(c => c.LastMessageAt)
                 .ToListAsync();
+
+            // IsOnline is process-local state, not a column, so it cannot be projected by the query and
+            // is filled in afterwards.
+            foreach (var conversation in conversations)
+                ApplyPresence(conversation.OtherUser);
 
             return Ok(new ApiResponse<List<ConversationDto>>
             {
@@ -110,15 +122,18 @@ namespace CircleHub.Api.Controllers
 
             var otherUser = await _db.Users
                 .Where(u => u.Id == otherId)
-                .Select(u => new AuthorDto
+                .Select(u => new ConversationUserDto
                 {
                     Id = u.Id,
                     Name = u.Name,
                     Username = u.Username,
-                    AvatarUrl = u.AvatarUrl
+                    AvatarUrl = u.AvatarUrl,
+                    LastSeenAt = u.LastSeenAt
                 })
                 .FirstOrDefaultAsync()
-                ?? new AuthorDto { Id = Guid.Empty, Name = "Unknown", Username = "unknown" };
+                ?? new ConversationUserDto { Id = Guid.Empty, Name = "Unknown", Username = "unknown" };
+
+            ApplyPresence(otherUser);
 
             var total = await _db.Messages.CountAsync(m => m.ConversationId == id);
 
@@ -375,6 +390,21 @@ namespace CircleHub.Api.Controllers
                 Count = recipients.Count,
                 Data = recipients
             });
+        }
+
+        /// <summary>
+        /// Fills in the live half of a conversation participant. Called after the query, because
+        /// "is this person connected right now?" is process-local state that no SQL projection can see.
+        /// </summary>
+        private void ApplyPresence(ConversationUserDto user)
+        {
+            user.IsOnline = _presence.IsOnline(user.Id);
+
+            // While online, LastSeenAt is only "when the current connection opened", which the UI never
+            // shows. Dropping it keeps the payload consistent with the presence event, which sends no
+            // time for an online user.
+            if (user.IsOnline)
+                user.LastSeenAt = null;
         }
 
         private async Task AttachPosts(List<MessageDto> messages, Guid currentUserId)

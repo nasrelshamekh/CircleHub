@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import Avatar from "@/components/profileimages/Avatar";
 import MessageComposer from "./MessageComposer";
+import PresenceLabel from "./PresenceLabel";
 import SharedPostCard from "./SharedPostCard";
 import { formatMessageDate, formatMessageTime } from "@/lib/formatDate";
 
@@ -257,9 +258,11 @@ export default function MessageThread({
                             <p className="type-label-md truncate text-primary">
                                 {otherUser.name}
                             </p>
-                            <p className="type-body-sm truncate text-secondary">
-                                @{otherUser.username}
-                            </p>
+                            <PresenceLabel
+                                isOnline={otherUser.isOnline}
+                                lastSeenAt={otherUser.lastSeenAt}
+                                className="type-body-sm block truncate"
+                            />
                         </div>
                     </Link>
                 )}

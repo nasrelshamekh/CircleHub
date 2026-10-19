@@ -5,7 +5,7 @@ namespace CircleHub.Api.Dtos
     public class ConversationDto
     {
         public Guid Id { get; set; }
-        public AuthorDto OtherUser { get; set; } = null!;
+        public ConversationUserDto OtherUser { get; set; } = null!;
         public DateTime LastMessageAt { get; set; }
         public int UnreadCount { get; set; }
 
@@ -28,7 +28,7 @@ namespace CircleHub.Api.Dtos
     public class ConversationThreadDto
     {
         public Guid Id { get; set; }
-        public AuthorDto OtherUser { get; set; } = null!;
+        public ConversationUserDto OtherUser { get; set; } = null!;
         public List<MessageDto> Messages { get; set; } = new();
         public bool HasMore { get; set; }
     }

@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 
 import Avatar from "@/components/profileimages/Avatar";
+import PresenceDot from "@/components/messages/PresenceDot";
+import PresenceLabel from "@/components/messages/PresenceLabel";
 import { formatShortTime } from "@/lib/formatDate";
 
 function previewText(conversation) {
@@ -43,11 +45,16 @@ export default function ConversationList({ conversations, activeId }) {
                                     : "hover:bg-(--hover)"
                             }`}
                         >
-                            <Avatar
-                                src={conversation.otherUser.avatarUrl}
-                                alt={conversation.otherUser.name}
-                                className="avatar-md shrink-0"
-                            />
+                            <span className="relative shrink-0">
+                                <Avatar
+                                    src={conversation.otherUser.avatarUrl}
+                                    alt={conversation.otherUser.name}
+                                    className="avatar-md block"
+                                />
+                                <PresenceDot
+                                    isOnline={conversation.otherUser.isOnline}
+                                />
+                            </span>
 
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-2">
@@ -66,6 +73,14 @@ export default function ConversationList({ conversations, activeId }) {
                                         )}
                                     </span>
                                 </div>
+
+                                <PresenceLabel
+                                    isOnline={conversation.otherUser.isOnline}
+                                    lastSeenAt={
+                                        conversation.otherUser.lastSeenAt
+                                    }
+                                    className="type-label-sm block truncate"
+                                />
 
                                 <div className="flex items-center justify-between gap-2">
                                     <span

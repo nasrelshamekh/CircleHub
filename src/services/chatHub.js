@@ -3,6 +3,10 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 // Event the API raises for a message addressed to us (ChatHub.ReceiveMessageMethod).
 export const RECEIVE_MESSAGE_EVENT = "ReceiveEncryptedMessage";
 
+// Event the API raises when one of our conversation partners comes online or goes away
+// (ChatHub.PresenceChangedMethod).
+export const PRESENCE_CHANGED_EVENT = "PresenceChanged";
+
 const HUB_PATH = "/hubs/chat";
 
 // VITE_BASE_URL points at the REST root (e.g. http://localhost:5289/api); the hub is hosted beside it.

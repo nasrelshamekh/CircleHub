@@ -62,6 +62,10 @@
   --error-container: #ffdad6;
   --on-error-container: #93000a;
 
+  /* "Online" indicator for chat presence. Green is the one convention users read instantly here, and
+     the palette has no success colour to borrow. */
+  --presence-online: #16a34a;
+
   --primary-soft: #e1e0ff;
   --primary-soft-dim: #c0c1ff;
   --on-primary-soft: #07006c;
@@ -174,6 +178,9 @@
   --on-error: #690005;
   --error-container: #93000a;
   --on-error-container: #ffdad6;
+
+  /* Lighter than the light-theme green so it stays legible on the dark surface. */
+  --presence-online: #4ade80;
 
   --primary-soft: #e0e0ff;
   --primary-soft-dim: #bdc2ff;

@@ -413,6 +413,9 @@ namespace CircleHub.Api.Migrations
                     b.Property<string>("JobTitle")
                         .HasColumnType("longtext");
 
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("Location")
                         .HasColumnType("longtext");
 

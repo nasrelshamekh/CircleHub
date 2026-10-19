@@ -22,6 +22,11 @@ namespace CircleHub.Api.Hubs
         public const string ReceiveMessageMethod = "ReceiveEncryptedMessage";
 
         /// <summary>
+        /// Client-side handler for presence changes of the people we already have conversations with.
+        /// </summary>
+        public const string PresenceChangedMethod = "PresenceChanged";
+
+        /// <summary>
         /// Cap on the encrypted payload. SignalR already rejects hub messages above
         /// <c>MaximumReceiveMessageSize</c> (32 KB by default); this keeps the application
         /// limit well below that so a single message can never crowd out the transport buffer.
@@ -31,17 +36,20 @@ namespace CircleHub.Api.Hubs
         private readonly AppDbContext _db;
         private readonly MessagePolicyService _policy;
         private readonly IConnectionTracker _connections;
+        private readonly PresenceService _presence;
         private readonly ILogger<ChatHub> _logger;
 
         public ChatHub(
             AppDbContext db,
             MessagePolicyService policy,
             IConnectionTracker connections,
+            PresenceService presence,
             ILogger<ChatHub> logger)
         {
             _db = db;
             _policy = policy;
             _connections = connections;
+            _presence = presence;
             _logger = logger;
         }
 
@@ -51,12 +59,18 @@ namespace CircleHub.Api.Hubs
             {
                 _connections.Add(userId, Context.ConnectionId);
 
+                var firstConnection = _connections.ConnectionCount(userId) == 1;
+
                 _logger.LogInformation(
                     "Encrypted channel opened for user {UserId} on connection {ConnectionId} ({LiveConnections} live connection(s), {OnlineUsers} user(s) online)",
                     userId,
                     Context.ConnectionId,
                     _connections.ConnectionCount(userId),
                     _connections.OnlineUserCount);
+
+                // Only a transition counts: a second tab belongs to a user who is already shown online.
+                if (firstConnection)
+                    await _presence.UserCameOnlineAsync(userId, Context.ConnectionAborted);
             }
 
             await base.OnConnectedAsync();
@@ -67,6 +81,8 @@ namespace CircleHub.Api.Hubs
             if (Guid.TryParse(Context.UserIdentifier, out var userId))
             {
                 _connections.Remove(userId, Context.ConnectionId);
+
+                var lastConnection = _connections.ConnectionCount(userId) == 0;
 
                 if (exception is null)
                 {
@@ -87,6 +103,11 @@ namespace CircleHub.Api.Hubs
                         _connections.ConnectionCount(userId),
                         _connections.OnlineUserCount);
                 }
+
+                // Last seen is stamped from this path, so it must not be skipped: Context.ConnectionAborted
+                // is already cancelled here, hence CancellationToken.None.
+                if (lastConnection)
+                    await _presence.UserWentOfflineAsync(userId, CancellationToken.None);
             }
 
             await base.OnDisconnectedAsync(exception);
