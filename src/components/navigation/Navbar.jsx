@@ -48,7 +48,7 @@ export default function Navbar() {
                             <MessageCircleMore size={22} />
 
                             {unreadCount > 0 && (
-                                <span className="type-label-sm absolute -right-1.5 -top-1 flex min-w-5 items-center justify-center rounded-full bg-(--primary) px-1 py-0.5 font-semibold text-(--on-primary)">
+                                <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-(--primary) px-1 text-[10px] leading-none font-semibold text-(--on-primary)">
                                     {unreadCount}
                                 </span>
                             )}
