@@ -16,6 +16,15 @@ namespace CircleHub.Api.Entities
         public NotificationType Type { get; set; }
         public DateTime CreatedAt { get; set; }
 
+        /// <summary>
+        /// Set when the reader marks this one row as read. Unread is still primarily derived from
+        /// <see cref="User.NotificationsSeenAt"/> — opening the feed moves that one cursor — and this only
+        /// handles the exception: a single row read on a visit whose cursor is older than the row. The two
+        /// compose (unread = <c>ReadAt == null && CreatedAt &gt; seenAt</c>), so a row older than the cursor
+        /// is read regardless of what this says.
+        /// </summary>
+        public DateTime? ReadAt { get; set; }
+
         /// <summary>The user who receives this.</summary>
         public Guid UserId { get; set; }
         public User User { get; set; } = null!;

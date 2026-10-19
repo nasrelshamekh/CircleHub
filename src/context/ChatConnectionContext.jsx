@@ -13,6 +13,8 @@ import {
 } from "@/services/chatHub";
 import { chimeForIncomingMessage } from "@/lib/messageChime";
 import { shouldToast, showMessageToast } from "@/lib/messageToast";
+import { chimeForIncomingNotification } from "@/lib/notificationChime";
+import { shouldToastNotification, showNotificationToast } from "@/lib/notificationToast";
 import { queryKeys } from "@/lib/queryKeys";
 
 // `withAutomaticReconnect` only recovers a connection that was established once, so a tab opened while the
@@ -159,9 +161,16 @@ export default function ChatConnectionContextProvider({ children }) {
             );
         });
 
-        connection.on(NOTIFICATION_CREATED_EVENT, () => {
-            // No payload and nothing to patch: the feed is the source of truth, so one refetch is the whole
-            // update. Deliberately silent — the chime and the toast belong to messages.
+        connection.on(NOTIFICATION_CREATED_EVENT, (notification) => {
+            // Same three-step reaction as a message: announce it (unless the feed is open in front of the
+            // reader), raise a card where nothing on screen would say it arrived, then refetch — the feed
+            // and both badge counts are derived from the server, so one invalidation is the whole update.
+            chimeForIncomingNotification();
+
+            if (shouldToastNotification()) {
+                showNotificationToast(notification);
+            }
+
             queryClient.invalidateQueries({
                 queryKey: queryKeys.notifications(),
             });

@@ -59,7 +59,7 @@ namespace CircleHub.Api.Controllers
             var query = _db.Notifications.Where(n => n.UserId == userId);
 
             var total = await query.CountAsync();
-            var unreadCount = await query.CountAsync(n => n.CreatedAt > seenAt);
+            var unreadCount = await query.CountAsync(n => n.ReadAt == null && n.CreatedAt > seenAt);
 
             var items = await query
                 .OrderByDescending(n => n.CreatedAt)
@@ -71,7 +71,7 @@ namespace CircleHub.Api.Controllers
                     Id = n.Id,
                     Type = n.Type.ToString(),
                     CreatedAt = n.CreatedAt,
-                    Unread = n.CreatedAt > seenAt,
+                    Unread = n.ReadAt == null && n.CreatedAt > seenAt,
                     Actor = new AuthorDto
                     {
                         Id = n.Actor.Id,
@@ -124,6 +124,55 @@ namespace CircleHub.Api.Controllers
             await _db.SaveChangesAsync();
 
             return Ok(new ApiResponse<object> { Message = "Notifications marked as seen" });
+        }
+
+        /// <summary>
+        /// Marks one row as read without moving the whole cursor, for the reader who is clearing a single
+        /// entry they have dealt with. Scoped to the caller's own rows, so another user's id is simply "not
+        /// found" rather than a hint that the row exists.
+        /// </summary>
+        [HttpPost("{id:guid}/read")]
+        public async Task<IActionResult> MarkRead(Guid id)
+        {
+            var userId = CurrentUserId!.Value;
+
+            var notification = await _db.Notifications
+                .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+
+            if (notification is null)
+                return Fail(StatusCodes.Status404NotFound, "Notification not found");
+
+            // Never moves backwards: a row already covered by the seen cursor stays read, and repeating the
+            // call is a no-op rather than a new timestamp on every tap.
+            if (notification.ReadAt is null)
+            {
+                notification.ReadAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+
+            return Ok(new ApiResponse<object> { Message = "Notification marked as read" });
+        }
+
+        /// <summary>
+        /// Deletes one of the caller's notifications. Deleting beats hiding here: the row's only purpose is
+        /// to be read, so once the reader has dealt with it there is nothing to keep.
+        /// </summary>
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> DeleteNotification(Guid id)
+        {
+            var userId = CurrentUserId!.Value;
+
+            var notification = await _db.Notifications
+                .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+
+            if (notification is null)
+                return Fail(StatusCodes.Status404NotFound, "Notification not found");
+
+            _db.Notifications.Remove(notification);
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new ApiResponse<object> { Message = "Notification deleted" });
         }
     }
 }

@@ -347,6 +347,9 @@ namespace CircleHub.Api.Migrations
                     b.Property<Guid?>("PostId")
                         .HasColumnType("char(36)");
 
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(40)

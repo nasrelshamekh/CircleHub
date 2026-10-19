@@ -32,8 +32,10 @@ namespace CircleHub.Api.Hubs
         public const string TypingChangedMethod = "TypingChanged";
 
         /// <summary>
-        /// Client-side handler telling a user that a new row landed in their notification feed. Carries no
-        /// payload: the feed is the source of truth and the client simply refetches it.
+        /// Client-side handler telling a user that a new row landed in their notification feed. Carries the
+        /// row as a <see cref="NotificationDto"/> so the client can chime and raise a toast immediately; the
+        /// invalidation that follows still refetches, because the feed (and the badge count) is the source of
+        /// truth for everything else.
         /// </summary>
         public const string NotificationCreatedMethod = "NotificationCreated";
 

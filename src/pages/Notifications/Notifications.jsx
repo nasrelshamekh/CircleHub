@@ -1,11 +1,16 @@
 ﻿import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { Bell } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Bell, Check, Trash2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
-import { markNotificationsSeen } from "@/services/notificationApi";
+import {
+    deleteNotification,
+    markNotificationRead,
+    markNotificationsSeen,
+} from "@/services/notificationApi";
 import { notificationIcon, notificationLink, notificationSentence } from "@/lib/notificationCopy";
 import { formatShortTime } from "@/lib/formatDate";
 import { queryKeys } from "@/lib/queryKeys";
@@ -17,18 +22,24 @@ export default function Notifications() {
         useNotifications();
     const sentinelRef = useRef(null);
 
-    // Opening the feed marks it seen, but only the *badge* moves: each row keeps the unread flag it was
-    // fetched with, so the dots stay meaningful for this visit instead of vanishing on arrival. The effect
-    // re-runs if a new row lands while the page is open, because the count goes back above zero.
+    // One stamp per visit, taken the moment the feed has actually loaded. This deliberately does *not*
+    // re-run when a notification arrives mid-visit: the old version re-stamped on every count change, so a
+    // new arrival was seen and zeroed again within a frame — the badge never appeared to move. Now an
+    // arrival bumps the badge and it stays until the next open of this page. Each row keeps the unread flag
+    // it was fetched with, so the dots stay meaningful for this visit instead of vanishing on arrival.
+    const stampedRef = useRef(false);
+
     useEffect(() => {
+        if (stampedRef.current || isLoading) return undefined;
+
+        stampedRef.current = true;
+
         if (unreadCount === 0) return undefined;
 
-        let cancelled = false;
-
+        // No cancellation guard: the only write is to the query cache, which outlives this component, and
+        // guarding it is what used to leave the badge unpatched when React StrictMode re-ran the effect.
         markNotificationsSeen()
             .then(() => {
-                if (cancelled) return;
-
                 queryClient.setQueryData(queryKeys.notifications(), (data) =>
                     data
                         ? {
@@ -45,10 +56,25 @@ export default function Notifications() {
                 // A failed stamp is not worth an error toast: the badge simply survives until the next visit.
             });
 
-        return () => {
-            cancelled = true;
-        };
-    }, [unreadCount, queryClient]);
+        return undefined;
+    }, [isLoading, unreadCount, queryClient]);
+
+    // Both row actions follow the same rule as everything else here: the server is the source of truth, so
+    // one invalidation refetches the feed and both badge counts rather than patching them by hand.
+    const invalidateFeed = () =>
+        queryClient.invalidateQueries({ queryKey: queryKeys.notifications() });
+
+    const readMutation = useMutation({
+        mutationFn: markNotificationRead,
+        onSuccess: invalidateFeed,
+        onError: () => toast.error("Couldn't mark that notification as read."),
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: deleteNotification,
+        onSuccess: invalidateFeed,
+        onError: () => toast.error("Couldn't delete that notification."),
+    });
 
     useEffect(() => {
         const el = sentinelRef.current;
@@ -136,10 +162,8 @@ export default function Notifications() {
                             {items.map((notification) => {
                                 const Icon = notificationIcon(notification.type);
                                 const to = notificationLink(notification);
-                                const className =
-                                    "flex gap-4 rounded-xl bg-(--surface-low) p-4 transition hover:bg-(--hover)";
 
-                                const body = (
+                                const content = (
                                     <>
                                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-(--active) text-(--primary)">
                                             <Icon size={19} />
@@ -166,17 +190,56 @@ export default function Notifications() {
                                     </>
                                 );
 
-                                return to ? (
-                                    <Link
+                                // The actions sit *outside* the link: a button inside an anchor is invalid
+                                // HTML and its click would navigate. The link keeps covering the icon and
+                                // text, so opening a row still works exactly as before.
+                                return (
+                                    <div
                                         key={notification.id}
-                                        to={to}
-                                        className={className}
+                                        className="flex items-center gap-2 rounded-xl bg-(--surface-low) p-4 transition hover:bg-(--hover)"
                                     >
-                                        {body}
-                                    </Link>
-                                ) : (
-                                    <div key={notification.id} className={className}>
-                                        {body}
+                                        {to ? (
+                                            <Link
+                                                to={to}
+                                                className="flex min-w-0 flex-1 items-center gap-4"
+                                            >
+                                                {content}
+                                            </Link>
+                                        ) : (
+                                            <div className="flex min-w-0 flex-1 items-center gap-4">
+                                                {content}
+                                            </div>
+                                        )}
+
+                                        <div className="flex shrink-0 items-center gap-1">
+                                            {notification.unread && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        readMutation.mutate(notification.id)
+                                                    }
+                                                    disabled={readMutation.isPending}
+                                                    aria-label="Mark as read"
+                                                    title="Mark as read"
+                                                    className="icon-button rounded-full p-2"
+                                                >
+                                                    <Check size={16} />
+                                                </button>
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    deleteMutation.mutate(notification.id)
+                                                }
+                                                disabled={deleteMutation.isPending}
+                                                aria-label="Delete notification"
+                                                title="Delete"
+                                                className="icon-button rounded-full p-2"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}

@@ -1,4 +1,5 @@
 using CircleHub.Api.Data;
+using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
 using CircleHub.Api.Enums;
 using CircleHub.Api.Hubs;
@@ -105,10 +106,11 @@ namespace CircleHub.Api.Services
                 return;
 
             var createdAt = DateTime.UtcNow;
+            var created = new List<(Notification Row, Guid RecipientId)>();
 
             foreach (var recipientId in recipients)
             {
-                _db.Notifications.Add(new Notification
+                var row = new Notification
                 {
                     Type = type,
                     CreatedAt = createdAt,
@@ -116,13 +118,52 @@ namespace CircleHub.Api.Services
                     ActorId = actorId,
                     PostId = postId,
                     CommunityId = communityId
-                });
+                };
+
+                _db.Notifications.Add(row);
+                created.Add((row, recipientId));
             }
 
             await _db.SaveChangesAsync();
 
-            foreach (var recipientId in recipients)
-                await _hub.Clients.User(recipientId.ToString()).SendAsync(ChatHub.NotificationCreatedMethod);
+            // The event carries the row itself so the client can raise a toast immediately, without waiting
+            // for the invalidation refetch that also follows. Projected through EF for exactly the fields the
+            // GET builds into a NotificationDto (Actor + Community joins included); `Unread` is true because
+            // the row was created after the reader's last stamp. Everything else about the DTO must stay in
+            // step with `NotificationsController.GetNotifications`.
+            var ids = created.Select(c => c.Row.Id).ToList();
+
+            var dtos = await _db.Notifications
+                .Where(n => ids.Contains(n.Id))
+                .Select(n => new NotificationDto
+                {
+                    Id = n.Id,
+                    Type = n.Type.ToString(),
+                    CreatedAt = n.CreatedAt,
+                    Unread = true,
+                    Actor = new AuthorDto
+                    {
+                        Id = n.Actor.Id,
+                        Name = n.Actor.Name,
+                        Username = n.Actor.Username,
+                        AvatarUrl = n.Actor.AvatarUrl
+                    },
+                    PostId = n.PostId,
+                    CommunityName = n.Community != null ? n.Community.Name : null,
+                    CommunitySlug = n.Community != null ? n.Community.Slug : null
+                })
+                .ToDictionaryAsync(n => n.Id);
+
+            foreach (var (row, recipientId) in created)
+            {
+                if (!dtos.TryGetValue(row.Id, out var dto))
+                    continue;
+
+                // Deliberately not tied to the caller's token (the default): the row is committed, so a
+                // caller hanging up mid-flight must not swallow the nudge — same rule as the message fan-out.
+                await _hub.Clients.User(recipientId.ToString())
+                    .SendAsync(ChatHub.NotificationCreatedMethod, dto);
+            }
         }
     }
 }

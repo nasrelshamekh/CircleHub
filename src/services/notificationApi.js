@@ -13,3 +13,15 @@ export async function markNotificationsSeen() {
 
   return response.data;
 }
+
+export async function markNotificationRead(id) {
+  const response = await apiClient.post(`/notifications/${id}/read`);
+
+  return response.data;
+}
+
+export async function deleteNotification(id) {
+  const response = await apiClient.delete(`/notifications/${id}`);
+
+  return response.data;
+}

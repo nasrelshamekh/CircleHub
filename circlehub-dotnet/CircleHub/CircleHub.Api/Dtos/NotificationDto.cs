@@ -13,7 +13,7 @@ namespace CircleHub.Api.Dtos
 
         public DateTime CreatedAt { get; set; }
 
-        /// <summary>True while it is newer than the reader's <c>NotificationsSeenAt</c>.</summary>
+        /// <summary>True while the row is unread: newer than the reader's <c>NotificationsSeenAt</c> and not individually marked as read.</summary>
         public bool Unread { get; set; }
 
         /// <summary>Who did it.</summary>
