@@ -2,6 +2,7 @@ using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
 using CircleHub.Api.Enums;
+using CircleHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,10 +18,12 @@ namespace CircleHub.Api.Controllers
         private const int MaxContentLength = 2000;
 
         private readonly AppDbContext _db;
+        private readonly MessagePolicyService _policy;
 
-        public MessagesController(AppDbContext db)
+        public MessagesController(AppDbContext db, MessagePolicyService policy)
         {
             _db = db;
+            _policy = policy;
         }
 
         private Guid? CurrentUserId
@@ -37,20 +40,6 @@ namespace CircleHub.Api.Controllers
             {
                 StatusCode = status
             };
-
-        private async Task<bool> CanMessage(User recipient, Guid senderId)
-        {
-            if (recipient.Id == senderId)
-                return false;
-
-            return recipient.MessagesFrom switch
-            {
-                MessagesFrom.Everyone => true,
-                MessagesFrom.Followers => await _db.Follows.AnyAsync(f =>
-                    f.FollowerId == senderId && f.FollowingId == recipient.Id),
-                _ => false
-            };
-        }
 
         [HttpGet("conversations")]
         public async Task<IActionResult> GetConversations()
@@ -198,7 +187,7 @@ namespace CircleHub.Api.Controllers
             if (recipient.Id == currentUserId)
                 return Fail(StatusCodes.Status400BadRequest, "You can't message yourself");
 
-            if (!await CanMessage(recipient, currentUserId))
+            if (!await _policy.CanMessageAsync(recipient, currentUserId))
                 return Fail(StatusCodes.Status403Forbidden, $"{recipient.Name} isn't accepting messages right now");
 
             PostDto? postDto = null;

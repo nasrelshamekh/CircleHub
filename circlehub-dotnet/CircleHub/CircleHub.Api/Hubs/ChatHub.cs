@@ -1,6 +1,9 @@
+using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
+using CircleHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 
 namespace CircleHub.Api.Hubs
 {
@@ -25,39 +28,65 @@ namespace CircleHub.Api.Hubs
         /// </summary>
         private const int MaxPayloadLength = 16 * 1024;
 
+        private readonly AppDbContext _db;
+        private readonly MessagePolicyService _policy;
+        private readonly IConnectionTracker _connections;
         private readonly ILogger<ChatHub> _logger;
 
-        public ChatHub(ILogger<ChatHub> logger)
+        public ChatHub(
+            AppDbContext db,
+            MessagePolicyService policy,
+            IConnectionTracker connections,
+            ILogger<ChatHub> logger)
         {
+            _db = db;
+            _policy = policy;
+            _connections = connections;
             _logger = logger;
         }
 
         public override async Task OnConnectedAsync()
         {
-            _logger.LogInformation(
-                "Encrypted channel opened for user {UserId} on connection {ConnectionId}",
-                Context.UserIdentifier,
-                Context.ConnectionId);
+            if (Guid.TryParse(Context.UserIdentifier, out var userId))
+            {
+                _connections.Add(userId, Context.ConnectionId);
+
+                _logger.LogInformation(
+                    "Encrypted channel opened for user {UserId} on connection {ConnectionId} ({LiveConnections} live connection(s), {OnlineUsers} user(s) online)",
+                    userId,
+                    Context.ConnectionId,
+                    _connections.ConnectionCount(userId),
+                    _connections.OnlineUserCount);
+            }
 
             await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            if (exception is null)
+            if (Guid.TryParse(Context.UserIdentifier, out var userId))
             {
-                _logger.LogInformation(
-                    "Encrypted channel closed for user {UserId} on connection {ConnectionId}",
-                    Context.UserIdentifier,
-                    Context.ConnectionId);
-            }
-            else
-            {
-                _logger.LogWarning(
-                    exception,
-                    "Encrypted channel dropped for user {UserId} on connection {ConnectionId}",
-                    Context.UserIdentifier,
-                    Context.ConnectionId);
+                _connections.Remove(userId, Context.ConnectionId);
+
+                if (exception is null)
+                {
+                    _logger.LogInformation(
+                        "Encrypted channel closed for user {UserId} on connection {ConnectionId} ({LiveConnections} live connection(s) left, {OnlineUsers} user(s) online)",
+                        userId,
+                        Context.ConnectionId,
+                        _connections.ConnectionCount(userId),
+                        _connections.OnlineUserCount);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        exception,
+                        "Encrypted channel dropped for user {UserId} on connection {ConnectionId} ({LiveConnections} live connection(s) left, {OnlineUsers} user(s) online)",
+                        userId,
+                        Context.ConnectionId,
+                        _connections.ConnectionCount(userId),
+                        _connections.OnlineUserCount);
+                }
             }
 
             await base.OnDisconnectedAsync(exception);
@@ -72,15 +101,13 @@ namespace CircleHub.Api.Hubs
         {
             // The sender is always the authenticated caller. Trusting a sender id from the
             // payload would let any client impersonate any other user.
-            var senderId = Context.UserIdentifier;
-
-            if (string.IsNullOrEmpty(senderId))
+            if (!Guid.TryParse(Context.UserIdentifier, out var senderId))
                 throw new HubException("This connection is not authenticated.");
 
-            if (!Guid.TryParse(recipientId, out _))
+            if (!Guid.TryParse(recipientId, out var recipientGuid))
                 throw new HubException("recipientId must be a user id.");
 
-            if (string.Equals(recipientId, senderId, StringComparison.OrdinalIgnoreCase))
+            if (recipientGuid == senderId)
                 throw new HubException("You can't message yourself.");
 
             if (string.IsNullOrWhiteSpace(encryptedPayload))
@@ -89,12 +116,36 @@ namespace CircleHub.Api.Hubs
             if (encryptedPayload.Length > MaxPayloadLength)
                 throw new HubException($"encryptedPayload cannot exceed {MaxPayloadLength} characters.");
 
-            await Clients.User(recipientId).SendAsync(ReceiveMessageMethod, new EncryptedMessageEnvelope
+            // The same rule the REST write path applies. Without this, a client could ignore the
+            // recipient's MessagingFrom setting by calling the hub directly.
+            var recipient = await _db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == recipientGuid, Context.ConnectionAborted);
+
+            if (recipient is null || !await _policy.CanMessageAsync(recipient, senderId, Context.ConnectionAborted))
             {
-                SenderId = senderId,
-                EncryptedPayload = encryptedPayload,
-                SentAt = DateTime.UtcNow
-            });
+                // Deliberately vague: a caller must not be able to use the hub to discover which
+                // user ids exist. The real reason is in the log instead.
+                _logger.LogInformation(
+                    "Refused relay from {SenderId} to {RecipientId} ({Reason})",
+                    senderId,
+                    recipientGuid,
+                    recipient is null ? "no such user" : $"recipient set MessagesFrom={recipient.MessagesFrom}");
+
+                throw new HubException("This user isn't accepting messages right now.");
+            }
+
+            // Routed by the canonical Guid form: the user id provider normalises the "sub" claim
+            // the same way, so casing can never break delivery.
+            await Clients.User(recipientGuid.ToString()).SendAsync(
+                ReceiveMessageMethod,
+                new EncryptedMessageEnvelope
+                {
+                    SenderId = senderId.ToString(),
+                    EncryptedPayload = encryptedPayload,
+                    SentAt = DateTime.UtcNow
+                },
+                Context.ConnectionAborted);
         }
     }
 }

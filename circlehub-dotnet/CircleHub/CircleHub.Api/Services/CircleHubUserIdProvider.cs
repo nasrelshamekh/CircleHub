@@ -3,17 +3,20 @@ using Microsoft.AspNetCore.SignalR;
 namespace CircleHub.Api.Services
 {
     /// <summary>
-    /// Resolves the SignalR user id from the "sub" claim that <see cref="TokenService"/> issues.
+    /// Maps SignalR connections to the same user id the REST API uses: the "sub" claim (a Guid
+    /// string) issued by <see cref="TokenService"/>.
     /// <para>
-    /// SignalR defaults to <c>ClaimTypes.NameIdentifier</c>, which this API never emits (it sets
-    /// <c>MapInboundClaims = false</c>). Without this provider <c>Clients.User(id)</c> would
-    /// silently match nothing, so the mapping lives in one place and is shared with
-    /// <c>MessagesController.CurrentUserId</c>.
+    /// Without this, <c>Clients.User(id)</c> would look for <c>ClaimTypes.NameIdentifier</c>,
+    /// which this API never issues (<c>MapInboundClaims</c> is off), and every message would
+    /// silently route to nobody. The id is normalised to the canonical Guid form so casing
+    /// differences between the claim and the caller can't break delivery either.
     /// </para>
     /// </summary>
     public class CircleHubUserIdProvider : IUserIdProvider
     {
         public string GetUserId(HubConnectionContext connection) =>
-            connection.User?.FindFirst("sub")?.Value ?? string.Empty;
+            Guid.TryParse(connection.User?.FindFirst("sub")?.Value, out var userId)
+                ? userId.ToString()
+                : string.Empty;
     }
 }

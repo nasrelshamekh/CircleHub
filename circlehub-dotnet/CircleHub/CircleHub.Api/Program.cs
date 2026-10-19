@@ -55,10 +55,13 @@ builder.Services.AddScoped<UploadService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<EmailVerificationService>();
 builder.Services.AddScoped<PasswordResetService>();
+builder.Services.AddScoped<MessagePolicyService>();
 
 builder.Services.AddSignalR();
 // Routes Clients.User(id) to the "sub" claim, the same id the REST API uses.
 builder.Services.AddSingleton<IUserIdProvider, CircleHubUserIdProvider>();
+// Connection state is per-instance; see IConnectionTracker for the scale-out caveat.
+builder.Services.AddSingleton<IConnectionTracker, ConnectionTracker>();
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
