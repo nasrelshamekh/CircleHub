@@ -17,7 +17,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 4 | Hub fan-out from the REST send path | done, verified |
 | 5 | `DeviceToken` entity + registration endpoints + migration | deferred to the mobile phase |
 | 6 | Expo Push Service fallback for offline recipients | deferred to the mobile phase |
-| 7 | Web client: `@microsoft/signalr` connection, live thread + unread badge | done, verified |
+| 7 | Web client: `@microsoft/signalr` connection, live thread + unread badge, then polish (status, optimistic send, scroll, tab title) | done, verified |
 | 8 | Mobile client (SignalR + Expo push) | deferred until the web app is accepted |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -163,6 +163,56 @@ open; a message sent by `testuser` over REST appeared in that thread exactly onc
 Harness: `%TEMP%\opencode\web-test-setup.ps1` (mints the session tokens, picks a sender the policy allows)
 and `web-test-badge.ps1` (drives the second sender and prints the server's unread totals).
 
+### Step 7 follow-up — Web client polish (done, verified)
+
+The owner picked all four polish items before the web app is handed over. `useRealtimeMessages.jsx` is gone,
+replaced by a provider: the connection outlives any single component, and its state has to reach a sibling of
+the thread (the header chip).
+
+Added:
+
+- `src/hooks/useChatConnection.jsx` + `src/context/ChatConnectionContext.jsx` — the connection now lives in
+  `main.jsx` inside `AuthContextProvider` and reports `connecting` / `live` / `reconnecting` / `offline`
+  (`idle` while signed out). It keeps the incoming-message invalidation, and it retries a **failed initial
+  `start()`** every 5s: `withAutomaticReconnect` only handles drops after a successful connect, so a tab
+  opened while the API was down used to stay disconnected for the rest of the session. Callbacks are
+  ignored after teardown so our own `stop()` is not reported as a drop.
+- `src/components/messages/ChatConnectionStatus.jsx` — a quiet pill in the Messages header, rendered only for
+  `reconnecting` / `offline`. The initial `connecting` is deliberately not surfaced (a flash of chrome on
+  every page load is worse than the information is worth).
+- `src/components/messages/MessageComposer.jsx` + `MessageThread.jsx` — optimistic send. The composer hands
+  the thread a temporary bubble (`pending: true`, reduced opacity) before the request resolves; the thread
+  stops rendering it once the stored message with that id exists. The bubble lives in thread state, **not**
+  in the thread cache: writing into `conversation(id)` would be wiped by the refetch that the pending write
+  itself triggers, which is exactly when optimism matters.
+- `MessageThread.jsx` — smart auto-scroll: 80px near-bottom threshold, always jump on conversation change,
+  otherwise hold position and show a floating "New message" chip. "Seen" is recorded on any scroll (not only
+  near the bottom), because a thread that opens at the bottom has no baseline until the reader scrolls.
+- `src/hooks/useUnreadTitle.jsx` — prefixes the tab title with `(n)` while unread exists. Mounted from
+  `AppLayout` rather than `App`: the conversations query has no auth guard and must not fire on public pages.
+- `src/App.jsx` is back to just the router.
+
+Verification: `npx eslint .` exits 0 and `npm run build` succeeds. Behaviour was driven in a real browser
+against the running API + dev server (`eslint-plugin-react-hooks` v7 treats `set-state-in-effect`, `refs` and
+`purity` as errors, which shaped the design — no state is set synchronously in an effect).
+
+| Check | Result |
+| --- | --- |
+| Send path | `POST /api/messages` unchanged; no new endpoints |
+| Optimistic bubble | pending-styled bubble observed in the DOM before the response, then exactly one stored bubble (`opacity-70` gone, no duplicate), composer cleared |
+| Auto-scroll, reader at the top | incoming message did **not** move the view; "New message" chip appeared over the scroll area |
+| Chip click | smooth-scrolled to the latest and cleared |
+| Auto-scroll, reader at the bottom | incoming message followed to the latest with no chip |
+| Tab title | `CircleHub` → `(5)` → `(6)` → `(7)` matching the server's unread total, live, no reload |
+| Connection drop | pill showed `Reconnecting…` within seconds of the API being stopped (screenshot captured) |
+| Page loaded with the API down | pill showed `Live updates paused`; the 5s retry loop logged an attempt every 5s |
+| API restored | reconnected on its own (chip cleared) and a REST message from `testuser` then arrived live (badge 6 → 7) |
+
+Browser-driving notes (they cost time to rediscover): the programmatic `el.scrollTop = 0` used first does
+**not** produce a scroll event in this browser, so React's handler never sees it — real wheel input via the
+browser tool does, and that is what the scroll checks used. React-controlled inputs need the native value
+setter plus an `input` event (or the fill tool) before `requestSubmit()`.
+
 ## Open questions
 
 - Where does the client-side key exchange live (per-device key bundles, WebCrypto ECDH), and does the
@@ -181,3 +231,8 @@ and `web-test-badge.ps1` (drives the second sender and prints the server's unrea
 
 - A dev API instance may be holding port 5289 (`VITE_BASE_URL` in `.env.local` points there). If the port is
   busy, either stop that instance or point the frontend at the port you are running.
+- The browser verification runs left labelled messages in the dev database in Alice's conversation with
+  `testuser` (`live-check-1`, `scroll-check`, `scroll-check-2`, `scroll-check-3`, `optimistic check from
+  alice`, `title-check`, `reconnect-check`) and one in her `nasrdev` conversation (`badge-check`). They are
+  harness artefacts, not seed data; delete them when the thread should look clean again (their unread
+  contribution follows the rows, so re-open the conversation afterwards).

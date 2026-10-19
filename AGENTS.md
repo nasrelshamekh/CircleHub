@@ -107,7 +107,9 @@ The endpoint policy takes precedence over the middleware default, so REST keeps 
 ### Client contract (web)
 
 Wiring lives in `src/services/chatHub.js` (connection factory + event name) and
-`src/hooks/useRealtimeMessages.jsx`, which `src/App.jsx` calls once at the app root.
+`src/context/ChatConnectionContext.jsx`, which `src/main.jsx` mounts inside the auth provider so one
+connection serves the whole signed-in session. `src/hooks/useChatConnection.jsx` exposes its status to any
+component (`ChatConnectionStatus` renders the pill in the Messages header).
 
 - Event `ReceiveEncryptedMessage` carries `EncryptedMessageEnvelope`. `messageId` and `conversationId` are
   filled in by the REST fan-out (null for a pure hub relay). One event name covers both delivery paths.
@@ -115,11 +117,25 @@ Wiring lives in `src/services/chatHub.js` (connection factory + event name) and
   is a single source of truth for the API location.
 - `accessTokenFactory` returns the `localStorage` token, which browsers send as `access_token` on the
   negotiate request, and it is read on every negotiation so reconnects pick up the current token.
-- On an incoming message the hook invalidates `queryKeys.conversations()`. React Query matches keys by
+- On an incoming message the context invalidates `queryKeys.conversations()`. React Query matches keys by
   prefix, so this also covers `conversation(id)`; the list, the open thread and the unread badge all refresh
   from the server rather than being patched by hand.
 - Reconnects retry every 10s indefinitely. The SignalR default (0s, 2s, 10s, 30s, then give up) would leave
   a chat tab silently dead after a short outage.
+- A *failed first* `start()` is retried every 5s by the context. `withAutomaticReconnect` only recovers a
+  connection that was established once, so a tab opened while the API is down would otherwise stay dead.
+- The connection reports `connecting` / `live` / `reconnecting` / `offline` (`idle` while signed out), and
+  the chip is deliberately quiet while `live` or during the initial `connecting`: it only appears when
+  real-time delivery is actually impaired, so it is not noise on every page load.
+- Sending is optimistic: the composer hands the thread a temporary bubble (`pending: true`, reduced opacity)
+  before the request resolves, and the thread stops rendering it as soon as the stored message with that id
+  appears. The stored row is still the source of truth — nothing is written into the thread cache, so a
+  background refetch can never wipe or duplicate the bubble.
+- The thread only follows new messages when the reader is already at the bottom (within 80px). Otherwise it
+  holds the scroll position and shows a floating "New message" chip that jumps to the latest; opening a
+  conversation always starts at the latest message.
+- `useUnreadTitle` (mounted in the authenticated layout, not at the app root — the conversations query has no
+  auth guard) prefixes the tab title with `(n)` while unread messages exist.
 - The sender id is not part of the payload call — it is added by the server.
 - In development, React StrictMode mounts effects twice, so the first connect is stopped mid-negotiation and
   SignalR logs "The connection was stopped during negotiation" before the second one succeeds. That is
