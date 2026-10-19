@@ -3,9 +3,12 @@ import Navbar from '@/components/navigation/Navbar'
 import RightSidebar from '@/components/rightsidebar/RightSidebar'
 import Sidebar from '@/components/sidebar/Sidebar'
 import { useSidebar } from '@/hooks/useSidebar'
+import { useUnreadTitle } from '@/hooks/useUnreadTitle'
 import { Outlet } from 'react-router-dom'
 
 export default function AppLayout() {
+    useUnreadTitle();
+
     const { isSidebarExpanded } = useSidebar();
 
     return (

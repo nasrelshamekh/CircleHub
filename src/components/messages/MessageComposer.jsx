@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 import { useSendMessage } from "@/hooks/mutations/useSendMessage";
 
-export default function MessageComposer({ recipientUsername }) {
+export default function MessageComposer({ recipientUsername, onOptimisticMessage }) {
     const [text, setText] = useState("");
     const sendMessage = useSendMessage();
 
@@ -15,11 +15,29 @@ export default function MessageComposer({ recipientUsername }) {
 
         if (!content || sendMessage.isPending) return;
 
+        // Rendered by the thread right away so the message does not wait for the round trip; the stored
+        // message replaces it as soon as the thread next loads.
+        onOptimisticMessage?.({
+            id: `pending-${Date.now()}`,
+            content,
+            createdAt: new Date().toISOString(),
+            isMine: true,
+            pending: true,
+        });
+
         sendMessage.mutate(
             { recipientUsername, content },
             {
-                onSuccess: () => setText(""),
+                onSuccess: (result) => {
+                    setText("");
+                    onOptimisticMessage?.({
+                        ...result.data.message,
+                        pending: false,
+                    });
+                },
                 onError: (error) => {
+                    onOptimisticMessage?.(null);
+
                     toast.error(
                         error.response?.data?.message ||
                             "Could not send the message"

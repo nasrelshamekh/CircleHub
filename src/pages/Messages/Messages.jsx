@@ -1,6 +1,7 @@
 import { MessageCircle } from "lucide-react";
 import { useParams } from "react-router-dom";
 
+import ChatConnectionStatus from "@/components/messages/ChatConnectionStatus";
 import ConversationList from "@/components/messages/ConversationList";
 import MessageThread from "@/components/messages/MessageThread";
 import { useConversations } from "@/hooks/useConversations";
@@ -22,7 +23,10 @@ export default function Messages() {
 
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-col p-4 sm:p-6">
-            <h1 className="type-headline-md mb-4 text-primary">Messages</h1>
+            <div className="mb-4 flex items-center justify-between gap-3">
+                <h1 className="type-headline-md text-primary">Messages</h1>
+                <ChatConnectionStatus />
+            </div>
 
             <div className="grid h-[calc(100vh-14.625rem)] grid-cols-1 gap-4 sm:h-[calc(100vh-15.125rem)] lg:h-[calc(100vh-13rem)] lg:min-h-96 lg:grid-cols-[20rem_minmax(0,1fr)]">
                 <div

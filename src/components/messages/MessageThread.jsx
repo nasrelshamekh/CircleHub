@@ -75,7 +75,7 @@ function MessageBubble({ message, otherUser }) {
                                 message.isMine
                                     ? "bg-(--primary) text-(--on-primary)"
                                     : "bg-(--surface-container) text-primary"
-                            }`}
+                            }${message.pending ? " opacity-70" : ""}`}
                         >
                             {message.content}
                         </div>
@@ -137,13 +137,37 @@ export default function MessageThread({
     const bottomRef = useRef(null);
     const scrollRef = useRef(null);
     const anchorRef = useRef({ conversationId: null, firstId: null, height: 0 });
+    const previousConversationRef = useRef(conversationId);
+
+    const [isAtBottom, setIsAtBottom] = useState(true);
+    const [seen, setSeen] = useState({ conversationId: null, messageId: null });
+    const [pendingMessage, setPendingMessage] = useState(null);
 
     const firstMessageId = messages[0]?.id;
     const lastMessageId = messages[messages.length - 1]?.id;
 
+    // Derived, not stored: a message is "new" only if it arrived after the reader scrolled away from the
+    // bottom, so scrolling up by itself never raises the indicator.
+    const hasNewMessages =
+        !isAtBottom &&
+        seen.conversationId === conversationId &&
+        lastMessageId !== seen.messageId;
+
+    const showPendingMessage =
+        Boolean(pendingMessage) &&
+        !messages.some((message) => message.id === pendingMessage.id);
+
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ block: "end" });
-    }, [conversationId, lastMessageId]);
+        const conversationChanged =
+            previousConversationRef.current !== conversationId;
+        previousConversationRef.current = conversationId;
+
+        // A conversation always opens at its latest message; a new one only follows the reader down when
+        // they are already at the bottom, so catching up on history is not interrupted.
+        if (conversationChanged || isAtBottom) {
+            bottomRef.current?.scrollIntoView({ block: "end" });
+        }
+    }, [conversationId, lastMessageId, isAtBottom]);
 
     useLayoutEffect(() => {
         const element = scrollRef.current;
@@ -166,10 +190,46 @@ export default function MessageThread({
         };
     }, [conversationId, firstMessageId, messages.length]);
 
-    function handleScroll(event) {
-        if (event.currentTarget.scrollTop > 120) return;
+    function scrollToLatest() {
+        bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+        setIsAtBottom(true);
+        setSeen({ conversationId, messageId: lastMessageId });
+    }
 
-        onLoadOlder?.();
+    function handleOptimisticMessage(message) {
+        setPendingMessage(message);
+
+        // Sending is a deliberate jump to the end, even when the reader had scrolled up.
+        if (message) {
+            bottomRef.current?.scrollIntoView({
+                block: "end",
+                behavior: "smooth",
+            });
+        }
+    }
+
+    function handleScroll(event) {
+        const element = event.currentTarget;
+        const distanceFromBottom =
+            element.scrollHeight - element.scrollTop - element.clientHeight;
+        const nearBottom = distanceFromBottom < 80;
+
+        setIsAtBottom((current) =>
+            current === nearBottom ? current : nearBottom
+        );
+
+        // Recorded on any scroll, not only at the bottom: a thread that opens already at the bottom has no
+        // baseline until the reader scrolls, and without one no arrival could ever count as new.
+        setSeen((current) =>
+            current.conversationId === conversationId &&
+            current.messageId === lastMessageId
+                ? current
+                : { conversationId, messageId: lastMessageId }
+        );
+
+        if (element.scrollTop <= 120) {
+            onLoadOlder?.();
+        }
     }
 
     return (
@@ -205,42 +265,69 @@ export default function MessageThread({
                 )}
             </div>
 
-            <div
-                ref={scrollRef}
-                onScroll={handleScroll}
-                className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 [overflow-anchor:none]"
-            >
-                {isLoading && (
-                    <p className="type-body-sm text-secondary">Loading…</p>
+            <div className="relative flex min-h-0 flex-1 flex-col">
+                <div
+                    ref={scrollRef}
+                    onScroll={handleScroll}
+                    className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 [overflow-anchor:none]"
+                >
+                    {isLoading && (
+                        <p className="type-body-sm text-secondary">Loading…</p>
+                    )}
+
+                    {isLoadingOlder && (
+                        <p className="type-body-sm text-center text-secondary">
+                            Loading earlier messages…
+                        </p>
+                    )}
+
+                    {!isLoading && messages.length === 0 && (
+                        <p className="type-body-sm m-auto text-secondary">
+                            No messages yet. Say hello.
+                        </p>
+                    )}
+
+                    {messages.map((message, index) => (
+                        <Fragment key={message.id}>
+                            {isNewDay(
+                                message.createdAt,
+                                messages[index - 1]?.createdAt
+                            ) && <DateDivider value={message.createdAt} />}
+
+                            <MessageBubble
+                                message={message}
+                                otherUser={otherUser}
+                            />
+                        </Fragment>
+                    ))}
+
+                    {showPendingMessage && (
+                        <MessageBubble
+                            message={pendingMessage}
+                            otherUser={otherUser}
+                        />
+                    )}
+
+                    <div ref={bottomRef} />
+                </div>
+
+                {hasNewMessages && (
+                    <button
+                        type="button"
+                        onClick={scrollToLatest}
+                        className="type-label-sm absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-(--primary) px-3 py-1.5 text-(--on-primary) shadow-md"
+                    >
+                        New message
+                    </button>
                 )}
-
-                {isLoadingOlder && (
-                    <p className="type-body-sm text-center text-secondary">
-                        Loading earlier messages…
-                    </p>
-                )}
-
-                {!isLoading && messages.length === 0 && (
-                    <p className="type-body-sm m-auto text-secondary">
-                        No messages yet. Say hello.
-                    </p>
-                )}
-
-                {messages.map((message, index) => (
-                    <Fragment key={message.id}>
-                        {isNewDay(
-                            message.createdAt,
-                            messages[index - 1]?.createdAt
-                        ) && <DateDivider value={message.createdAt} />}
-
-                        <MessageBubble message={message} otherUser={otherUser} />
-                    </Fragment>
-                ))}
-
-                <div ref={bottomRef} />
             </div>
 
-            {otherUser && <MessageComposer recipientUsername={otherUser.username} />}
+            {otherUser && (
+                <MessageComposer
+                    recipientUsername={otherUser.username}
+                    onOptimisticMessage={handleOptimisticMessage}
+                />
+            )}
         </div>
     );
 }

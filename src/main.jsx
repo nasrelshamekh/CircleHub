@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.jsx'
 import ThemeContextProvider from './context/ThemeContext.jsx'
 import AuthContextProvider from './context/AuthContext.jsx'
+import ChatConnectionContextProvider from './context/ChatConnectionContext.jsx'
 import { Toaster } from 'sonner'
 import SidebarContextProvider from './context/SidebarContext.jsx'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -16,9 +17,11 @@ createRoot(document.getElementById('root')).render(
     <QueryClientProvider client={queryClient}>
       <ThemeContextProvider>
         <AuthContextProvider>
-          <SidebarContextProvider>
-            <App />
-          </SidebarContextProvider>
+          <ChatConnectionContextProvider>
+            <SidebarContextProvider>
+              <App />
+            </SidebarContextProvider>
+          </ChatConnectionContextProvider>
         </AuthContextProvider>
         <Toaster position="top-right" />
       </ThemeContextProvider>
