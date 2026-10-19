@@ -58,17 +58,21 @@ namespace CircleHub.Api.Controllers
 
         private async Task<bool> CanViewUserContent(User user, Guid viewerId)
         {
-            if (user.Id == viewerId)
-                return true;
-
-            if (user.ProfileVisibility == ProfileVisibility.Public)
+            if (user.Id == viewerId || user.ProfileVisibility == ProfileVisibility.Public)
                 return true;
 
             if (user.ProfileVisibility != ProfileVisibility.Followers)
                 return false;
 
-            return await _db.Follows
+            // A followers-only profile unlocks once the viewer follows the owner.
+            var viewerFollowsOwner = await _db.Follows
                 .AnyAsync(f => f.FollowerId == viewerId && f.FollowingId == user.Id);
+
+            return UserVisibility.CanViewContent(
+                user.ProfileVisibility,
+                user.Id,
+                viewerId,
+                viewerFollowsOwner);
         }
 
         [HttpGet("suggested")]
@@ -129,33 +133,39 @@ namespace CircleHub.Api.Controllers
             var followsMe = !isCurrentUser && await _db.Follows
                 .AnyAsync(f => f.FollowerId == user.Id && f.FollowingId == currentUserId);
 
+            var profile = new UserProfileDto
+            {
+                Id = user.Id,
+                Name = user.Name,
+                Username = user.Username,
+                JobTitle = user.JobTitle,
+                AvatarUrl = user.AvatarUrl,
+                CoverImageUrl = user.CoverImageUrl,
+                Bio = user.Bio,
+                Location = user.Location,
+                Website = user.Website,
+                Skills = user.Skills,
+                Gender = user.Gender,
+                DateOfBirth = user.DateOfBirth,
+                CreatedAt = user.CreatedAt,
+
+                FollowersCount = followersCount,
+                FollowingCount = followingCount,
+                PostsCount = postsCount,
+                IsCurrentUser = isCurrentUser,
+                IsFollowedByMe = isFollowedByMe,
+                FollowsMe = followsMe,
+                IsProfileLocked = !canViewContent,
+                ProfileVisibility = user.ProfileVisibility.ToString().ToLower()
+            };
+
+            // The profile card stays public so locked accounts remain discoverable; only the
+            // details behind the About tab are withheld from a viewer the lock rejects.
+            UserVisibility.StripLockedDetails(profile, canViewContent);
+
             return Ok(new ApiResponse<UserProfileDto>
             {
-                Data = new UserProfileDto
-                {
-                    Id = user.Id,
-                    Name = user.Name,
-                    Username = user.Username,
-                    JobTitle = user.JobTitle,
-                    AvatarUrl = user.AvatarUrl,
-                    CoverImageUrl = user.CoverImageUrl,
-                    Bio = user.Bio,
-                    Location = user.Location,
-                    Website = user.Website,
-                    Skills = user.Skills,
-                    Gender = user.Gender,
-                    DateOfBirth = user.DateOfBirth,
-                    CreatedAt = user.CreatedAt,
-
-                    FollowersCount = followersCount,
-                    FollowingCount = followingCount,
-                    PostsCount = postsCount,
-                    IsCurrentUser = isCurrentUser,
-                    IsFollowedByMe = isFollowedByMe,
-                    FollowsMe = followsMe,
-                    IsProfileLocked = !canViewContent,
-                    ProfileVisibility = user.ProfileVisibility.ToString().ToLower()
-                }
+                Data = profile
             });
         }
 

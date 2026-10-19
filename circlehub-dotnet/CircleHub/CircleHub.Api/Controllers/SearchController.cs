@@ -1,5 +1,6 @@
 ﻿using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
+using CircleHub.Api.Entities;
 using CircleHub.Api.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -43,38 +44,18 @@ namespace CircleHub.Api.Controllers
 
             if (!string.IsNullOrEmpty(query))
             {
-                users = await _db.Users
-                    .Where(u => u.Id != currentUserId)
-                    .Where(u =>
-                        EF.Functions.Like(u.Name, $"%{query}%") ||
-                        EF.Functions.Like(u.Username, $"%{query}%") ||
-                        EF.Functions.Like(u.JobTitle ?? "", $"%{query}%") ||
-                        EF.Functions.Like(u.Location ?? "", $"%{query}%") ||
-                        EF.Functions.Like(u.Bio ?? "", $"%{query}%"))
-                    .OrderBy(u => u.Name)
-                    .Take(ResultLimit)
-                    .Select(u => new SearchUserDto
-                    {
-                        Id = u.Id,
-                        Name = u.Name,
-                        Username = u.Username,
-                        JobTitle = u.JobTitle,
-                        AvatarUrl = u.AvatarUrl,
-                        CoverImageUrl = u.CoverImageUrl,
-                        Bio = u.Bio,
-                        Location = u.Location,
-                        Website = u.Website,
-                        Skills = u.Skills,
-                        Gender = u.Gender,
-                        DateOfBirth = u.DateOfBirth,
-                        CreatedAt = u.CreatedAt,
-                        PostsCount = u.Posts.Count,
-                        FollowersCount = u.Followers.Count,
-                        FollowingCount = u.Following.Count,
-                        IsFollowedByMe = u.Followers.Any(f =>
-                            f.FollowerId == currentUserId)
-                    })
-                    .ToListAsync();
+                users = await SearchUsersAsync(
+                    _db.Users
+                        .Where(u => u.Id != currentUserId)
+                        .Where(u =>
+                            EF.Functions.Like(u.Name, $"%{query}%") ||
+                            EF.Functions.Like(u.Username, $"%{query}%") ||
+                            EF.Functions.Like(u.JobTitle ?? "", $"%{query}%") ||
+                            EF.Functions.Like(u.Location ?? "", $"%{query}%") ||
+                            EF.Functions.Like(u.Bio ?? "", $"%{query}%"))
+                        .OrderBy(u => u.Name)
+                        .Take(ResultLimit),
+                    currentUserId);
 
                 communities = await _db.Communities
                     .Where(c =>
@@ -99,33 +80,14 @@ namespace CircleHub.Api.Controllers
             }
             else
             {
-                users = await _db.Users
-                    .Where(u =>
-                        u.Id != currentUserId &&
-                        !u.Followers.Any(f => f.FollowerId == currentUserId))
-                    .OrderByDescending(u => u.Followers.Count)
-                    .Take(ResultLimit)
-                    .Select(u => new SearchUserDto
-                    {
-                        Id = u.Id,
-                        Name = u.Name,
-                        Username = u.Username,
-                        JobTitle = u.JobTitle,
-                        AvatarUrl = u.AvatarUrl,
-                        CoverImageUrl = u.CoverImageUrl,
-                        Bio = u.Bio,
-                        Location = u.Location,
-                        Website = u.Website,
-                        Skills = u.Skills,
-                        Gender = u.Gender,
-                        DateOfBirth = u.DateOfBirth,
-                        CreatedAt = u.CreatedAt,
-                        PostsCount = u.Posts.Count,
-                        FollowersCount = u.Followers.Count,
-                        FollowingCount = u.Following.Count,
-                        IsFollowedByMe = false
-                    })
-                    .ToListAsync();
+                users = await SearchUsersAsync(
+                    _db.Users
+                        .Where(u =>
+                            u.Id != currentUserId &&
+                            !u.Followers.Any(f => f.FollowerId == currentUserId))
+                        .OrderByDescending(u => u.Followers.Count)
+                        .Take(ResultLimit),
+                    currentUserId);
 
                 communities = await _db.Communities
                     .Where(c =>
@@ -155,6 +117,55 @@ namespace CircleHub.Api.Controllers
                     Posts = posts
                 }
             });
+        }
+
+        /// <summary>
+        /// Projects users into search results, dropping the About-tab details (website,
+        /// gender, date of birth) from accounts whose profile the viewer may not open.
+        /// Everything else on the card stays public so locked accounts remain discoverable.
+        /// </summary>
+        private static async Task<List<SearchUserDto>> SearchUsersAsync(
+            IQueryable<User> users,
+            Guid currentUserId)
+        {
+            var results = await users
+                .Select(u => new
+                {
+                    // UserVisibility.CanViewContent, inlined because EF cannot translate a
+                    // method call inside a projection. These queries always exclude the
+                    // viewer, so the "owner" branch of the rule never applies here.
+                    CanViewContent =
+                        u.ProfileVisibility == ProfileVisibility.Public ||
+                        (u.ProfileVisibility == ProfileVisibility.Followers &&
+                         u.Followers.Any(f => f.FollowerId == currentUserId)),
+                    Result = new SearchUserDto
+                    {
+                        Id = u.Id,
+                        Name = u.Name,
+                        Username = u.Username,
+                        JobTitle = u.JobTitle,
+                        AvatarUrl = u.AvatarUrl,
+                        CoverImageUrl = u.CoverImageUrl,
+                        Bio = u.Bio,
+                        Location = u.Location,
+                        Website = u.Website,
+                        Skills = u.Skills,
+                        Gender = u.Gender,
+                        DateOfBirth = u.DateOfBirth,
+                        CreatedAt = u.CreatedAt,
+                        PostsCount = u.Posts.Count,
+                        FollowersCount = u.Followers.Count,
+                        FollowingCount = u.Following.Count,
+                        IsFollowedByMe = u.Followers.Any(f =>
+                            f.FollowerId == currentUserId)
+                    }
+                })
+                .ToListAsync();
+
+            foreach (var result in results)
+                UserVisibility.StripLockedDetails(result.Result, result.CanViewContent);
+
+            return results.Select(result => result.Result).ToList();
         }
     }
 }
