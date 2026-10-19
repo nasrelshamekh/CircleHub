@@ -5,7 +5,8 @@ import App from './App.jsx'
 import ThemeContextProvider from './context/ThemeContext.jsx'
 import AuthContextProvider from './context/AuthContext.jsx'
 import ChatConnectionContextProvider from './context/ChatConnectionContext.jsx'
-import { Toaster } from 'sonner'
+import { Toaster } from './components/ui/sonner'
+import { MESSAGE_TOASTER_ID } from './lib/messageToast'
 import SidebarContextProvider from './context/SidebarContext.jsx'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -24,6 +25,9 @@ createRoot(document.getElementById('root')).render(
           </ChatConnectionContextProvider>
         </AuthContextProvider>
         <Toaster position="top-right" />
+        {/* Message notifications get their own stack, in the opposite corner from errors. Sonner renders
+            a toast only in the toaster whose id matches, so the two never share a stack. */}
+        <Toaster id={MESSAGE_TOASTER_ID} position="bottom-right" />
       </ThemeContextProvider>
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>

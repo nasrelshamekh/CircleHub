@@ -11,6 +11,7 @@ import {
     TYPING_CHANGED_EVENT,
 } from "@/services/chatHub";
 import { chimeForIncomingMessage } from "@/lib/messageChime";
+import { shouldToast, showMessageToast } from "@/lib/messageToast";
 import { queryKeys } from "@/lib/queryKeys";
 
 // `withAutomaticReconnect` only recovers a connection that was established once, so a tab opened while the
@@ -64,6 +65,22 @@ function dropTypingClaim(typingUsers, userId) {
 }
 
 /**
+ * The conversation a sender belongs to, read straight from the cached list. Null when the list has never
+ * been loaded in this session, which costs a toast its name and avatar but never the message itself.
+ */
+function findConversationByPartner(queryClient, senderId) {
+    const conversations = queryClient.getQueryData(queryKeys.conversations());
+
+    if (!senderId || !Array.isArray(conversations)) return null;
+
+    return (
+        conversations.find(
+            (conversation) => conversation.otherUser?.id === senderId
+        ) ?? null
+    );
+}
+
+/**
  * Keeps a SignalR connection open for the signed-in session and exposes its state, so the UI can tell the
  * user when real-time delivery is not available instead of silently going quiet.
  */
@@ -93,6 +110,23 @@ export default function ChatConnectionContextProvider({ children }) {
             // The sound is for a message the reader cannot see landing: it stays quiet while they are
             // looking at that very thread with the tab in front.
             chimeForIncomingMessage(message);
+
+            // Away from the messages page there is nothing on screen that would say a message arrived, so
+            // the same event also gets a card in the corner. Its title and avatar come from the cached
+            // conversation list, which the layout keeps loaded for the unread badge.
+            if (shouldToast()) {
+                const sender = findConversationByPartner(
+                    queryClient,
+                    message?.senderId
+                );
+
+                showMessageToast({
+                    messageId: message?.messageId,
+                    conversationId: message?.conversationId ?? sender?.id,
+                    sender: sender?.otherUser,
+                    preview: message?.encryptedPayload,
+                });
+            }
 
             // A message from someone else affects the conversation list, the open thread and the unread
             // badge. conversations() is a prefix of conversation(id), so one invalidation refreshes all

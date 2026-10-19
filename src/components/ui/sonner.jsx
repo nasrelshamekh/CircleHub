@@ -1,11 +1,13 @@
-﻿import { useTheme } from "next-themes"
+﻿import { useTheme } from "@/hooks/useTheme"
 import { Toaster as Sonner } from "sonner";
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
 const Toaster = ({
   ...props
 }) => {
-  const { theme = "system" } = useTheme()
+  // The app owns its theme: ThemeContext puts `light`/`dark` on <html>, which is what every token below
+  // resolves against, so sonner is told the same state rather than guessing from the system preference.
+  const { theme } = useTheme()
 
   return (
     <Sonner
