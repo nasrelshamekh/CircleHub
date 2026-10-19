@@ -44,11 +44,17 @@ export function useConversation(id) {
 
     const messages = useMemo(() => (pages ? mergePages(pages) : []), [pages]);
 
+    // The list carries the preview and the unread badge, so it has to follow the thread's messages — and
+    // nothing else. Depending on `query.data` was too broad: a presence event patches the thread's object
+    // identity without touching a single message, so this effect re-ran and paid for a full list refetch to
+    // learn nothing. The newest id plus the count is the whole signal.
+    const newestMessageId = messages.length ? messages[messages.length - 1].id : null;
+
     useEffect(() => {
-        if (!query.data) return;
+        if (!newestMessageId) return;
 
         queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
-    }, [query.data, queryClient]);
+    }, [messages.length, newestMessageId, queryClient]);
 
     function loadOlder() {
         if (!query.hasNextPage || query.isFetchingNextPage) return;
