@@ -164,8 +164,8 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
 - `PresenceChanged` is *patched* into the caches (`withPresence` in the context) rather than invalidated. One
   helper covers both shapes React Query holds under the `conversations()` prefix — the list is an array, a
   thread is `{ pages }` — and returns its input untouched when nothing matched, so unrelated caches keep their
-  identity. A refetch still follows from `useConversation`'s invalidate-on-change effect; the patch is what
-  makes the change visible without waiting for a round trip.
+  identity. No request follows either: `useConversation` only reacts when the thread's *messages* change (the
+  newest id plus the count), so a partner appearing online costs zero fetches and the patch is the whole story.
 - `PresenceLabel` is the only place the wording lives ("Online" / "Last seen 12 minutes ago" / "Offline" for a
   user who has never connected) and `PresenceDot` the avatar dot; the list row and the thread header both use
   them, so the two cannot drift apart. The relative text re-renders on a 60s interval while the other person
@@ -238,9 +238,6 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
 - Presence is process-local, so with more than one API instance a user connected to instance B reads as
   offline on instance A and only receives events raised by the instance they are connected to. Same
   backplane + sticky-session caveat as the connection registry.
-- A presence event also costs one refetch of the list and of the open thread (`useConversation` invalidates
-  the `conversations()` prefix whenever its data changes). Narrowing that effect to "the messages changed"
-  would remove it; it was left alone to keep the presence step's blast radius small.
 - Typing signals are relayed as they arrive and are not rate limited server-side, so a hostile client can
   re-render one recipient's UI as fast as it can call `SendTyping`. The blast radius is small — the id on a
   claim always comes from the JWT, so a client can only ever pollute its own entry, and nothing is stored —
@@ -277,8 +274,6 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
 - Tailwind's `line-clamp-*` utilities set `display` themselves, so pairing one with `block` on the same element
   silently drops the clamp and the element grows to its full content height. The message toast's preview hit
   exactly this — `clamp-2` was applied (computed `-webkit-line-clamp: 2`) while the card still grew to 349px.
-- `next-themes` is still a dependency but nothing imports it: `src/components/ui/sonner.jsx` reads the app's own
-  `ThemeContext` (through `@/hooks/useTheme`), which is the only thing that puts `light`/`dark` on `<html>`.
 - The Vite dev server answers `200` with `index.html` for any path that is not a real file, so after a public
   asset is deleted `GET /message-chime.wav` still returns `200` — check the `Content-Type` (and byte count)
   before believing a 200 means the file is still there.

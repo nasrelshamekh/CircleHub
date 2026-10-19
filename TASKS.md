@@ -23,6 +23,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 10 | Typing indicator: `SendTyping` hub signal + web client (thread header + conversation list) | done, verified |
 | 11 | Incoming-message sound: committed sound file (the owner's own), silent while the reader is looking at that thread | done, verified |
 | 12 | Message toast away from the messages page: themed card, click to open | done, verified |
+| - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
 pieces (5 and 6) land together with the mobile client (8), because Expo push only has a consumer there.
@@ -269,7 +270,7 @@ Behaviour was driven in a real browser against the running API + dev server, wit
 | 60s tick | 50s-old stamp → "Last seen just now", then "2 minutes ago" ~66s later with the API call count unchanged (4 → 4), i.e. no refetch |
 | Privacy | a user with no conversation with `bob_builder` received **no** presence events while he came online and went away |
 | Row layout | 80px, three lines, presence line 765x16 unclipped, dot 10x10 |
-| No refetch loop | API calls stable at 4 over 66s; one presence event costs one list + one thread call |
+| No refetch loop | API calls stable at 4 over 66s; one presence event costs one list + one thread call (removed in the cleanup pass below) |
 
 Presence only ever reaches conversation partners, and it added no rows to the dev database. Harness:
 `%TEMP%\opencode\presence-setup.ps1` (bob's token + the Alice↔bob conversation id),
@@ -485,6 +486,44 @@ One trap worth knowing: `GET /message-chime.wav` still answers 200 (as `text/htm
 falls back to `index.html` for any path that is not a real file. The wav is gone; the 200 is not evidence it
 survived.
 
+### Cleanup pass - unused dependency, presence refetch cost, dev rows (done, verified)
+
+Three small items picked from the follow-up list; none of them is a numbered step, and the presence *wording*
+was deliberately left alone (the owner asked for that part to stay as it was: "Online" / "Last seen …" /
+"Offline").
+
+**`next-themes` removed.** It was a dependency nothing imported. `src/components/ui/sonner.jsx` reads the
+app's own `ThemeContext` through `@/hooks/useTheme`, and *that* is what puts `light`/`dark` on `<html>` — the
+sonner palette only ever knew light and dark, which is how a white card ended up on a dark surface.
+`npm uninstall next-themes`, no code change.
+
+**A presence event no longer costs a refetch.** `useConversation` invalidated the `conversations()` prefix
+whenever `query.data` changed, and `withPresence` rewrites the open thread's object identity — so every partner
+coming online or going away bought a list refresh *and* a thread refresh to learn nothing. The effect now keys
+on the thread's messages (the newest id plus the count), which is the whole signal it was ever reacting to.
+
+**The dev rows are gone.** The 7 labelled messages the browser runs left in Alice's thread with `testuser`
+(`live-check-1`, `scroll-check`, `scroll-check-2`, `scroll-check-3`, `optimistic check from alice`,
+`title-check`, `reconnect-check`), the `badge-check` row in her `nasrdev` thread, and the 3 `e2e rest ok` rows
+from the earlier REST checks — 11 rows. `Conversations.LastMessageAt` is a *stored* column (it orders the
+list), so it was repaired to `MAX(CreatedAt)` of the surviving messages; the `testuser` thread was already
+carrying a stale value from an earlier cleanup, which is how that was noticed. The preview and the unread count
+are derived, so they repaired themselves. The rows were deliberately *not* touched in the `testuser ↔ nasrdev`
+thread, which belongs to another session.
+
+Verification. `npx eslint .` exits 0 and `npm run build` succeeds. Two browser checks, both against the running
+API + dev server, both read from `performance.getEntriesByType('resource')`:
+
+- **No refetch from presence.** With a thread open, `gina_travel` connecting and then dropping flipped her row
+  between "Online" and "Last seen just now" with the `/api/messages/conversations` count flat at 3 and the
+  thread count flat at 4 — the old effect would have taken one of each for a transition.
+- **The effect still does its job.** The list stays fresh for 30s (`staleTime`), so opening a thread with unread
+  messages is exactly the case the effect exists for: doing it on a thread showing unread 3 refetched the list
+  and cleared the badge to none.
+
+Harness: `%TEMP%\opencode\labelled-cleanup.ps1 [-Apply]` (prints the rows and the stored `LastMessageAt` vs the
+newest message before and after; `-Apply` deletes and repairs).
+
 ## Open questions
 
 - Where does the client-side key exchange live (per-device key bundles, WebCrypto ECDH), and does the
@@ -503,11 +542,12 @@ survived.
 
 - A dev API instance may be holding port 5289 (`VITE_BASE_URL` in `.env.local` points there). If the port is
   busy, either stop that instance or point the frontend at the port you are running.
-- The browser verification runs left labelled messages in the dev database in Alice's conversation with
-  `testuser` (`live-check-1`, `scroll-check`, `scroll-check-2`, `scroll-check-3`, `optimistic check from
-  alice`, `title-check`, `reconnect-check`) and one in her `nasrdev` conversation (`badge-check`). They are
-  harness artefacts, not seed data; delete them when the thread should look clean again (their unread
-  contribution follows the rows, so re-open the conversation afterwards).
 - `bob_builder.LastSeenAt` was set by the presence checks (12 minutes ago, then ~1 minute ago) to exercise the
   wording. The next time he connects it is overwritten with a real value; until then his row reads a
   plausible-but-invented time.
+- Alice's conversation with `erin_photo` and the one with `gina_travel` still hold `ENC:v1:…` payloads written
+  by an early harness. They are the *only* rows in those threads, so deleting them would leave a conversation
+  with no messages and a `LastMessageAt` pointing at nothing; left alone, but they are not seed data either.
+- An earlier cleanup deleted the newest message of Alice's thread with `testuser` without repairing
+  `LastMessageAt`, which is why that column was stale. Any future row deletion needs the same repair — the
+  cleanup script in the section above shows the shape.
