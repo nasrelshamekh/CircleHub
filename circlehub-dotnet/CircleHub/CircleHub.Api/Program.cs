@@ -58,6 +58,7 @@ builder.Services.AddScoped<PasswordResetService>();
 builder.Services.AddScoped<MessagePolicyService>();
 builder.Services.AddScoped<MessageDeliveryService>();
 builder.Services.AddScoped<PresenceService>();
+builder.Services.AddScoped<NotificationService>();
 
 builder.Services.AddSignalR();
 // Routes Clients.User(id) to the "sub" claim, the same id the REST API uses.

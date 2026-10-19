@@ -16,11 +16,13 @@ namespace CircleHub.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly UploadService _uploadService;
+        private readonly NotificationService _notifications;
 
-        public PostsController(AppDbContext db, UploadService uploadService)
+        public PostsController(AppDbContext db, UploadService uploadService, NotificationService notifications)
         {
             _db = db;
             _uploadService = uploadService;
+            _notifications = notifications;
         }
 
         private Guid? CurrentUserId
@@ -237,8 +239,11 @@ namespace CircleHub.Api.Controllers
         {
             var userId = CurrentUserId!.Value;
 
-            var postExists = await _db.Posts.AnyAsync(p => p.Id == id);
-            if (!postExists)
+            var postAuthorId = await _db.Posts
+                .Where(p => p.Id == id)
+                .Select(p => (Guid?)p.AuthorId)
+                .FirstOrDefaultAsync();
+            if (postAuthorId is null)
                 return Fail(StatusCodes.Status404NotFound, "Post not found");
 
             var existingLike = await _db.Likes
@@ -263,6 +268,9 @@ namespace CircleHub.Api.Controllers
             }
 
             await _db.SaveChangesAsync();
+
+            if (isLikedByMe)
+                await _notifications.NotifyPostLikeAsync(userId, postAuthorId.Value, id);
 
             var likesCount = await _db.Likes.CountAsync(l => l.PostId == id);
 

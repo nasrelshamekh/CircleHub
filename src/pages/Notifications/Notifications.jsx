@@ -1,65 +1,71 @@
-﻿import {
-    Bell,
-    CheckCircle2,
-    Heart,
-    MessageCircle,
-    UserPlus,
-    Users,
-} from "lucide-react";
+﻿import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { Bell } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
-
-const notificationItems = [
-    {
-        id: 1,
-        type: "follow",
-        actor: "Elena Rodriguez",
-        username: "elena.designs",
-        message: "started following you.",
-        time: "12 minutes ago",
-        unread: true,
-        icon: UserPlus,
-        to: "/profile/elena.designs",
-    },
-    {
-        id: 2,
-        type: "like",
-        actor: "David Chen",
-        username: "davidcodes",
-        message: "liked your post about reusable layouts.",
-        time: "34 minutes ago",
-        unread: true,
-        icon: Heart,
-        to: "/post/2",
-    },
-    {
-        id: 3,
-        type: "comment",
-        actor: "Maya Hassan",
-        username: "maya.creates",
-        message: "commented on your profile page update.",
-        time: "1 hour ago",
-        unread: false,
-        icon: MessageCircle,
-        to: "/post/1",
-    },
-    {
-        id: 4,
-        type: "community",
-        actor: "Full-Stack Circle",
-        username: "full-stack-circle",
-        message: "approved your latest community post.",
-        time: "Yesterday",
-        unread: false,
-        icon: Users,
-        to: "/communities/full-stack-circle",
-    },
-];
+import { useNotifications } from "@/hooks/useNotifications";
+import { markNotificationsSeen } from "@/services/notificationApi";
+import { notificationIcon, notificationLink, notificationSentence } from "@/lib/notificationCopy";
+import { formatShortTime } from "@/lib/formatDate";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function Notifications() {
     const { userData } = useAuth();
-    const unreadCount = notificationItems.filter((notification) => notification.unread).length;
+    const queryClient = useQueryClient();
+    const { items, unreadCount, isLoading, isLoadingMore, hasMore, loadMore } =
+        useNotifications();
+    const sentinelRef = useRef(null);
+
+    // Opening the feed marks it seen, but only the *badge* moves: each row keeps the unread flag it was
+    // fetched with, so the dots stay meaningful for this visit instead of vanishing on arrival. The effect
+    // re-runs if a new row lands while the page is open, because the count goes back above zero.
+    useEffect(() => {
+        if (unreadCount === 0) return undefined;
+
+        let cancelled = false;
+
+        markNotificationsSeen()
+            .then(() => {
+                if (cancelled) return;
+
+                queryClient.setQueryData(queryKeys.notifications(), (data) =>
+                    data
+                        ? {
+                              ...data,
+                              pages: data.pages.map((page) => ({
+                                  ...page,
+                                  data: { ...page.data, unreadCount: 0 },
+                              })),
+                          }
+                        : data
+                );
+            })
+            .catch(() => {
+                // A failed stamp is not worth an error toast: the badge simply survives until the next visit.
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [unreadCount, queryClient]);
+
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el || !hasMore) return undefined;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting && hasMore && !isLoadingMore) {
+                    loadMore();
+                }
+            },
+            { rootMargin: "200px" }
+        );
+
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [hasMore, isLoadingMore, loadMore]);
 
     return (
         <section className="content-stack max-w-5xl">
@@ -93,46 +99,92 @@ export default function Notifications() {
                             Updates for @{userData.username}
                         </p>
                     </div>
-
-                    <CheckCircle2 size={22} className="text-(--primary)" />
                 </div>
 
-                <div className="space-y-3">
-                    {notificationItems.map((notification) => {
-                        const Icon = notification.icon;
-
-                        return (
-                            <Link
-                                key={notification.id}
-                                to={notification.to}
-                                className="flex gap-4 rounded-xl bg-(--surface-low) p-4 transition hover:bg-(--hover)"
+                {isLoading ? (
+                    <div className="space-y-3">
+                        {[0, 1, 2].map((index) => (
+                            <div
+                                key={index}
+                                className="flex animate-pulse gap-4 rounded-xl bg-(--surface-low) p-4"
                             >
-                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-(--active) text-(--primary)">
-                                    <Icon size={19} />
+                                <div className="h-11 w-11 shrink-0 rounded-full bg-(--hover)" />
+                                <div className="flex-1 space-y-2 py-1">
+                                    <div className="h-3 w-2/3 rounded bg-(--hover)" />
+                                    <div className="h-3 w-16 rounded bg-(--hover)" />
                                 </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : items.length === 0 ? (
+                    <div className="flex flex-col items-center gap-3 rounded-xl bg-(--surface-low) px-6 py-12 text-center">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-(--active) text-(--primary)">
+                            <Bell size={20} />
+                        </div>
 
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                        <p className="type-body-sm-readable text-primary">
-                                            <span className="font-semibold">
-                                                {notification.actor}
-                                            </span>{" "}
-                                            {notification.message}
-                                        </p>
+                        <p className="type-body-sm-readable text-primary">
+                            You&apos;re all caught up.
+                        </p>
 
-                                        {notification.unread && (
-                                            <span className="h-2 w-2 rounded-full bg-(--primary)" />
-                                        )}
+                        <p className="type-body-sm text-secondary">
+                            Follows, likes, comments and community updates will show up here.
+                        </p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="space-y-3">
+                            {items.map((notification) => {
+                                const Icon = notificationIcon(notification.type);
+                                const to = notificationLink(notification);
+                                const className =
+                                    "flex gap-4 rounded-xl bg-(--surface-low) p-4 transition hover:bg-(--hover)";
+
+                                const body = (
+                                    <>
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-(--active) text-(--primary)">
+                                            <Icon size={19} />
+                                        </div>
+
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                <p className="type-body-sm-readable text-primary">
+                                                    <span className="font-semibold">
+                                                        {notification.actor?.name}
+                                                    </span>{" "}
+                                                    {notificationSentence(notification)}
+                                                </p>
+
+                                                {notification.unread && (
+                                                    <span className="h-2 w-2 rounded-full bg-(--primary)" />
+                                                )}
+                                            </div>
+
+                                            <p className="type-label-sm mt-1 text-secondary">
+                                                {formatShortTime(notification.createdAt)}
+                                            </p>
+                                        </div>
+                                    </>
+                                );
+
+                                return to ? (
+                                    <Link
+                                        key={notification.id}
+                                        to={to}
+                                        className={className}
+                                    >
+                                        {body}
+                                    </Link>
+                                ) : (
+                                    <div key={notification.id} className={className}>
+                                        {body}
                                     </div>
+                                );
+                            })}
+                        </div>
 
-                                    <p className="type-label-sm mt-1 text-secondary">
-                                        {notification.time}
-                                    </p>
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </div>
+                        <div ref={sentinelRef} className="h-1" />
+                    </>
+                )}
             </div>
         </section>
     );

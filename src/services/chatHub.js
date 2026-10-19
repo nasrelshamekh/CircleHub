@@ -10,6 +10,10 @@ export const PRESENCE_CHANGED_EVENT = "PresenceChanged";
 // Event the API raises while a conversation partner is typing to us (ChatHub.TypingChangedMethod).
 export const TYPING_CHANGED_EVENT = "TypingChanged";
 
+// Event the API raises when a new row lands in our notification feed
+// (ChatHub.NotificationCreatedMethod). Payload-free: the feed is refetched, never patched.
+export const NOTIFICATION_CREATED_EVENT = "NotificationCreated";
+
 // Hub method we invoke to say that we are (or are no longer) typing (ChatHub.SendTyping).
 export const SEND_TYPING_METHOD = "SendTyping";
 

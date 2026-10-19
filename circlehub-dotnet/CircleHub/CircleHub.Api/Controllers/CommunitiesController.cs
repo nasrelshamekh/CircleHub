@@ -18,11 +18,13 @@ namespace CircleHub.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly UploadService _uploadService;
+        private readonly NotificationService _notifications;
 
-        public CommunitiesController(AppDbContext db, UploadService uploadService)
+        public CommunitiesController(AppDbContext db, UploadService uploadService, NotificationService notifications)
         {
             _db = db;
             _uploadService = uploadService;
+            _notifications = notifications;
         }
 
         private Guid? CurrentUserId
@@ -650,6 +652,8 @@ namespace CircleHub.Api.Controllers
 
             await _db.SaveChangesAsync();
 
+            await _notifications.NotifyCommunityJoinRequestedAsync(currentUserId, id);
+
             return StatusCode(StatusCodes.Status201Created, new ApiResponse<object>
             {
                 Message = $"Join request sent to {community.Name}",
@@ -908,6 +912,9 @@ namespace CircleHub.Api.Controllers
 
                 await _db.SaveChangesAsync();
 
+                await _notifications.NotifyJoinRequestDecidedAsync(
+                    currentUserId, joinRequest.UserId, communityId, approved: false);
+
                 return Ok(new ApiResponse<object>
                 {
                     Message = "Join request rejected successfully",
@@ -947,6 +954,9 @@ namespace CircleHub.Api.Controllers
             _db.CommunityMembers.Add(newMember);
 
             await _db.SaveChangesAsync();
+
+            await _notifications.NotifyJoinRequestDecidedAsync(
+                currentUserId, joinRequest.UserId, communityId, approved: true);
 
             return Ok(new ApiResponse<object>
             {
@@ -1034,6 +1044,9 @@ namespace CircleHub.Api.Controllers
 
             await _db.SaveChangesAsync();
 
+            await _notifications.NotifyCommunityMemberRemovedAsync(
+                currentUserId, targetMembership.UserId, communityId);
+
             return Ok(new ApiResponse<object>
             {
                 Message = "Community member removed successfully",
@@ -1114,6 +1127,9 @@ namespace CircleHub.Api.Controllers
             targetMembership.Role = newRole;
 
             await _db.SaveChangesAsync();
+
+            await _notifications.NotifyCommunityRoleChangedAsync(
+                currentUserId, targetMembership.UserId, communityId);
 
             return Ok(new ApiResponse<object>
             {
@@ -1304,6 +1320,9 @@ namespace CircleHub.Api.Controllers
 
                 _db.CommunityModerationLogs.Add(moderationLog);
                 await _db.SaveChangesAsync();
+
+                await _notifications.NotifyCommunityPostRemovedAsync(
+                    currentUserId, post.AuthorId, communityId);
 
                 moderationLogId = moderationLog.Id;
             }

@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { chatConnectionContext } from "@/hooks/useChatConnection";
 import {
     createChatConnection,
+    NOTIFICATION_CREATED_EVENT,
     PRESENCE_CHANGED_EVENT,
     RECEIVE_MESSAGE_EVENT,
     sendTyping,
@@ -158,6 +159,14 @@ export default function ChatConnectionContextProvider({ children }) {
             );
         });
 
+        connection.on(NOTIFICATION_CREATED_EVENT, () => {
+            // No payload and nothing to patch: the feed is the source of truth, so one refetch is the whole
+            // update. Deliberately silent — the chime and the toast belong to messages.
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.notifications(),
+            });
+        });
+
         // Ignoring the callbacks after teardown keeps our own stop() from reporting a connection we are
         // deliberately closing as a drop.
         connection.onreconnecting(() => {
@@ -210,6 +219,7 @@ export default function ChatConnectionContextProvider({ children }) {
             connection.off(RECEIVE_MESSAGE_EVENT);
             connection.off(PRESENCE_CHANGED_EVENT);
             connection.off(TYPING_CHANGED_EVENT);
+            connection.off(NOTIFICATION_CREATED_EVENT);
             connection.stop().catch(() => {});
 
             // A claim belongs to the session that received it: the next one must not open on someone

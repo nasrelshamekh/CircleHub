@@ -14,12 +14,14 @@ import { useAuth } from '@/hooks/useAuth'
 import Avatar from '@/components/profileimages/Avatar'
 import { toast } from 'sonner'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications'
 
 export default function Navbar() {
     const { toggleTheme, theme } = useTheme();
     const { userData, setUserData } = useAuth();
     const navigate = useNavigate();
     const unreadCount = useUnreadMessages();
+    const unreadNotifications = useUnreadNotifications();
 
     function handleSignout() {
         setUserData(null);
@@ -56,10 +58,20 @@ export default function Navbar() {
                         <button
                             type="button"
                             onClick={() => navigate("/notifications")}
-                            className='icon-button'
-                            aria-label="Open notifications"
+                            className='icon-button relative'
+                            aria-label={
+                                unreadNotifications > 0
+                                    ? `Open notifications, ${unreadNotifications} unread`
+                                    : "Open notifications"
+                            }
                         >
                             <Bell size={22} />
+
+                            {unreadNotifications > 0 && (
+                                <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-(--primary) px-1 text-[10px] leading-none font-semibold text-(--on-primary)">
+                                    {unreadNotifications}
+                                </span>
+                            )}
                         </button>
                         <button
                             type="button"

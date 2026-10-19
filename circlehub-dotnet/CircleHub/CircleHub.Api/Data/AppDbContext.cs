@@ -21,10 +21,37 @@ namespace CircleHub.Api.Data
         public DbSet<Conversation> Conversations => Set<Conversation>();
         public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
         public DbSet<Message> Messages => Set<Message>();
+        public DbSet<Notification> Notifications => Set<Notification>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany(u => u.Notifications)
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.Actor)
+                .WithMany()
+                .HasForeignKey(n => n.ActorId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Deleting the post takes its notifications with it: "liked your post" is meaningless once the
+            // post is gone, and the row exists to be opened.
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.Post)
+                .WithMany()
+                .HasForeignKey(n => n.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.Community)
+                .WithMany()
+                .HasForeignKey(n => n.CommunityId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Follow>()
                 .HasOne(f => f.Follower)
@@ -74,6 +101,7 @@ namespace CircleHub.Api.Data
             modelBuilder.Entity<CommunityMember>().Property(m => m.Role).HasConversion<string>();
             modelBuilder.Entity<CommunityJoinRequest>().Property(r => r.Status).HasConversion<string>();
             modelBuilder.Entity<CommunityPostModerationLog>().Property(l => l.Action).HasConversion<string>();
+            modelBuilder.Entity<Notification>().Property(n => n.Type).HasConversion<string>().HasMaxLength(40);
 
             modelBuilder.Entity<User>().Property(u => u.Username).HasMaxLength(50);
             modelBuilder.Entity<User>().Property(u => u.Email).HasMaxLength(255);
@@ -89,6 +117,8 @@ namespace CircleHub.Api.Data
             modelBuilder.Entity<ConversationParticipant>().HasIndex(p => new { p.ConversationId, p.UserId }).IsUnique();
             modelBuilder.Entity<Conversation>().HasIndex(c => c.LastMessageAt);
             modelBuilder.Entity<Message>().HasIndex(m => new { m.ConversationId, m.CreatedAt });
+            // The feed is always "this user's rows, newest first"; the unread count reads the same index.
+            modelBuilder.Entity<Notification>().HasIndex(n => new { n.UserId, n.CreatedAt });
         }
     }
 }

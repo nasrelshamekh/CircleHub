@@ -11,12 +11,14 @@
 import SidebarNavItem from './SidebarNavItem';
 import { useAuth } from "@/hooks/useAuth";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
 
 
 
 export default function SidebarNav({ isExpanded }) {
   const { userData } = useAuth();
   const unreadCount = useUnreadMessages();
+  const unreadNotifications = useUnreadNotifications();
   const navItems = [
     {
       label: "Home",
@@ -53,6 +55,7 @@ export default function SidebarNav({ isExpanded }) {
       label: "Notifications",
       to: "/notifications",
       icon: Bell,
+      badge: unreadNotifications,
     },
     {
       label: "Settings",

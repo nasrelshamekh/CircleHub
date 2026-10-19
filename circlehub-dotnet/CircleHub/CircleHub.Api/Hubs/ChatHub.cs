@@ -32,6 +32,12 @@ namespace CircleHub.Api.Hubs
         public const string TypingChangedMethod = "TypingChanged";
 
         /// <summary>
+        /// Client-side handler telling a user that a new row landed in their notification feed. Carries no
+        /// payload: the feed is the source of truth and the client simply refetches it.
+        /// </summary>
+        public const string NotificationCreatedMethod = "NotificationCreated";
+
+        /// <summary>
         /// Cap on the encrypted payload. SignalR already rejects hub messages above
         /// <c>MaximumReceiveMessageSize</c> (32 KB by default); this keeps the application
         /// limit well below that so a single message can never crowd out the transport buffer.

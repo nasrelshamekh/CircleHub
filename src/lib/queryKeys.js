@@ -25,4 +25,6 @@
     conversations: () => ["messages", "conversations"],
     conversation: (id) => ["messages", "conversations", id],
     messageRecipients: () => ["messages", "recipients"],
+
+    notifications: () => ["notifications"],
 };

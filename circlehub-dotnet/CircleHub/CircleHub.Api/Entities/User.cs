@@ -40,6 +40,15 @@ namespace CircleHub.Api.Entities
         /// </summary>
         public DateTime? LastSeenAt { get; set; }
 
+        /// <summary>
+        /// Last time the user opened their notification feed. Unread is *derived* from this rather than kept
+        /// per row, the same way unread messages come from <c>ConversationParticipant.LastReadAt</c>. Null
+        /// until the feed is opened for the first time, which makes every existing notification unread.
+        /// </summary>
+        public DateTime? NotificationsSeenAt { get; set; }
+
+        public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
         public ICollection<Post> Posts { get; set; } = new List<Post>();
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
         public ICollection<Like> Likes { get; set; } = new List<Like>();

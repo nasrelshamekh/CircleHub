@@ -329,6 +329,45 @@ namespace CircleHub.Api.Migrations
                     b.ToTable("Messages");
                 });
 
+            modelBuilder.Entity("CircleHub.Api.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("CommunityId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("PostId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("CommunityId");
+
+                    b.HasIndex("PostId");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("Notifications");
+                });
+
             modelBuilder.Entity("CircleHub.Api.Entities.Post", b =>
                 {
                     b.Property<Guid>("Id")
@@ -427,6 +466,9 @@ namespace CircleHub.Api.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("NotificationsSeenAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -648,6 +690,39 @@ namespace CircleHub.Api.Migrations
                     b.Navigation("Sender");
                 });
 
+            modelBuilder.Entity("CircleHub.Api.Entities.Notification", b =>
+                {
+                    b.HasOne("CircleHub.Api.Entities.User", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CircleHub.Api.Entities.Community", "Community")
+                        .WithMany()
+                        .HasForeignKey("CommunityId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("CircleHub.Api.Entities.Post", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("CircleHub.Api.Entities.User", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("Community");
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CircleHub.Api.Entities.Post", b =>
                 {
                     b.HasOne("CircleHub.Api.Entities.User", "Author")
@@ -707,6 +782,8 @@ namespace CircleHub.Api.Migrations
                     b.Navigation("Following");
 
                     b.Navigation("Likes");
+
+                    b.Navigation("Notifications");
 
                     b.Navigation("Posts");
                 });

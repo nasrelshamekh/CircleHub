@@ -1,6 +1,7 @@
 ﻿using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
+using CircleHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,12 @@ namespace CircleHub.Api.Controllers
     public class CommentsController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly NotificationService _notifications;
 
-        public CommentsController(AppDbContext db)
+        public CommentsController(AppDbContext db, NotificationService notifications)
         {
             _db = db;
+            _notifications = notifications;
         }
 
         private Guid? CurrentUserId
@@ -59,11 +62,12 @@ namespace CircleHub.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> AddComment(Guid postId, CreateCommentDto dto)
         {
-            var postVisible = await _db.Posts
+            var postAuthorId = await _db.Posts
                 .Where(p => p.Id == postId)
                 .WhereVisibleTo(CurrentUserId)
-                .AnyAsync();
-            if (!postVisible)
+                .Select(p => (Guid?)p.AuthorId)
+                .FirstOrDefaultAsync();
+            if (postAuthorId is null)
                 return Fail(StatusCodes.Status404NotFound, "Post not found");
 
             var userId = CurrentUserId!.Value;
@@ -79,6 +83,8 @@ namespace CircleHub.Api.Controllers
 
             _db.Comments.Add(comment);
             await _db.SaveChangesAsync();
+
+            await _notifications.NotifyPostCommentAsync(userId, postAuthorId.Value, postId);
 
             var created = await _db.Comments
                 .Where(c => c.Id == comment.Id)

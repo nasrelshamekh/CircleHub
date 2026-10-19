@@ -16,11 +16,16 @@ namespace CircleHub.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly Services.UploadService _uploadService;
+        private readonly Services.NotificationService _notifications;
 
-        public UsersController(AppDbContext db, Services.UploadService uploadService)
+        public UsersController(
+            AppDbContext db,
+            Services.UploadService uploadService,
+            Services.NotificationService notifications)
         {
             _db = db;
             _uploadService = uploadService;
+            _notifications = notifications;
         }
 
         private Guid? CurrentUserId
@@ -542,6 +547,8 @@ namespace CircleHub.Api.Controllers
             });
 
             await _db.SaveChangesAsync();
+
+            await _notifications.NotifyFollowAsync(currentUserId, id);
 
             var followersCount = await _db.Follows.CountAsync(f => f.FollowingId == id);
 
