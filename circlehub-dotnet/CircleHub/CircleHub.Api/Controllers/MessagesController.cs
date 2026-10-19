@@ -134,6 +134,7 @@ namespace CircleHub.Api.Controllers
             var messages = await _db.Messages
                 .Where(m => m.ConversationId == id)
                 .OrderByDescending(m => m.CreatedAt)
+                .ThenByDescending(m => m.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(m => new MessageDto
