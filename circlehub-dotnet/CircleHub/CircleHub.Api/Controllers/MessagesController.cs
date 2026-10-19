@@ -258,16 +258,34 @@ namespace CircleHub.Api.Controllers
                 };
 
                 _db.Conversations.Add(conversation);
-            }
-            else
-            {
-                conversation.LastMessageAt = now;
 
-                var mine = await _db.ConversationParticipants
-                    .FirstAsync(p => p.ConversationId == conversation.Id && p.UserId == currentUserId);
+                try
+                {
+                    await _db.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    // Another request created the conversation concurrently.
+                    _db.ChangeTracker.Clear();
 
-                mine.LastReadAt = now;
+                    conversation = await _db.Conversations
+                        .Where(c => c.Participants.Count == 2 &&
+                                    c.Participants.Any(p => p.UserId == currentUserId) &&
+                                    c.Participants.Any(p => p.UserId == recipient.Id))
+                        .OrderByDescending(c => c.LastMessageAt)
+                        .FirstOrDefaultAsync();
+
+                    if (conversation == null)
+                        throw;
+                }
             }
+
+            conversation.LastMessageAt = now;
+
+            var mine = await _db.ConversationParticipants
+                .FirstAsync(p => p.ConversationId == conversation.Id && p.UserId == currentUserId);
+
+            mine.LastReadAt = now;
 
             var message = new Message
             {
