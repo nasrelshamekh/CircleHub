@@ -19,11 +19,13 @@ namespace CircleHub.Api.Controllers
 
         private readonly AppDbContext _db;
         private readonly MessagePolicyService _policy;
+        private readonly MessageDeliveryService _delivery;
 
-        public MessagesController(AppDbContext db, MessagePolicyService policy)
+        public MessagesController(AppDbContext db, MessagePolicyService policy, MessageDeliveryService delivery)
         {
             _db = db;
             _policy = policy;
+            _delivery = delivery;
         }
 
         private Guid? CurrentUserId
@@ -289,6 +291,23 @@ namespace CircleHub.Api.Controllers
             _db.Messages.Add(message);
 
             await _db.SaveChangesAsync();
+
+            // Mirror the stored message to whoever the recipient has connected right now. This runs after
+            // the commit so a client that reacts by fetching always finds the row, and it deliberately
+            // ignores RequestAborted: the message exists either way, so a caller hanging up must not
+            // silently swallow the notification. Content is opaque here, so encrypted and plain messages
+            // take the same route.
+            if (!string.IsNullOrEmpty(message.Content))
+            {
+                await _delivery.DeliverAsync(recipient.Id, new EncryptedMessageEnvelope
+                {
+                    SenderId = currentUserId.ToString(),
+                    EncryptedPayload = message.Content,
+                    SentAt = message.CreatedAt,
+                    MessageId = message.Id.ToString(),
+                    ConversationId = conversation.Id.ToString()
+                });
+            }
 
             var sender = await _db.Users.FirstAsync(u => u.Id == currentUserId);
 
