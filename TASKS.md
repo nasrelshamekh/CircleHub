@@ -22,6 +22,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 9 | Presence: online / last seen in the thread header and the conversation list | done, verified |
 | 10 | Typing indicator: `SendTyping` hub signal + web client (thread header + conversation list) | done, verified |
 | 11 | Incoming-message sound: committed chime, silent while the reader is looking at that thread | done, verified |
+| 12 | Message toast away from the messages page: themed card, click to open | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
 pieces (5 and 6) land together with the mobile client (8), because Expo push only has a consumer there.
@@ -388,6 +389,71 @@ One gotcha worth remembering: Vite Fast Refresh loaded the new `messageChime` mo
 connection effect, so the *old* handler closure stayed registered and the first round of checks was silently
 vacuous (a real message arrived with zero calls, for the wrong reason). Reload the tab before verifying a change
 to `ChatConnectionContext.jsx`; the numbers above are from a full reload.
+
+### Step 12 - Message toast away from the messages page (done, verified)
+
+The owner asked that, while browsing anywhere but the messages page, an incoming message raise a toast in the
+bottom-right corner carrying the message and opening the conversation when clicked. Three choices were put to
+them and confirmed: never raise a card anywhere under `/messages` (the list, the preview inside it and the unread
+badge are already in front of the reader there); show the sender above the message text; auto-dismiss after about
+six seconds, click to open.
+
+Added:
+
+- `src/lib/messageToast.jsx` - `shouldToast()` (the policy, read from `window.location.pathname` at event time,
+  exactly like the chime) and `showMessageToast({ messageId, conversationId, sender, preview })`. The card is
+  keyed by the message id, so a repeated envelope replaces its own card instead of stacking a second one, and the
+  click handler holds the id it needs to dismiss it. Navigation goes through the router instance
+  (`router.navigate('/messages/<id>')`), because the provider sits above the router where no router hook is
+  available; the card dismisses itself on the way out so it cannot outlive the journey.
+- `src/components/messages/MessageToast.jsx` - the body: avatar, sender, message text. The whole card is a
+  `<button>`, because there is exactly one thing to do with a notification. One row of the conversation list, in
+  a card.
+- `src/context/ChatConnectionContext.jsx` - the `ReceiveEncryptedMessage` handler raises the card next to the
+  chime, before the invalidation. The sender comes from the cached `conversations()` list
+  (`findConversationByPartner`), which the authenticated layout keeps loaded for the unread badge; when the list
+  is not cached the card still shows the message, titled "New message". The envelope's `conversationId` is
+  preferred, and a pure hub relay falls back to the conversation that sender is a partner in. A message with no
+  conversation to open is not toasted: there would be nothing for the click to do.
+- `src/main.jsx` - a second stack, `<Toaster id="messages" position="bottom-right" />`. Sonner renders a toast
+  only in the toaster whose id the toast was created with (`toasts.filter(t => t.toasterId === id)`), so message
+  cards and error toasts never share a corner or a stack.
+
+Also fixed here: the cards were first painted with sonner's own palette, which only knows `light` and `dark` and
+never learns which one the app is showing, so they came out white on the app's dark surface (spotted by the owner
+on the first look). `src/components/ui/sonner.jsx` already existed for exactly this and was simply never mounted:
+it maps sonner's variables onto the app tokens (`--surface-lowest`, `--text-primary`, `--border`, `--radius-lg`)
+and applies the `circlehub-toast*` classes that `src/index.css` defines. `main.jsx` now mounts it for both
+stacks, and it reads the app's own theme (`@/hooks/useTheme`, the thing that puts `light`/`dark` on `<html>`)
+rather than `next-themes`, which this app never mounts. Consequence worth knowing: **every** toast in the app is
+now themed - the 4px accent left border, Inter, lucide icons - not just the message cards.
+
+Verification: `npx eslint .` exits 0 and `npm run build` succeeds. No migration, no endpoint, no server change.
+
+| Check | Result |
+| --- | --- |
+| Sent while on `/feed` | card appeared bottom-right 90ms after the POST, reading "Bob Alvarez" over the message text |
+| Corner | settled 24px above the bottom and 39px from the right of a 912x670 viewport (`right`/`bottom` stack) |
+| Click | a real pointer click that landed on the message text inside the card bubbled to the card's button; the URL became `/messages/cdf5b507-...`, the conversation the envelope named, and the card dismissed itself (`[data-sonner-toast]` count 0) |
+| Sent while on `/messages/<thread>` | zero cards in that tab while the same event produced one in the tab sitting on `/feed`; the message itself still landed in the open thread, so the event was delivered and only the card was withheld |
+| Sender | name "Bob Alvarez" and a 40px avatar, read from the cached conversation list |
+| Long message (477 characters) | clamped to 2 lines, card 90px tall |
+| Dark theme | card `#060e20` (`--surface-lowest`), border `--border`, 4px `--primary` left edge, `--text-primary` name, `--text-secondary` message, radius 16px, Inter |
+| Light theme | the same card as `#ffffff` on `#131b2e`, so it follows `<html>` rather than a preference of its own |
+| Error toast regression | the refused send (Alice to Bob, 403) still raised "Bob Alvarez isn't accepting messages right now" in the top-right, now themed with the `--error` left edge; on the messages page it was the only card, which is what the rule requires |
+
+Cost: a card is a side effect of an event the client already receives - no request, no cache write. The 9 labelled
+rows these tests created in Alice's conversation with `bob_builder` (`toast-check-1`, `theme-check-dark`,
+`theme-check-light`, `click-check`, `click-check-2`, `suppression-check`, `suppress-check-2`, `long-check`,
+`long-check-2`) were all deleted; `Messages` went 102 -> 93 and both participants read as 0 unread.
+
+Two gotchas: a sonner card's expiry timer is frozen while its tab is in the background, so cards pile up
+unnoticed there and dismiss the moment the tab is looked at again (the chime and the `(n)` title prefix are what
+carry a hidden tab); and Tailwind's `line-clamp-*` sets its own `display`, so pairing it with `block` on the same
+element silently drops the clamp - the first version of the card grew to 349px on a long message.
+
+Harness: `%TEMP%\opencode\toast-cleanup.ps1` (the same shape as `chime-cleanup.ps1`), reusing `send-message.ps1`
+for the sends.
 
 ## Open questions
 
