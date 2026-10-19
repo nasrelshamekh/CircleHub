@@ -1,11 +1,11 @@
 // The incoming-message chime. Kept out of the React tree on purpose: a sound is a side effect on the
 // document, not state anything renders from.
-const CHIME_URL = "/message-chime.wav";
+const CHIME_URL = "/message-chime.mp3";
 
 // One element for the life of the page, created up front: the first message of a session is exactly the
-// one that must not be announced late, and leaving the 15 KiB fetch until then would delay it by a round
-// trip. Loading is allowed without a gesture — only playback needs one — and a second element would never
-// help, since browsers grant playback permission to the page as a whole.
+// one that must not be announced late, and leaving the fetch until then would delay it by a round trip.
+// Loading is allowed without a gesture — only playback needs one — and a second element would never help,
+// since browsers grant playback permission to the page as a whole.
 const chime = typeof Audio === "undefined" ? null : new Audio(CHIME_URL);
 
 /**
