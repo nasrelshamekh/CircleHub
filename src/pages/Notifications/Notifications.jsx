@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from "react";
+﻿import { useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -22,11 +22,20 @@ export default function Notifications() {
         useNotifications();
     const sentinelRef = useRef(null);
 
-    // One stamp per visit, taken the moment the feed has actually loaded. This deliberately does *not*
-    // re-run when a notification arrives mid-visit: the old version re-stamped on every count change, so a
-    // new arrival was seen and zeroed again within a frame — the badge never appeared to move. Now an
-    // arrival bumps the badge and it stays until the next open of this page. Each row keeps the unread flag
-    // it was fetched with, so the dots stay meaningful for this visit instead of vanishing on arrival.
+    // The pill counts the dots actually on screen, rather than echoing the cached `unreadCount`. Opening the
+    // feed stamps it seen, which zeroes that cached field so the bell and the sidebar badge clear — but the
+    // rows keep the unread flag they were fetched with, so their dots, Check buttons and this total all stay
+    // for the visit. Echoing the cached field was the bug: it printed "0 unread" above a list of unread rows,
+    // and a frozen snapshot was no better, since resolving both rows left "2 unread" above an empty list.
+    // Counting the rendered rows cannot disagree with them: a new arrival bumps both, and a row the reader
+    // clears drops both. Unread rows are the newest and the feed is newest-first, so page one cannot miss one.
+    const visitUnreadCount = useMemo(
+        () => items.filter((notification) => notification.unread).length,
+        [items]
+    );
+
+    // One stamp per visit, taken the moment the feed has loaded — never again while the page is open, so a
+    // notification arriving mid-visit bumps the pill and stays until the next open, exactly as before.
     const stampedRef = useRef(false);
 
     useEffect(() => {
@@ -117,7 +126,7 @@ export default function Notifications() {
                 <div className="flex w-fit items-center gap-2 rounded-full bg-(--active) px-4 py-2 text-(--primary)">
                     <Bell size={17} />
                     <span className="type-label-md">
-                        {unreadCount} unread
+                        {visitUnreadCount} unread
                     </span>
                 </div>
             </div>
