@@ -64,6 +64,11 @@ project owner before implementation; see `TASKS.md` for status.
   cannot be bypassed by calling the hub directly instead of REST.
 - Live connections are registered in `Services/IConnectionTracker` (`Add`/`Remove`/`IsOnline`), which is what
   will decide between real-time delivery and a push notification in the fallback step.
+- `Services/MessageDeliveryService` mirrors a stored message to the recipient's live connections through
+  `IHubContext<ChatHub>`. It is called after the DB commit, so a client that reacts by fetching always finds
+  the row, and it is deliberately *not* tied to `RequestAborted`: the message is stored either way, so a
+  caller hanging up must not swallow the notification. A recipient with no live connection is logged there,
+  which is exactly where the Expo push fallback goes.
 
 ### Security invariants
 
@@ -101,10 +106,23 @@ The endpoint policy takes precedence over the middleware default, so REST keeps 
 
 ### Client contract (web)
 
+- Event `ReceiveEncryptedMessage` carries `EncryptedMessageEnvelope`. `messageId` and `conversationId` are
+  filled in by the REST fan-out (null for a pure hub relay), which lets the client refresh a single thread
+  and its unread badge instead of refetching everything.
+- One event name is used for both delivery paths so the client needs a single handler.
 - `accessTokenFactory` returns the `localStorage` token; browsers then send it as `access_token` on the
   WebSocket/SSE negotiate request.
 - The sender id is not part of the payload call — it is added by the server.
 - WebSockets are not protected by CORS, so the JWT is the only gate on hub calls.
+
+### Known limits in this phase
+
+- `MessagesController.MaxContentLength` is 2000 characters, and `Message.Content` is sized for that. Base64
+  ciphertext runs larger than the plaintext (plus a tag/nonce), so the column and the cap need revisiting
+  before client-side encryption lands — a decision the owner explicitly deferred ("migration only if the
+  limit needs extending").
+- The fan-out targets the recipient only. The sender's other tabs are not notified; the web client updates
+  its own cache from the `POST /api/messages` response.
 
 ## Environment notes / gotchas
 
@@ -126,7 +144,10 @@ database by the throwaway harness in `%TEMP%\opencode` (started so it does not d
 - `step3-e2e.ps1` — mints real JWTs from the dev user-secrets, picks an allowed and a restricted recipient
   straight from MySQL, starts the temp build on a spare port, exercises the REST write path and the hub, and
   asserts the presence counters from the server log.
-- `sigtest\hub-test.mjs` — the `@microsoft/signalr` client driving two connections per user.
+- `step4-e2e.ps1` — connects a recipient twice over the hub, sends through `POST /api/messages`, and asserts
+  the fan-out envelope (including that the message/conversation ids match the REST response), that an offline
+  recipient is logged rather than delivered to, and that a refused message is never fanned out.
+- `sigtest\hub-test.mjs`, `sigtest\fanout-test.mjs` — the `@microsoft/signalr` client driving those flows.
 
 It requires MySQL running locally plus `npm install @microsoft/signalr` in that directory. Keep it in sync
 with the hub contract when the contract changes.

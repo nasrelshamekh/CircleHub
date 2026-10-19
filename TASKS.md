@@ -14,7 +14,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 1 | Reconnaissance + plan (backend, web client, docs) | done |
 | 2 | Hub, user-id mapping, JWT-over-query-string, CORS | done, verified |
 | 3 | Recipient policy on the hub + presence tracking | done, verified |
-| 4 | Hub fan-out from the REST send path | not started |
+| 4 | Hub fan-out from the REST send path | done, verified |
 | 5 | `DeviceToken` entity + registration endpoints + migration | not started |
 | 6 | Expo Push Service fallback for offline recipients | not started |
 | 7 | Web client: `@microsoft/signalr` provider, live thread + unread badge | not started |
@@ -102,10 +102,36 @@ Verification (12/12 client checks, 4/4 presence checks, against the real dev dat
 | Presence: connections close in order | 1 left → 0 left, user forgotten, 0 users online |
 | Revoked token negotiate | 401 |
 
+### Step 4 — Hub fan-out from the REST send path (done, verified)
+
+The write path stays authoritative and now also mirrors the stored message to whatever the recipient has
+open, reusing the shared envelope so the web client needs a single handler.
+
+Added:
+
+- `Services/MessageDeliveryService.cs` — publishes to `IHubContext<ChatHub>.Clients.User(recipientId)` and
+  logs when the recipient has no live connection (the hook point for the Expo push fallback).
+- `Dtos/EncryptedMessageEnvelope.cs` — gained optional `messageId`/`conversationId`, filled in by the fan-out
+  so the client can refresh one thread; null for a pure hub relay.
+- `MessagesController.SendMessage` — delivers after `SaveChangesAsync`, only when there is content, and
+  deliberately not tied to `RequestAborted`: the message is stored either way, so a caller hanging up must
+  not swallow the notification.
+
+Verification (11/11 client checks + 2 server-log checks):
+
+| Check | Result |
+| --- | --- |
+| REST 200 with the recipient connected twice | both connections received the stored message |
+| Envelope contents | `messageId`/`conversationId` match the REST response, `senderId` from the JWT, payload byte-identical, `sentAt` parses |
+| REST 200 to a recipient with no connection | nothing delivered and nothing misrouted; server logs "stored but was not delivered in real time" |
+| REST 403 for a restricted recipient | nothing delivered; the refusal short-circuits before the hub is involved |
+
+Reproduction: `powershell -File %TEMP%\opencode\step4-e2e.ps1`.
+
 ## Open questions
 
-- Should REST fan-out (Step 4) deliver through the hub *in addition to* the direct `Clients.User` call, or only
-  as the single fan-out point? (It will reuse `MessagePolicyService` either way.)
+- Where does the client-side key exchange live (per-device key bundles, WebCrypto ECDH), and does the
+  2000-character `Message.Content` cap need to grow first? Base64 ciphertext for a long message will not fit.
 
 ## Incidents
 
@@ -115,11 +141,6 @@ Verification (12/12 client checks, 4/4 presence checks, against the real dev dat
   files were deleted, the controller change was re-applied, and everything else was verified untouched (no
   stashes, no extra commits, mobile repo clean). The `smoketest` user is still in the dev database and is
   currently used by the harness as the restricted recipient.
-
-## Known cleanups (not yet scheduled)
-
-- Local dev instance of `CircleHub.Api.exe` (started before this work) still serves the pre-hub build.
-
 
 ## Known cleanups (not yet scheduled)
 
