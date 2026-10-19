@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import Avatar from "@/components/profileimages/Avatar";
 import PresenceDot from "@/components/messages/PresenceDot";
 import PresenceLabel from "@/components/messages/PresenceLabel";
+import TypingLabel from "@/components/messages/TypingLabel";
+import { isTypingNow, useTypingUsers } from "@/hooks/useTypingIndicator";
 import { formatShortTime } from "@/lib/formatDate";
 
 function previewText(conversation) {
@@ -18,6 +20,8 @@ function previewText(conversation) {
 }
 
 export default function ConversationList({ conversations, activeId }) {
+    const typingUsers = useTypingUsers();
+
     if (conversations.length === 0) {
         return (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
@@ -34,6 +38,10 @@ export default function ConversationList({ conversations, activeId }) {
             {conversations.map((conversation) => {
                 const isActive = conversation.id === activeId;
                 const unread = conversation.unreadCount > 0;
+                const isOtherTyping = isTypingNow(
+                    typingUsers,
+                    conversation.otherUser.id
+                );
 
                 return (
                     <li key={conversation.id}>
@@ -83,15 +91,19 @@ export default function ConversationList({ conversations, activeId }) {
                                 />
 
                                 <div className="flex items-center justify-between gap-2">
-                                    <span
-                                        className={`type-body-sm truncate ${
-                                            unread
-                                                ? "font-semibold text-primary"
-                                                : "text-secondary"
-                                        }`}
-                                    >
-                                        {previewText(conversation)}
-                                    </span>
+                                    {isOtherTyping ? (
+                                        <TypingLabel className="type-body-sm truncate" />
+                                    ) : (
+                                        <span
+                                            className={`type-body-sm truncate ${
+                                                unread
+                                                    ? "font-semibold text-primary"
+                                                    : "text-secondary"
+                                            }`}
+                                        >
+                                            {previewText(conversation)}
+                                        </span>
+                                    )}
 
                                     {unread && (
                                         <span className="type-label-sm flex min-w-5 items-center justify-center rounded-full bg-(--primary) px-1.5 py-0.5 text-(--on-primary)">

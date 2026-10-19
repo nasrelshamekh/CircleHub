@@ -27,6 +27,11 @@ namespace CircleHub.Api.Hubs
         public const string PresenceChangedMethod = "PresenceChanged";
 
         /// <summary>
+        /// Client-side handler for "the person on the other end is typing to you" (and for them stopping).
+        /// </summary>
+        public const string TypingChangedMethod = "TypingChanged";
+
+        /// <summary>
         /// Cap on the encrypted payload. SignalR already rejects hub messages above
         /// <c>MaximumReceiveMessageSize</c> (32 KB by default); this keeps the application
         /// limit well below that so a single message can never crowd out the transport buffer.
@@ -165,6 +170,52 @@ namespace CircleHub.Api.Hubs
                     SenderId = senderId.ToString(),
                     EncryptedPayload = encryptedPayload,
                     SentAt = DateTime.UtcNow
+                },
+                Context.ConnectionAborted);
+        }
+
+        /// <summary>
+        /// Tells a recipient that the caller is (or is no longer) typing a message to them.
+        /// </summary>
+        /// <param name="recipientId">Destination user id, resolved by <c>Clients.User</c>.</param>
+        /// <param name="isTyping">True while typing started or continues; false once it stops.</param>
+        public async Task SendTyping(string recipientId, bool isTyping)
+        {
+            // Every rejection here is silent, unlike SendEncryptedMessage: this signal is raised
+            // automatically while the user types, so there is nothing to shout at them about. A dropped
+            // claim simply never appears on the other end.
+            if (!Guid.TryParse(Context.UserIdentifier, out var senderId))
+                return;
+
+            if (!Guid.TryParse(recipientId, out var recipientGuid) || recipientGuid == senderId)
+                return;
+
+            // The same rule the write path applies, so typing cannot be used to reach someone whose
+            // MessagesFrom setting says otherwise. A refusal is also indistinguishable from a recipient
+            // who is merely offline, so the hub still cannot be used to probe for existing user ids.
+            var recipient = await _db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == recipientGuid, Context.ConnectionAborted);
+
+            if (recipient is null || !await _policy.CanMessageAsync(recipient, senderId, Context.ConnectionAborted))
+            {
+                // Debug, not Information: this fires on every keystroke burst, so a refused client would
+                // otherwise be able to write to the log at will.
+                _logger.LogDebug(
+                    "Dropped typing signal from {SenderId} to {RecipientId} ({Reason})",
+                    senderId,
+                    recipientGuid,
+                    recipient is null ? "no such user" : $"recipient set MessagesFrom={recipient.MessagesFrom}");
+
+                return;
+            }
+
+            await Clients.User(recipientGuid.ToString()).SendAsync(
+                TypingChangedMethod,
+                new TypingChangedEnvelope
+                {
+                    UserId = senderId.ToString(),
+                    IsTyping = isTyping
                 },
                 Context.ConnectionAborted);
         }

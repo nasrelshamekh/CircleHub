@@ -1,4 +1,4 @@
-import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
+import { HubConnectionBuilder, HubConnectionState, LogLevel } from "@microsoft/signalr";
 
 // Event the API raises for a message addressed to us (ChatHub.ReceiveMessageMethod).
 export const RECEIVE_MESSAGE_EVENT = "ReceiveEncryptedMessage";
@@ -6,6 +6,12 @@ export const RECEIVE_MESSAGE_EVENT = "ReceiveEncryptedMessage";
 // Event the API raises when one of our conversation partners comes online or goes away
 // (ChatHub.PresenceChangedMethod).
 export const PRESENCE_CHANGED_EVENT = "PresenceChanged";
+
+// Event the API raises while a conversation partner is typing to us (ChatHub.TypingChangedMethod).
+export const TYPING_CHANGED_EVENT = "TypingChanged";
+
+// Hub method we invoke to say that we are (or are no longer) typing (ChatHub.SendTyping).
+export const SEND_TYPING_METHOD = "SendTyping";
 
 const HUB_PATH = "/hubs/chat";
 
@@ -34,4 +40,17 @@ export function createChatConnection() {
             )
             .build()
     );
+}
+
+/**
+ * Tells the server that we are (or are no longer) typing to a user.
+ *
+ * Fire and forget by design: the signal is raised while the user types, so there is no outcome worth
+ * reporting, and the server never rejects one (it drops what it will not relay). A connection that is
+ * not up yet simply skips it — the next keystroke will try again.
+ */
+export function sendTyping(connection, recipientId, isTyping) {
+    if (!connection || connection.state !== HubConnectionState.Connected) return;
+
+    connection.invoke(SEND_TYPING_METHOD, recipientId, isTyping).catch(() => {});
 }

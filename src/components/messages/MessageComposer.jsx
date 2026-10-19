@@ -3,10 +3,21 @@ import { Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { useSendMessage } from "@/hooks/mutations/useSendMessage";
+import { useTypingBroadcast } from "@/hooks/useTypingBroadcast";
 
-export default function MessageComposer({ recipientUsername, onOptimisticMessage }) {
+export default function MessageComposer({
+    recipientId,
+    recipientUsername,
+    onOptimisticMessage,
+}) {
     const [text, setText] = useState("");
     const sendMessage = useSendMessage();
+    const { reportTyping, stopTyping } = useTypingBroadcast(recipientId);
+
+    function handleChange(event) {
+        setText(event.target.value);
+        reportTyping();
+    }
 
     function handleSubmit(event) {
         event.preventDefault();
@@ -14,6 +25,10 @@ export default function MessageComposer({ recipientUsername, onOptimisticMessage
         const content = text.trim();
 
         if (!content || sendMessage.isPending) return;
+
+        // Sent before the request: the message arriving is the real "I'm done", so leaving the claim up
+        // would keep the other end waiting for it to expire while the message sits in their thread.
+        stopTyping();
 
         // Rendered by the thread right away so the message does not wait for the round trip; the stored
         // message replaces it as soon as the thread next loads.
@@ -54,7 +69,7 @@ export default function MessageComposer({ recipientUsername, onOptimisticMessage
         >
             <input
                 value={text}
-                onChange={(event) => setText(event.target.value)}
+                onChange={handleChange}
                 placeholder="Write a message..."
                 aria-label="Message"
                 maxLength={2000}

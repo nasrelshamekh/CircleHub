@@ -14,7 +14,9 @@ import Avatar from "@/components/profileimages/Avatar";
 import MessageComposer from "./MessageComposer";
 import PresenceLabel from "./PresenceLabel";
 import SharedPostCard from "./SharedPostCard";
+import TypingLabel from "./TypingLabel";
 import { formatMessageDate, formatMessageTime } from "@/lib/formatDate";
+import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 
 function MessageBubble({ message, otherUser }) {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -144,6 +146,10 @@ export default function MessageThread({
     const [seen, setSeen] = useState({ conversationId: null, messageId: null });
     const [pendingMessage, setPendingMessage] = useState(null);
 
+    // The header's second line, while the other person is writing: presence gives way to "typing…" rather
+    // than sitting underneath it, which is where the eye already looks for their state.
+    const isOtherTyping = useTypingIndicator(otherUser?.id);
+
     const firstMessageId = messages[0]?.id;
     const lastMessageId = messages[messages.length - 1]?.id;
 
@@ -258,11 +264,15 @@ export default function MessageThread({
                             <p className="type-label-md truncate text-primary">
                                 {otherUser.name}
                             </p>
-                            <PresenceLabel
-                                isOnline={otherUser.isOnline}
-                                lastSeenAt={otherUser.lastSeenAt}
-                                className="type-body-sm block truncate"
-                            />
+                            {isOtherTyping ? (
+                                <TypingLabel className="type-body-sm block truncate" />
+                            ) : (
+                                <PresenceLabel
+                                    isOnline={otherUser.isOnline}
+                                    lastSeenAt={otherUser.lastSeenAt}
+                                    className="type-body-sm block truncate"
+                                />
+                            )}
                         </div>
                     </Link>
                 )}
@@ -327,6 +337,7 @@ export default function MessageThread({
 
             {otherUser && (
                 <MessageComposer
+                    recipientId={otherUser.id}
                     recipientUsername={otherUser.username}
                     onOptimisticMessage={handleOptimisticMessage}
                 />
