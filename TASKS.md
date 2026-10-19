@@ -605,6 +605,32 @@ server watched crashed Vite on the documented `EBUSY`; it was restarted and serv
 Harness: the page-side spy/observer snippets above are inline in the session; REST triggers reuse
 `notif-test.ps1`'s shape and `send-message.ps1` for the message regression.
 
+### Step 14 follow-up — Opening a notification marks it read (done, verified)
+
+Two owner asks after Step 14: clicking the toast card, and clicking a row on `/notifications` itself, should
+both mark the notification read. Both count as *reading* it — the card's sentence is on screen, or the reader
+is being taken to the thing the row points at — so the badge must not keep counting it afterwards.
+
+- Toast: `showNotificationToast`'s click handler now fires `POST {id}/read` (only while the payload says
+  `unread`) and invalidates `notifications()` before navigating. Fire-and-forget on purpose: the request is
+  not tied to the click's frame, it survives the router navigation, and a failure just leaves the badge
+  where it was — the same rule as a failed seen-stamp. Nothing is patched by hand; the refetch moves pill,
+  bell and sidebar together.
+- Feed row: the row's `<Link>` gained an `onClick` that fires the **existing** `Mark as read` mutation when
+  the row is unread — one mutation, one code path, so the pill, the dot, the check button and both badges
+  all move on the single invalidation the check button already used. The navigation proceeds either way and
+  an already-read row costs no request. Rows with no target keep no click, as before.
+
+Verified (browser, as Alice, Bob commenting by REST): arrival while on `/notifications` gave pill "1
+unread", one dot, one check button and bell 1; **clicking the row itself** navigated to `/post/…`, the bell
+refetched to 0 with no error card, and returning to the feed showed the row present, dot gone, check button
+gone (delete still there). SQL showed `ReadAt` set on that row while it was still *newer* than the cursor —
+the per-row path doing the work, not the bulk stamp. Toast path: arrival on `/feed` → card auto-clicked at
+appearance → navigated to the post, badge 0, `ReadAt` set on the second row. Console clean apart from the
+documented StrictMode negotiation line; `eslint` exits 0 and `npm run build` succeeds. Dev database restored
+as found (the two test notifications and two labelled comments deleted; the two pre-existing community-test
+rows untouched).
+
 ## Open questions
 
 - Where does the client-side key exchange live (per-device key bundles, WebCrypto ECDH), and does the

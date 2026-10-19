@@ -317,7 +317,10 @@ removed, role changed, post removed).
   query — one cache, one refetch, three consumers (page pill, bell, sidebar).
 - Row actions (`Mark as read` only while unread, `Delete`) sit **outside** the row's `<Link>`: a `<button>`
   inside an `<a>` is invalid HTML and its click would navigate. Both mutate by REST and then invalidate
-  `notifications()` — no hand-patching of counts.
+  `notifications()` — no hand-patching of counts. Clicking the row's link itself counts as reading too: its
+  `onClick` fires the same `Mark as read` mutation when the row is unread and the navigation proceeds either
+  way, so the dot, the pill and both badges clear while the reader is taken to the target; an already-read
+  row costs no request.
 - `src/lib/notificationChime.js` mirrors `messageChime.js` (module-load `Audio`, swallow a ringing overlap,
   swallow an autoplay refusal): the owner's own file `public/notification-chime.wav` (Mixkit "long pop",
   `mixkit-long-pop-2358.wav`, 226 KB, shipped as WAV because that is what was supplied — one constant to
@@ -326,9 +329,13 @@ removed, role changed, post removed).
   events keep their own `message-chime.mp3`; the two sounds identify which channel rang.
 - `src/lib/notificationToast.jsx`: `shouldToastNotification()` is the mirror of `shouldToast()` (silent only
   under `/notifications`), and `showNotificationToast()` deliberately reuses `MessageToast` inside the same
-  `MESSAGE_TOASTER_ID` stack — same card, same bottom-right corner, same ~6s, click opens
-  `notificationCopy.notificationLink(...)` through the router instance (the provider sits above the router).
-  A row with nothing left to open still toasts; the click just dismisses.
+  `MESSAGE_TOASTER_ID` stack — same card, same bottom-right corner, same ~6s. Seeing the card *is* reading
+  the notification, so the click marks the row behind it read (same `POST {id}/read`, only while the payload
+  says `unread`, then one `notifications()` invalidation — pill, bell and sidebar refetch from the server)
+  and then opens `notificationCopy.notificationLink(...)` through the router instance (the provider sits
+  above the router). The POST is fire-and-forget: it survives the navigation, and a failure just leaves the
+  badge where it was, the same rule as a failed seen-stamp. A row with nothing left to open still toasts;
+  the click still marks it read and dismisses.
 - The `ChatConnectionContext` handler order mirrors messages: chime, toast, invalidate.
 
 ### Known limits in this phase
