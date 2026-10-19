@@ -2,9 +2,11 @@
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
 using CircleHub.Api.Filters;
+using CircleHub.Api.Hubs;
 using CircleHub.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -27,11 +29,23 @@ builder.Services.AddControllers(options =>
 builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
+{
     options.AddPolicy("AllowAll",
         policy => policy
             .AllowAnyOrigin()
             .AllowAnyMethod()
-            .AllowAnyHeader()));
+            .AllowAnyHeader());
+
+    // SignalR needs credentials on the cross-origin negotiation request, and
+    // AllowAnyOrigin can't be combined with AllowCredentials. The hub origin is therefore
+    // echoed back explicitly instead. See "Security considerations in ASP.NET Core SignalR".
+    options.AddPolicy("SignalR",
+        policy => policy
+            .SetIsOriginAllowed(_ => true)
+            .AllowAnyHeader()
+            .WithMethods("GET", "POST", "DELETE")
+            .AllowCredentials());
+});
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -41,6 +55,10 @@ builder.Services.AddScoped<UploadService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<EmailVerificationService>();
 builder.Services.AddScoped<PasswordResetService>();
+
+builder.Services.AddSignalR();
+// Routes Clients.User(id) to the "sub" claim, the same id the REST API uses.
+builder.Services.AddSingleton<IUserIdProvider, CircleHubUserIdProvider>();
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
@@ -76,6 +94,21 @@ builder.Services
 
         options.Events = new JwtBearerEvents
         {
+            // Browsers can't set an Authorization header on WebSocket or Server-Sent Events
+            // requests, so the SignalR JS client sends the token as "?access_token=...".
+            // Read it here, but only for the hub paths.
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            },
             OnTokenValidated = async context =>
             {
                 var sub = context.Principal?.FindFirst("sub");
@@ -188,6 +221,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<ChatHub>("/hubs/chat", options =>
+    {
+        // The REST pipeline re-reads User.TokenVersion on every request; this makes hub
+        // connections behave the same way by closing them once the JWT expires.
+        options.CloseOnAuthenticationExpiration = true;
+    })
+    .RequireCors("SignalR");
 
 app.Run();
 
