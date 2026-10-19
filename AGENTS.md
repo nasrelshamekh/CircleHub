@@ -256,6 +256,93 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
 - The card shows the payload exactly as the thread does. Once client-side crypto lands it needs the same decrypt
   step, and must not become the one place where ciphertext is shown to the reader.
 
+## In-app notification feed
+
+`/notifications`, written for the same real-time path as messages but deliberately quieter. Three event
+groups, chosen by the owner: follows, post likes and comments on your posts; community join requests and the
+decisions on them; membership and moderation events (member removed, role changed, post removed). "New posts
+in my communities" was explicitly *not* chosen. Messages stay out of the feed — they already have their own
+list, badge, toast and sound, and counting them here would announce the same thing twice. The
+`EmailNotifications` / `CommunityUpdates` profile toggles stay out of it too (they currently do nothing), and
+the tab title stays messages-only (`useUnreadTitle`).
+
+### Data and unread model
+
+- A row stores the *facts* only — `Type`, recipient, actor, and `PostId?` / `CommunityId?`. There is no text
+  column: the client renders the wording per type in `src/lib/notificationCopy.js`, so a rename cannot leave
+  stored copy stale and there is no second copy to keep in sync. `PostId` cascades away with the post (a row
+  pointing at a deleted post has nothing to open); `CommunityPostRemoved` carries no `PostId` on purpose,
+  because the FK would cascade the notification away moments before the post goes.
+- Unread is derived, not flagged: `Users.NotificationsSeenAt` is a bulk cursor (the messaging `LastReadAt`
+  pattern) that opening the feed moves once, composed with a nullable `Notification.ReadAt` for the one
+  exception — a single row marked read on a visit whose cursor is older than it. The rule
+  (`ReadAt IS NULL AND CreatedAt > seenAt`) feeds both `unreadCount` and each row's `Unread` from the *same*
+  cursor read per request, so the two can never disagree inside one response. Index on `(UserId, CreatedAt)`.
+- Migration `AddNotificationReadAt`; the original feed tables came with `AddNotifications`.
+
+### Writing
+
+`Services/NotificationService` is the single writer, so the self-guard (you are never told about your own
+action) and de-duplication live in one place instead of at every call site — de-duplication matters because
+`ToggleLike` toggles (like/unlike/relike would otherwise ring twice), a follow can be re-made after an
+unfollow, and a declined join request can be re-sent. It commits on its *own* after the action: a notification
+is a side effect, so a crash in between loses one row rather than leaving a row pointing at something that
+never happened. Call sites: `UsersController.FollowUser`, `PostsController.ToggleLike` (like branch),
+`CommentsController.AddComment`, and `CommunitiesController` (join request create/approve/reject, member
+removed, role changed, post removed).
+
+### Transport
+
+- `ChatHub.NotificationCreatedMethod` (`NotificationCreated`) is pushed after the commit to each recipient
+  via `Clients.User(...)`, carrying a `NotificationDto` (added when the toast landed; it was payload-less
+  first). The payload exists so the card and the chime do not wait for a refetch — but the client still
+  invalidates `queryKeys.notifications()` on every event, because the feed and both badge counts are derived
+  from the server and `refetchOnWindowFocus: false` is global. Not tied to `RequestAborted`, same rule as
+  `MessageDeliveryService`.
+- `GET /api/notifications` (paged, `ApiResponse` + `PageMeta`, one cursor for count and rows),
+  `POST /api/notifications/seen` (bulk stamp, idempotent),
+  `POST /api/notifications/{id}/read` (per-row, never moves backwards), `DELETE /api/notifications/{id}`
+  (owner-scoped: another user's id is a 404, not a hint the row exists).
+
+### Client contract (web)
+
+- **The page stamps the cursor exactly once per visit.** The first version re-stamped on every `unreadCount`
+  change, so an arrival while the page was open was zeroed again within a frame — which the owner reported as
+  "the badge doesn't update". Now a ref flips when the feed first has data (even at zero, so a first arrival
+  after a quiet open is not stamped away either), arrivals mid-visit move the badge and *stay* until the next
+  open, and rows keep the flags they were fetched with so the dots remain meaningful for the visit. The
+  StrictMode cancellation guard went with it: the only write is to the query cache, which outlives the
+  component, and cancelling is what left the badge unpatched when React re-ran the effect.
+- Badges: the navbar bell and `SidebarNav` both read `useUnreadNotifications`, which shares the feed's own
+  query — one cache, one refetch, three consumers (page pill, bell, sidebar).
+- Row actions (`Mark as read` only while unread, `Delete`) sit **outside** the row's `<Link>`: a `<button>`
+  inside an `<a>` is invalid HTML and its click would navigate. Both mutate by REST and then invalidate
+  `notifications()` — no hand-patching of counts.
+- `src/lib/notificationChime.js` mirrors `messageChime.js` (module-load `Audio`, swallow a ringing overlap,
+  swallow an autoplay refusal): the owner's own file `public/notification-chime.wav` (Mixkit "long pop",
+  `mixkit-long-pop-2358.wav`, 226 KB, shipped as WAV because that is what was supplied — one constant to
+  swap). It is silent exactly when `/notifications` is open in a tab that is visible *and* focused — the
+  reader watched the row land — and plays for every other case. No mute control, as with messages. Message
+  events keep their own `message-chime.mp3`; the two sounds identify which channel rang.
+- `src/lib/notificationToast.jsx`: `shouldToastNotification()` is the mirror of `shouldToast()` (silent only
+  under `/notifications`), and `showNotificationToast()` deliberately reuses `MessageToast` inside the same
+  `MESSAGE_TOASTER_ID` stack — same card, same bottom-right corner, same ~6s, click opens
+  `notificationCopy.notificationLink(...)` through the router instance (the provider sits above the router).
+  A row with nothing left to open still toasts; the click just dismisses.
+- The `ChatConnectionContext` handler order mirrors messages: chime, toast, invalidate.
+
+### Known limits in this phase
+
+- The event payload duplicates the GET projection field-for-field (`NotificationService` vs
+  `NotificationsController`); they must be kept in step when either grows.
+- An unfocused window chimes even while `/notifications` is open (the `document.hasFocus()` gate, same rule
+  as the message chime — an unseen arrival gets a sound).
+- Read/delete refetch every loaded page of the infinite query rather than patching the list; fine at dev
+  scale, worth a real pagination-aware update if the feed grows long.
+- No web push: the web app has no service worker, manifest or PWA setup (iOS Safari would need a Home Screen
+  install, 16.4+). The owner declined it in favour of this feed. If it ever returns, fold it into one
+  `PushSubscription`/`DeviceToken` table with a `Provider` discriminator rather than adding a second table.
+
 ## Environment notes / gotchas
 
 - `ASPNETCORE_ENVIRONMENT=Development` is required for user-secrets to load; without it `Jwt:Key` is empty and

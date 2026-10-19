@@ -24,6 +24,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 11 | Incoming-message sound: committed sound file (the owner's own), silent while the reader is looking at that thread | done, verified |
 | 12 | Message toast away from the messages page: themed card, click to open | done, verified |
 | 13 | In-app notification feed (`/notifications`): follows, likes, comments, community membership and moderation events | done, verified |
+| 14 | Notification feed follow-up: live count badge, per-row mark-as-read/delete, notification chime (owner's wav), message-style toast | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -524,6 +525,85 @@ API + dev server, both read from `performance.getEntriesByType('resource')`:
 
 Harness: `%TEMP%\opencode\labelled-cleanup.ps1 [-Apply]` (prints the rows and the stored `LastMessageAt` vs the
 newest message before and after; `-Apply` deletes and repairs).
+
+### Step 14 - Notification feed follow-up: live badge, row actions, own sound, toast (done, verified)
+
+The owner came back after Step 13 with four things: the unread count on `/notifications` never moved when new
+notifications arrived; their own sound (`mixkit-long-pop-2358.wav`, sitting in their Downloads folder) should
+play when a notification comes in; rows should be deletable and markable as read; and a notification should
+raise a toast bottom-right anywhere but the notifications page, just like a message.
+
+**The badge (a real bug, not a polish item).** The mark-seen effect ran on every `unreadCount` change, so an
+arrival while the page was open bumped the count and the effect immediately re-stamped the cursor and patched
+it back to 0 within a frame — the pill never appeared to move, and the row would gain a dot next to a badge
+reading "0 unread". The cursor is now stamped **once per visit** (a ref flips when the feed first has data,
+*including at zero*, so the first arrival after a quiet open is not stamped away either). Arrivals mid-visit
+move the pill and the bell and they stay until the next open of the page, which then covers everything that
+landed meanwhile; rows keep the unread flags they were fetched with, so the dots stay meaningful for the visit.
+The StrictMode cancellation guard went away with it — the only write is to the query cache, which outlives the
+component, and cancelling is exactly what left the badge unpatched when React re-ran the effect.
+
+**Mark as read / delete.** Unread stays derived from `Users.NotificationsSeenAt` and gained one nullable
+column, `Notification.ReadAt`, for the single exception the cursor cannot express: one row read on a visit
+whose cursor is older than it. The composed rule `ReadAt IS NULL AND CreatedAt > seenAt` feeds both
+`unreadCount` and each row's flag, from the same cursor read, so they cannot disagree inside a response
+(migration `AddNotificationReadAt`, applied). `POST /api/notifications/{id}/read` never moves backwards — a
+repeat is a no-op, not a fresh timestamp. `DELETE /api/notifications/{id}` drops the row, because its only
+purpose was to be read; both endpoints are owner-scoped, so another user's id (or a missing one) is a plain
+404 rather than a hint that the row exists. In the UI the two buttons live **outside** the row's `<Link>` —
+a `<button>` inside an `<a>` is invalid HTML and the click would navigate; the link keeps covering the icon
+and sentence, so opening a row is unchanged. Both actions invalidate `notifications()` instead of patching:
+the feed, the pill and both badges refetch together.
+
+**Chime.** `src/lib/notificationChime.js` mirrors `messageChime.js` exactly (one `Audio` created at module
+load, a ringing chime swallows the next arrival, an autoplay refusal is swallowed too): the owner's file went
+in as `public/notification-chime.wav` (226 KB, shipped as WAV because that is what they supplied — the
+mp3 re-encode question from Step 11 does not apply to it, and `CHIME_URL` is the one line to swap). Silent
+exactly when `/notifications` is open in a tab that is visible *and* focused — the reader watched the row
+land — and playing for every other case, no mute, same rule as messages. Message events keep their own
+`message-chime.mp3`; hearing which file rang tells you which channel it was.
+
+**Toast.** `src/lib/notificationToast.jsx` is the mirror of `messageToast.jsx`: `shouldToastNotification()`
+returns false only under `/notifications`, and `showNotificationToast()` reuses `MessageToast` inside the
+**same** `messages` toaster stack — same card, same bottom-right corner, same ~6s, actor name over the
+generated sentence, click dismissing the card and navigating to `notificationCopy.notificationLink(...)`
+through the router instance. A row with nothing left to open still toasts; the click just dismisses. To make
+that possible the hub event grew a payload: `NotificationCreated` now carries the `NotificationDto` itself
+(it was payload-less in Step 13) so card and chime do not wait for the refetch — the invalidation that
+follows is unchanged and the feed remains the source of truth. The handler order in
+`ChatConnectionContext` mirrors messages: chime, toast, invalidate.
+
+Verification: `dotnet build` exits with 0 warnings, `npx eslint .` exits 0, `npm run build` succeeds, migration
+`AddNotificationReadAt` applied. Browser checks against the running API + dev server, as Alice, with Bob
+acting over REST; the Audio spy patches `HTMLMediaElement.prototype.play` and the toast recorder is a
+page-side `MutationObserver` armed *before* each trigger (a toast lives 6s, which is shorter than the gap
+between tool calls):
+
+| Check | Result |
+| --- | --- |
+| Arrival while sitting on `/notifications` | pill 0 → **"1 unread" and it stayed** (the bug: the old code zeroed it again within a frame); bell badge 1; the new row the only dot; zero `[data-sonner-toast]` on this route |
+| Second arrival on the same page | pill → "1 unread" again after a mark-as-read had cleared the first — arrivals keep moving it |
+| Arrival while on `/feed` | card appeared with "Bob Alvarez \| commented on your post.", settled at x=517, y=577 in a 912×670 viewport (39px from the right, 23px from the bottom), `notification-chime.wav` played on the same tick |
+| Click | page-side auto-click at appearance: `/feed` → `/post/08df2915-…`, card dismissed |
+| Mark as read | pill and bell → 0, every dot gone, check buttons gone (delete stays, rows stay); SQL showed `ReadAt` set on the row that was **newer** than the cursor, and the composed rule counting 0 unread — the exact case a pure cursor cannot express |
+| Delete | rows 6 → 5, pill and bell dropped to 0 |
+| Contract | `DELETE` and `POST …/read` on another user's id → 404, on a missing id → 404, victim's row untouched and still counted |
+| Message regression | a REST message to Alice while on `/notifications`: `message-chime.mp3` (not the wav), its card in the same stack (x=517), messages badge → 1 — the shared handler's message path is untouched |
+| Console | only the documented StrictMode "connection was stopped during negotiation" line |
+
+Not observable in this environment: the focused-window branch of the chime policy — the automation window
+never has `document.hasFocus()`, so the wav played even on the feed (an unfocused window counts as "unseen",
+which is the intended rule); the silence-on-focus branch is verified by the policy mirroring `shouldChime`,
+not by ear.
+
+Cost / cleanup: the dev database was restored to its pre-session state — Alice's 6 test notifications deleted
+(table back to the 2 pre-existing community-test rows, `nasrdev`'s join request and `testuser`'s approval,
+which were left alone), the 5 labelled comments, the 1 labelled message (with `Conversations.LastMessageAt`
+repaired to the surviving newest), and Bob's test like removed. Copying the wav into `public/` while the dev
+server watched crashed Vite on the documented `EBUSY`; it was restarted and served the file afterwards.
+
+Harness: the page-side spy/observer snippets above are inline in the session; REST triggers reuse
+`notif-test.ps1`'s shape and `send-message.ps1` for the message regression.
 
 ## Open questions
 
