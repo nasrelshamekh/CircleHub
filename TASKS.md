@@ -15,10 +15,13 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 2 | Hub, user-id mapping, JWT-over-query-string, CORS | done, verified |
 | 3 | Recipient policy on the hub + presence tracking | done, verified |
 | 4 | Hub fan-out from the REST send path | done, verified |
-| 5 | `DeviceToken` entity + registration endpoints + migration | not started |
-| 6 | Expo Push Service fallback for offline recipients | not started |
-| 7 | Web client: `@microsoft/signalr` provider, live thread + unread badge | not started |
-| 8 | Mobile client (deferred until the web app is tested) | deferred |
+| 5 | `DeviceToken` entity + registration endpoints + migration | deferred to the mobile phase |
+| 6 | Expo Push Service fallback for offline recipients | deferred to the mobile phase |
+| 7 | Web client: `@microsoft/signalr` connection, live thread + unread badge | done, verified |
+| 8 | Mobile client (SignalR + Expo push) | deferred until the web app is accepted |
+
+Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
+pieces (5 and 6) land together with the mobile client (8), because Expo push only has a consumer there.
 
 ## Step log
 
@@ -128,6 +131,38 @@ Verification (11/11 client checks + 2 server-log checks):
 
 Reproduction: `powershell -File %TEMP%\opencode\step4-e2e.ps1`.
 
+### Step 7 — Web client live delivery (done, verified)
+
+`@microsoft/signalr` (10.0.11) is now wired into the web app, so a stored message reaches the recipient while
+they have the app open. Sending is unchanged: `POST /api/messages` stays the only write path.
+
+Added:
+
+- `src/services/chatHub.js` — builds the connection. Derives `.../hubs/chat` from `VITE_BASE_URL` (which
+  points at the REST root, e.g. `http://localhost:5289/api`), reads the token from `localStorage` on every
+  negotiation, and retries every 10s indefinitely (the SignalR default gives up after ~30s, which is the
+  wrong default for a chat client). Exports the event name so the contract lives in one place.
+- `src/hooks/useRealtimeMessages.jsx` — opens the connection for the signed-in session, closes it on
+  logout, and on `ReceiveEncryptedMessage` invalidates `queryKeys.conversations()`. That key is a prefix of
+  `conversation(id)`, so one invalidation refreshes the list, the open thread and the unread badge, while
+  the server stays the source of truth for their contents.
+- `src/App.jsx` — calls the hook once at the app root (inside the auth and query providers).
+
+Verification: `npx eslint .` exits 0 and `npm run build` succeeds, plus a real browser session against the
+running API and dev server. Alice's token was placed in `localStorage` and her thread with `testuser` left
+open; a message sent by `testuser` over REST appeared in that thread exactly once, with no reload.
+
+| Check | Result |
+| --- | --- |
+| WebSocket established | `ws://localhost:5289/hubs/chat?id=...&access_token=...` (token in the query string, as designed) |
+| Message sent by another user over REST, thread open | appears once, no reload, no duplicate |
+| Conversation list | preview and relative timestamp update to the new message |
+| Unread badge | 4 → 5 after a second sender's message, matching `GET /api/messages/conversations` |
+| A message for another conversation | correctly does not appear in the open thread |
+
+Harness: `%TEMP%\opencode\web-test-setup.ps1` (mints the session tokens, picks a sender the policy allows)
+and `web-test-badge.ps1` (drives the second sender and prints the server's unread totals).
+
 ## Open questions
 
 - Where does the client-side key exchange live (per-device key bundles, WebCrypto ECDH), and does the
@@ -144,4 +179,5 @@ Reproduction: `powershell -File %TEMP%\opencode\step4-e2e.ps1`.
 
 ## Known cleanups (not yet scheduled)
 
-- Local dev instance of `CircleHub.Api.exe` (started before this work) still serves the pre-hub build.
+- A dev API instance may be holding port 5289 (`VITE_BASE_URL` in `.env.local` points there). If the port is
+  busy, either stop that instance or point the frontend at the port you are running.

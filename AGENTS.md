@@ -106,14 +106,24 @@ The endpoint policy takes precedence over the middleware default, so REST keeps 
 
 ### Client contract (web)
 
+Wiring lives in `src/services/chatHub.js` (connection factory + event name) and
+`src/hooks/useRealtimeMessages.jsx`, which `src/App.jsx` calls once at the app root.
+
 - Event `ReceiveEncryptedMessage` carries `EncryptedMessageEnvelope`. `messageId` and `conversationId` are
-  filled in by the REST fan-out (null for a pure hub relay), which lets the client refresh a single thread
-  and its unread badge instead of refetching everything.
-- One event name is used for both delivery paths so the client needs a single handler.
-- `accessTokenFactory` returns the `localStorage` token; browsers then send it as `access_token` on the
-  WebSocket/SSE negotiate request.
+  filled in by the REST fan-out (null for a pure hub relay). One event name covers both delivery paths.
+- The hub URL is derived from `VITE_BASE_URL` (`<rest root>` → `<rest root minus /api>/hubs/chat`), so there
+  is a single source of truth for the API location.
+- `accessTokenFactory` returns the `localStorage` token, which browsers send as `access_token` on the
+  negotiate request, and it is read on every negotiation so reconnects pick up the current token.
+- On an incoming message the hook invalidates `queryKeys.conversations()`. React Query matches keys by
+  prefix, so this also covers `conversation(id)`; the list, the open thread and the unread badge all refresh
+  from the server rather than being patched by hand.
+- Reconnects retry every 10s indefinitely. The SignalR default (0s, 2s, 10s, 30s, then give up) would leave
+  a chat tab silently dead after a short outage.
 - The sender id is not part of the payload call — it is added by the server.
-- WebSockets are not protected by CORS, so the JWT is the only gate on hub calls.
+- In development, React StrictMode mounts effects twice, so the first connect is stopped mid-negotiation and
+  SignalR logs "The connection was stopped during negotiation" before the second one succeeds. That is
+  expected dev-only noise, not a failure.
 
 ### Known limits in this phase
 
@@ -148,6 +158,9 @@ database by the throwaway harness in `%TEMP%\opencode` (started so it does not d
   the fan-out envelope (including that the message/conversation ids match the REST response), that an offline
   recipient is logged rather than delivered to, and that a refused message is never fanned out.
 - `sigtest\hub-test.mjs`, `sigtest\fanout-test.mjs` — the `@microsoft/signalr` client driving those flows.
+- `web-test-setup.ps1` + `web-test-badge.ps1` — mint a session for a real user and a sender the policy
+  allows, for driving the browser against a running dev server (inject the token into `localStorage`, then
+  open the thread and watch it update).
 
 It requires MySQL running locally plus `npm install @microsoft/signalr` in that directory. Keep it in sync
 with the hub contract when the contract changes.
