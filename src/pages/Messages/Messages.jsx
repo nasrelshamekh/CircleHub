@@ -16,6 +16,8 @@ export default function Messages() {
         messages,
         otherUser,
         isLoading: isLoadingThread,
+        isLoadingOlder,
+        loadOlder,
     } = useConversation(id);
 
     return (
@@ -51,6 +53,8 @@ export default function Messages() {
                             otherUser={otherUser}
                             messages={messages}
                             isLoading={isLoadingThread}
+                            isLoadingOlder={isLoadingOlder}
+                            onLoadOlder={loadOlder}
                         />
                     ) : (
                         <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">

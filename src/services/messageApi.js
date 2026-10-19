@@ -6,8 +6,10 @@ export async function getConversations() {
   return response.data;
 }
 
-export async function getConversation(id) {
-  const response = await apiClient.get(`/messages/conversations/${id}`);
+export async function getConversation(id, { page = 1, pageSize = 50 } = {}) {
+  const response = await apiClient.get(`/messages/conversations/${id}`, {
+    params: { page, pageSize },
+  });
 
   return response.data;
 }

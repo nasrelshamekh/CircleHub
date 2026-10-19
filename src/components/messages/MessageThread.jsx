@@ -1,4 +1,10 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import {
+    Fragment,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { isSameDay } from "date-fns";
@@ -125,12 +131,46 @@ export default function MessageThread({
     otherUser,
     messages,
     isLoading,
+    isLoadingOlder,
+    onLoadOlder,
 }) {
     const bottomRef = useRef(null);
+    const scrollRef = useRef(null);
+    const anchorRef = useRef({ conversationId: null, firstId: null, height: 0 });
+
+    const firstMessageId = messages[0]?.id;
+    const lastMessageId = messages[messages.length - 1]?.id;
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ block: "end" });
-    }, [conversationId, messages.length]);
+    }, [conversationId, lastMessageId]);
+
+    useLayoutEffect(() => {
+        const element = scrollRef.current;
+        if (!element) return;
+
+        const anchor = anchorRef.current;
+        const prepended =
+            anchor.conversationId === conversationId &&
+            Boolean(anchor.firstId) &&
+            anchor.firstId !== firstMessageId;
+
+        if (prepended) {
+            element.scrollTop += element.scrollHeight - anchor.height;
+        }
+
+        anchorRef.current = {
+            conversationId,
+            firstId: firstMessageId,
+            height: element.scrollHeight,
+        };
+    }, [conversationId, firstMessageId, messages.length]);
+
+    function handleScroll(event) {
+        if (event.currentTarget.scrollTop > 120) return;
+
+        onLoadOlder?.();
+    }
 
     return (
         <div className="flex h-full flex-col">
@@ -165,9 +205,19 @@ export default function MessageThread({
                 )}
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+            <div
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 [overflow-anchor:none]"
+            >
                 {isLoading && (
                     <p className="type-body-sm text-secondary">Loading…</p>
+                )}
+
+                {isLoadingOlder && (
+                    <p className="type-body-sm text-center text-secondary">
+                        Loading earlier messages…
+                    </p>
                 )}
 
                 {!isLoading && messages.length === 0 && (
