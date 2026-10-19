@@ -23,6 +23,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 10 | Typing indicator: `SendTyping` hub signal + web client (thread header + conversation list) | done, verified |
 | 11 | Incoming-message sound: committed sound file (the owner's own), silent while the reader is looking at that thread | done, verified |
 | 12 | Message toast away from the messages page: themed card, click to open | done, verified |
+| 13 | In-app notification feed (`/notifications`): follows, likes, comments, community membership and moderation events | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
