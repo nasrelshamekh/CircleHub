@@ -142,36 +142,6 @@ app.Use(async (context, next) =>
     await next();
 });
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-    if (!db.Users.Any())
-    {
-        var user = new User
-        {
-            Name = "Test User",
-            Username = "testuser",
-            Email = "test@example.com",
-            PasswordHash = "placeholder",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        db.Users.Add(user);
-
-        db.Posts.Add(new Post
-        {
-            Content = "Hello from EF Core!",
-            Author = user,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        });
-
-        db.SaveChanges();
-    }
-}
-
 app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
