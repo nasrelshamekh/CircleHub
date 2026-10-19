@@ -46,6 +46,7 @@ project owner before implementation; see `TASKS.md` for status.
 | Send path | `POST /api/messages` remains the single write path (persists + unread counts). The server then fans out to the recipient's live connections. |
 | Ciphertext storage | The server stores the encrypted string as an opaque blob in `Message.Content` and never inspects it. |
 | Push tokens | A dedicated `DeviceToken` table (multi-device), pruned when Expo reports `DeviceNotRegistered`. |
+| Typing signals | Hub-only and ephemeral: relayed to whatever is live, never stored, never pushed, refused silently, and believed by the recipient for a few seconds at a time. |
 | Encryption scope | The server is a dumb pipe; the actual crypto (WebCrypto ECDH + AES-GCM) is a later phase. |
 | Rollout order | Web app first, then the Expo mobile app. |
 
@@ -55,6 +56,13 @@ project owner before implementation; see `TASKS.md` for status.
 - Client → server method: `SendEncryptedMessage(string recipientId, string encryptedPayload)`.
 - Server → client event: `ReceiveEncryptedMessage` (`ChatHub.ReceiveMessageMethod`) carrying
   `Dtos/EncryptedMessageEnvelope` `{ senderId, encryptedPayload, sentAt }`.
+- Second client → server method: `SendTyping(string recipientId, bool isTyping)`, relayed as `TypingChanged`
+  (`ChatHub.TypingChangedMethod`) carrying `Dtos/TypingChangedEnvelope` `{ userId, isTyping }`. It applies the
+  same recipient policy as a real message, so typing cannot be used to reach someone whose `MessagesFrom`
+  refuses the sender — and every rejection is *silent* (reason at `Debug`), because the signal is raised
+  automatically on each keystroke burst: it must neither raise an error the user never asked for nor let a
+  refused client write to the log at will. Nothing is stored, nothing is pushed, and an offline recipient is
+  simply not told; a stale "typing…" would be worse than a missing one.
 - Routing uses `Clients.User(recipientId)`, resolved by `Services/CircleHubUserIdProvider`, which maps the
   SignalR user id to the `sub` claim and normalises it to the canonical Guid form. SignalR's default
   `ClaimTypes.NameIdentifier` is never emitted by this API, so without that provider `Clients.User(id)`
@@ -166,6 +174,23 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
 - In development, React StrictMode mounts effects twice, so the first connect is stopped mid-negotiation and
   SignalR logs "The connection was stopped during negotiation" before the second one succeeds. That is
   expected dev-only noise, not a failure.
+- Typing is the only client → server signal the web app sends. `sendTyping` (`src/services/chatHub.js`) fires
+  it and forgets it — never awaited, no error surfaced, and skipped unless the connection is `Connected` — and
+  `useTypingBroadcast` throttles it: one "started" per 2s while keys keep coming, an explicit "stopped" after
+  3s of silence, on send, on switching conversation and on leaving the thread. Ten keystrokes become two
+  signals, not ten.
+- The receiving side *believes* a claim for 6s (`TYPING_CLAIM_MS`): the context stamps a deadline per user and
+  sweeps once a second, so the indicator clears itself when the "stopped" signal is lost to a killed tab or a
+  dropped socket — which is why nothing here is persisted, queued or replayed. A sweep that finds nothing
+  expired returns its input untouched, so a sender who keeps refreshing costs no re-render.
+- The claim is keyed by the user id the server put on it (`useTypingIndicator(userId)`), so it only ever
+  renders on that person's row in the list and in their thread: several partners can be typing at once, and a
+  claim from someone whose conversation is not open (or who is not a partner at all) renders nowhere.
+  `TypingLabel` owns the wording — in the thread header it *replaces* the presence line, in the list it
+  replaces the message preview and leaves presence in place.
+- Typing never touches the query cache: nothing is invalidated or patched, so a claim costs no request. The
+  cache keeps its identity because typing is not app data — it is true for a couple of seconds and then it is
+  simply gone, like the 60s tick in `PresenceLabel`.
 
 ### Known limits in this phase
 
@@ -181,6 +206,10 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
 - A presence event also costs one refetch of the list and of the open thread (`useConversation` invalidates
   the `conversations()` prefix whenever its data changes). Narrowing that effect to "the messages changed"
   would remove it; it was left alone to keep the presence step's blast radius small.
+- Typing signals are relayed as they arrive and are not rate limited server-side, so a hostile client can
+  re-render one recipient's UI as fast as it can call `SendTyping`. The blast radius is small — the id on a
+  claim always comes from the JWT, so a client can only ever pollute its own entry, and nothing is stored —
+  but a public deployment should cap hub calls per connection.
 
 ## Environment notes / gotchas
 
@@ -213,6 +242,13 @@ database by the throwaway harness in `%TEMP%\opencode` (started so it does not d
 - `sigtest\presence-client.mjs` — connect one user to the hub and print every `PresenceChanged` envelope
   received. Used to watch a browser flip between "Online" and "Last seen …", and to prove that a user with no
   shared conversation receives nothing.
+- `typing-setup.ps1` + `sigtest\typing-test.mjs` — mint the two tokens the typing flow needs (plus a
+  recipient whose `MessagesFrom` refuses the sender) and assert the whole hub contract: routing to every live
+  connection of the recipient, the sender id coming from the JWT, the sender hearing nothing of their own
+  signal, and a silent drop for a self-send, a malformed id, an unknown id or a refused recipient.
+- `sigtest\typing-client.mjs` — one authenticated client that either prints every `TypingChanged` it receives
+  (listen mode) or drums typing signals out on a schedule, so a signed-in browser on the other end can be
+  watched gaining and losing its "typing…" line.
 
 It requires MySQL running locally plus `npm install @microsoft/signalr` in that directory. Keep it in sync
 with the hub contract when the contract changes.

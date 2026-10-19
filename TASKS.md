@@ -20,6 +20,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 7 | Web client: `@microsoft/signalr` connection, live thread + unread badge, then polish (status, optimistic send, scroll, tab title) | done, verified |
 | 8 | Mobile client (SignalR + Expo push) | deferred until the web app is accepted |
 | 9 | Presence: online / last seen in the thread header and the conversation list | done, verified |
+| 10 | Typing indicator: `SendTyping` hub signal + web client (thread header + conversation list) | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
 pieces (5 and 6) land together with the mobile client (8), because Expo push only has a consumer there.
@@ -271,6 +272,65 @@ Behaviour was driven in a real browser against the running API + dev server, wit
 Presence only ever reaches conversation partners, and it added no rows to the dev database. Harness:
 `%TEMP%\opencode\presence-setup.ps1` (bob's token + the Alice↔bob conversation id),
 `%TEMP%\opencode\mint-token.ps1` (a token for any dev user), `sigtest\presence-client.mjs`.
+
+### Step 10 — Typing indicator (done, verified)
+
+The owner asked for a typing indicator, shown where the UI already answers "what is this person doing": the
+presence line in the thread header, and the message preview in the conversation list. Confirmed wording:
+**"typing…"** in both — it replaces presence in the header, and replaces the preview in the list (where
+presence keeps its own line).
+
+Added:
+
+- `Dtos/TypingChangedEnvelope.cs` — `{ userId, isTyping }`.
+- `Hubs/ChatHub.cs` — `TypingChangedMethod` (`TypingChanged`) and `SendTyping(recipientId, isTyping)`. It
+  applies the same recipient policy as a real message, so typing cannot reach someone whose `MessagesFrom`
+  refuses the sender, but *every* rejection is silent and logged at `Debug`: the signal is raised
+  automatically while the user types, there is nothing to report back, and a refused client must not be able
+  to write to the log at will. Nothing is persisted, nothing is pushed, and an offline recipient is simply
+  not told.
+- `src/services/chatHub.js` — `TYPING_CHANGED_EVENT`, `SEND_TYPING_METHOD` and `sendTyping(connection, …)`,
+  which skips the call unless the connection is `Connected` and never surfaces a failure.
+- `src/context/ChatConnectionContext.jsx` — the connection now lives in a `connectionRef` so components can
+  call it without a re-render; `notifyTyping` is exposed next to a `typingUsers` map of
+  `userId → deadline`. A claim is stamped 6s ahead and a 1s sweep drops expired ones (returning the same
+  object when nothing expired, so a sender who keeps refreshing costs no re-render); the map is cleared on
+  session teardown, because a claim belongs to the connection that received it.
+- `src/hooks/useTypingBroadcast.jsx` — the sender side: one signal per 2s while keys keep coming, "stopped"
+  after 3s of silence, on send, on switching conversation and on leaving the thread.
+- `src/hooks/useTypingIndicator.jsx` — `useTypingIndicator(userId)`, `useTypingUsers()` and `isTypingNow`, so
+  the deadline comparison lives in one place.
+- `src/components/messages/TypingLabel.jsx` — the wording ("typing…", in the accent colour).
+- `src/components/messages/MessageThread.jsx` — the header renders `TypingLabel` instead of `PresenceLabel`
+  while the other person is typing; the composer is handed `recipientId` for the first time.
+- `src/components/messages/ConversationList.jsx` — the row's preview line becomes `TypingLabel` while that
+  partner is typing; the presence line, dot and unread badge are untouched.
+- `src/components/messages/MessageComposer.jsx` — reports typing on every change and stops before sending, so
+  the arriving message is the real "done".
+
+Verification: `dotnet build` 0 warnings; `npx eslint .` exits 0; `npm run build` succeeds; no migration — this
+step writes nothing, and the `Messages` row count was 78 before and after (the one message sent to exercise
+the send path was deleted again). The hub contract was driven by `sigtest\typing-test.mjs` (12/12 checks) and
+the browser by `sigtest\typing-client.mjs`, with a `MutationObserver` injected into the page that timestamped
+every appearance and disappearance of the indicator.
+
+| Check | Result |
+| --- | --- |
+| Routing | one `SendTyping` reached both of the recipient's connections: `{userId: <sender>, isTyping: true}` |
+| Sender id | taken from the JWT; the sender's own connection received nothing |
+| Stop signal | `isTyping: false` relayed the same way |
+| Silent refusals | self-send, `not-a-guid`, a random Guid and a `MessagesFrom=Followers` recipient the sender does not follow all resolved without error and delivered nothing |
+| Appears | 7–8ms after the first claim, in the header **and** the list row; presence replaced in the header, kept in the row |
+| Expires by itself | claims at 18:51:49.06/.51.06/.53.07 with no stop signal ever sent → cleared at 18:52:00.07, i.e. the last 6s claim (…59.07) plus the 1s sweep |
+| Explicit stop wins | last claim 18:52:36.00, explicit `isTyping:false` at :37.51 → cleared at :37.51, 4.5s before the claim would have expired |
+| Sender throttle | 6 input events in one tick → one signal; 4 more 2.4s later → one more (2 signals for 10 keystrokes) |
+| Idle stop | exactly 3.00s after the last keystroke, twice |
+| Stop on send | `isTyping:false` 1ms after submit, then the stored message fanned out |
+| Cost | `/api/messages` request count unchanged across every typing window (14→14, 17→17, 22→22): typing is not cache data |
+| Per-user keying | with the `testuser` thread open, `bob_builder` typing showed up in his own list row only — not in the header, not in the neighbouring rows |
+| Clean-up | the test message row was deleted; `Messages` back to 78 rows |
+
+Harness: `%TEMP%\opencode\typing-setup.ps1`, `sigtest\typing-test.mjs`, `sigtest\typing-client.mjs`.
 
 ## Open questions
 
