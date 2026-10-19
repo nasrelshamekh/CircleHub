@@ -56,8 +56,14 @@ project owner before implementation; see `TASKS.md` for status.
 - Server → client event: `ReceiveEncryptedMessage` (`ChatHub.ReceiveMessageMethod`) carrying
   `Dtos/EncryptedMessageEnvelope` `{ senderId, encryptedPayload, sentAt }`.
 - Routing uses `Clients.User(recipientId)`, resolved by `Services/CircleHubUserIdProvider`, which maps the
-  SignalR user id to the `sub` claim. SignalR's default `ClaimTypes.NameIdentifier` is never emitted by this
-  API, so without that provider `Clients.User(id)` would silently deliver to nobody.
+  SignalR user id to the `sub` claim and normalises it to the canonical Guid form. SignalR's default
+  `ClaimTypes.NameIdentifier` is never emitted by this API, so without that provider `Clients.User(id)`
+  would silently deliver to nobody.
+- The "may this sender message this recipient?" rule lives in `Services/MessagePolicyService`. Both
+  `MessagesController` (the write path) and `ChatHub` call it, so the recipient's `MessagesFrom` setting
+  cannot be bypassed by calling the hub directly instead of REST.
+- Live connections are registered in `Services/IConnectionTracker` (`Add`/`Remove`/`IsOnline`), which is what
+  will decide between real-time delivery and a push notification in the fallback step.
 
 ### Security invariants
 
@@ -68,9 +74,23 @@ project owner before implementation; see `TASKS.md` for status.
   cannot keep streaming.
 - The sender identity is always `Context.UserIdentifier`; a sender id in the payload would allow impersonation.
 - Payload cap is 16 KB (`ChatHub.MaxPayloadLength`), below SignalR's 32 KB `MaximumReceiveMessageSize`.
+- The hub applies the same recipient policy as REST and refuses with a deliberately generic message
+  ("This user isn't accepting messages right now"), so it cannot be used to probe for existing user ids.
+  The real reason (unknown user / `MessagesFrom=Followers`) is written to the server log instead.
 - Access tokens in the query string end up in request logs. `appsettings.json` sets
   `Microsoft.AspNetCore` to `Warning`, which suppresses the `Info`-level request URL logging that would
   otherwise record the token.
+
+### Presence
+
+`ConnectionTracker` keeps a `ConcurrentDictionary<Guid, ConcurrentDictionary<string, byte>>` of live
+connections, so a user with several tabs/devices is still counted once (`OnlineUserCount`) while every one of
+their connections receives a relayed envelope. Users are dropped from the map when their last connection
+goes away; removal is a conditional `TryRemove(KeyValuePair)` so a connection that arrives during teardown is
+not lost.
+
+The registry is process-local state: an instance can only deliver to the connections it owns. Running more
+than one API instance therefore needs a shared backplane (Redis) and sticky sessions at the proxy.
 
 ### CORS
 
@@ -94,4 +114,19 @@ The endpoint policy takes precedence over the middleware default, so REST keeps 
   the running instance or build to another output directory: `dotnet build <proj> -o <temp dir>`.
 - MySQL 8 is installed locally; the CLI is at
   `C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe`. The dev credentials come from user-secrets.
+- `Users.MessagesFrom` is stored as `varchar(20)` holding the enum *name* (`.HasConversion<string>()`, DB
+  default `Followers`), so write `MessagesFrom = 'Followers'` in SQL, not `1`.
 - Migrations require `dotnet ef` (pinned in `dotnet-tools.json`).
+
+## Verification
+
+There is no test project in the solution; the messaging work is verified end-to-end against the real dev
+database by the throwaway harness in `%TEMP%\opencode` (started so it does not disturb a running dev server):
+
+- `step3-e2e.ps1` — mints real JWTs from the dev user-secrets, picks an allowed and a restricted recipient
+  straight from MySQL, starts the temp build on a spare port, exercises the REST write path and the hub, and
+  asserts the presence counters from the server log.
+- `sigtest\hub-test.mjs` — the `@microsoft/signalr` client driving two connections per user.
+
+It requires MySQL running locally plus `npm install @microsoft/signalr` in that directory. Keep it in sync
+with the hub contract when the contract changes.

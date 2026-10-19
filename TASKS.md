@@ -13,7 +13,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | --- | --- | --- |
 | 1 | Reconnaissance + plan (backend, web client, docs) | done |
 | 2 | Hub, user-id mapping, JWT-over-query-string, CORS | done, verified |
-| 3 | Presence tracking (connection registry) | not started |
+| 3 | Recipient policy on the hub + presence tracking | done, verified |
 | 4 | Hub fan-out from the REST send path | not started |
 | 5 | `DeviceToken` entity + registration endpoints + migration | not started |
 | 6 | Expo Push Service fallback for offline recipients | not started |
@@ -62,14 +62,64 @@ Verification (temp build on a spare port so the owner's running instance was unt
 | Self-send / non-Guid id / empty payload / 16 KB+ payload | rejected with `HubException` |
 | `GET /api/messages/conversations` with a minted token | 200 (REST path unaffected) |
 
-Reproduction: `powershell -File %TEMP%\opencode\step2-e2e.ps1` (mints JWTs from the dev user-secrets, starts
-the temp build, drives `%TEMP%\opencode\sigtest\hub-test.mjs`). Requires MySQL 8 running locally and the
-`@microsoft/signalr` npm package in that directory.
+Reproduction: `powershell -File %TEMP%\opencode\step3-e2e.ps1`. Requires MySQL 8 running locally and the
+`@microsoft/signalr` npm package in the harness directory.
+
+### Step 3 — Recipient policy on the hub + presence tracking (done, verified)
+
+The owner chose to close the hole where the hub relay ignored the recipient's privacy setting, and to track
+connections for the upcoming offline/push decision.
+
+Added:
+
+- `Services/MessagePolicyService.cs` — the "may this sender message this recipient?" rule, moved out of
+  `MessagesController` unchanged. `MessagesController` and `ChatHub` now share it, so the two paths cannot
+  drift apart.
+- `Services/IConnectionTracker.cs` + `Services/ConnectionTracker.cs` — per-user registry of live connections
+  (`ConcurrentDictionary<Guid, ConcurrentDictionary<string, byte>>`), registered as a singleton. A user with
+  several tabs/devices counts once but every connection receives a relayed envelope.
+- `ChatHub` — loads the recipient, applies `MessagePolicyService`, and refuses with a generic
+  `HubException` so the hub cannot be used to discover which user ids exist. The real reason
+  (unknown user vs `MessagesFrom=Followers`) is logged server-side. Connections are registered and
+  deregistered in `OnConnectedAsync`/`OnDisconnectedAsync`, which also log the live-connection and
+  online-user counts.
+- `CircleHubUserIdProvider` — normalises the `sub` claim to the canonical Guid form, and the hub routes with
+  that same form, so casing can never silently break delivery.
+
+Verification (12/12 client checks, 4/4 presence checks, against the real dev database):
+
+| Check | Result |
+| --- | --- |
+| `dotnet build` | 0 warnings, 0 errors |
+| A (2 connections) → allowed recipient (2 connections) | all 4 connections receive; payload byte-identical; `senderId` from the JWT |
+| Sender's own connections | receive nothing |
+| Self-send / non-Guid / empty / 16 KB+ payload | rejected |
+| Recipient with `MessagesFrom=Followers` that A does not follow (hub) | refused; nothing delivered |
+| Same recipient via `POST /api/messages` | 403 with the same rule's message |
+| Unknown user id | refused with the identical generic message (no id enumeration); real reason only in the log |
+| Presence: A's second connection | logged as 2 live connections, still 1 user online |
+| Presence: B connects | 2 users online |
+| Presence: connections close in order | 1 left → 0 left, user forgotten, 0 users online |
+| Revoked token negotiate | 401 |
 
 ## Open questions
 
-- Commit/push cadence: one commit per step, or a single branch/Hub commit?
-- Should REST fan-out (Step 4) also verify the recipient's `MessagesFrom` policy before publishing to the hub?
+- Should REST fan-out (Step 4) deliver through the hub *in addition to* the direct `Clients.User` call, or only
+  as the single fan-out point? (It will reuse `MessagePolicyService` either way.)
+
+## Incidents
+
+- **Interference by a second agent (during Step 3).** A different model reverted
+  `Controllers/MessagesController.cs` to its pre-Step-3 state and left two scratch files (`probe.js`,
+  `smoke.js`) in the repo root; it also created a verified `smoketest` user in the dev database. The scratch
+  files were deleted, the controller change was re-applied, and everything else was verified untouched (no
+  stashes, no extra commits, mobile repo clean). The `smoketest` user is still in the dev database and is
+  currently used by the harness as the restricted recipient.
+
+## Known cleanups (not yet scheduled)
+
+- Local dev instance of `CircleHub.Api.exe` (started before this work) still serves the pre-hub build.
+
 
 ## Known cleanups (not yet scheduled)
 
