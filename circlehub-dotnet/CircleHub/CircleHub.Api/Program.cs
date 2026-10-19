@@ -85,7 +85,6 @@ builder.Services
                     return;
                 }
 
-                // Tokens minted before the latest password change carry a stale version.
                 var tokenVersion = 0;
                 var versionClaim = context.Principal?.FindFirst("tokenVersion");
                 if (versionClaim is not null)

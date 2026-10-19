@@ -9,10 +9,6 @@ import MessageComposer from "./MessageComposer";
 import SharedPostCard from "./SharedPostCard";
 import { formatMessageDate, formatMessageTime } from "@/lib/formatDate";
 
-// The avatar lines up with the bubble, not the stamp row, so it only sits next
-// to the text it belongs to. Tap/click a message to reveal when it was sent
-// (and copy it) — the stamp stays hidden otherwise so the thread reads as
-// bubbles only.
 function MessageBubble({ message, otherUser }) {
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -106,7 +102,6 @@ function MessageBubble({ message, otherUser }) {
     );
 }
 
-// Day separator so a long thread reads as dated groups.
 function DateDivider({ value }) {
     return (
         <div className="flex items-center gap-3">

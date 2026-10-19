@@ -99,10 +99,6 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount, follows
                                                 <MessageCircle size={16} />
                                                 Message
                                             </button>
-                                            {/* Keep this for now just in case */}
-                                            {/* <button type="button" className="icon-button-soft hidden h-10 w-10 items-center justify-center bg-(--surface-low) md:flex" aria-label="Open profile actions">
-                                                <MoreHorizontal size={18} />
-                                            </button> */}
                                         </>
                                     )}
                                 </div>

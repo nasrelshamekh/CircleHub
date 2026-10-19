@@ -18,10 +18,6 @@ export function useUpdatePost() {
         onSuccess: (response) => {
             const updated = response.data;
 
-            // The update endpoint returns a plain post (no comments), but the
-            // details page caches the post *with* its loaded comments under
-            // this same key. Merge instead of replacing so an edit doesn't
-            // wipe the comment thread.
             queryClient.setQueryData(queryKeys.post(updated.id), (old) =>
                 old
                     ? { ...old, ...updated, comments: old.comments }

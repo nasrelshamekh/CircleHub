@@ -56,10 +56,6 @@ namespace CircleHub.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Whether the viewer may see the user's posts, media and lists, per the
-        /// user's profile visibility. The user always sees their own content.
-        /// </summary>
         private async Task<bool> CanViewUserContent(User user, Guid viewerId)
         {
             if (user.Id == viewerId)

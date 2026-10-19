@@ -179,7 +179,6 @@ export default function ProfileTabs({
                     </p>
 
                     <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
-                        {/* DETAILS LEFT */}
                         <div className="space-y-4">
                             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
                                 <span className="type-label-md w-32 text-(--primary)">
@@ -224,7 +223,6 @@ export default function ProfileTabs({
                             </div>
                         </div>
 
-                        {/* DETAILS RIGHT */}
                         <div className="space-y-4">
                             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
                                 <span className="type-label-md w-32 text-(--primary)">

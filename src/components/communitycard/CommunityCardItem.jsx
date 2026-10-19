@@ -88,9 +88,6 @@ export default function CommunityCardItem({
                         {hasRoleBadge ? roleBadgeLabel : isRequested ? "Request pending" : "Member"}
                     </span>
 
-                    {/* Admins can't leave without transferring ownership, so no
-                        Leave button on admin cards. Moderators and regular members
-                        can leave (backend accepts, mods lose their role too). */}
                     {!showAdminBadge && !displayOnly && (
                         <button
                             type="button"

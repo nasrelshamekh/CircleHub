@@ -16,9 +16,6 @@ export function useConversation(id) {
         enabled: Boolean(id),
     });
 
-    // Fetching a thread marks it read, so as soon as it arrives refresh the list
-    // to drop that conversation's unread badge. The list and the thread share a
-    // page and window-focus refetching is off, so nothing else would.
     useEffect(() => {
         if (!query.data) return;
 

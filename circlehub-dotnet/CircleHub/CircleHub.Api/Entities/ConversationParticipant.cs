@@ -9,7 +9,6 @@ namespace CircleHub.Api.Entities
         public Guid UserId { get; set; }
         public User User { get; set; } = null!;
 
-        // Used to work out how many messages are unread for this participant.
         public DateTime? LastReadAt { get; set; }
     }
 }

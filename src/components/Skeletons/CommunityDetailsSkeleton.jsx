@@ -5,12 +5,10 @@ import PostSkeleton from "./PostSkeleton";
 export default function CommunityDetailsSkeleton() {
     return (
         <section className="w-full pb-20 lg:pb-0" aria-hidden="true">
-            {/* Cover banner */}
             <div className="relative mt-4 h-48 w-full overflow-hidden rounded-xl md:h-72">
                 <Skeleton className="h-full w-full rounded-none" />
             </div>
 
-            {/* Overlapping header card */}
             <div className="relative -mt-12 z-10 mx-auto w-full max-w-7xl px-4 lg:px-6">
                 <div className="content-card relative overflow-hidden p-4 md:p-6">
                     <div className="relative flex flex-col gap-5 md:flex-row md:items-center">
@@ -44,29 +42,24 @@ export default function CommunityDetailsSkeleton() {
                 </div>
             </div>
 
-            {/* Two-column layout: tabs + posts on the left, info panels on the right */}
             <div className="mx-auto grid w-full max-w-7xl grid-cols-4 gap-6 p-6">
                 <div className="order-2 col-span-4 lg:order-1 lg:col-span-3 space-y-5">
-                    {/* Tabs strip */}
                     <div className="flex gap-2 py-2">
                         {[0, 1, 2, 3].map((i) => (
                             <Skeleton key={i} className="h-9 w-24 rounded-md" />
                         ))}
                     </div>
 
-                    {/* Create-post placeholder */}
                     <div className="content-card-padded flex gap-3">
                         <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
                         <Skeleton className="h-11 flex-1 rounded-xl" />
                     </div>
 
-                    {/* Two ghost posts */}
                     <PostSkeleton />
                     <PostSkeleton />
                 </div>
 
                 <div className="order-1 col-span-4 space-y-5 lg:order-2 lg:col-span-1">
-                    {/* About panel */}
                     <div className="content-card-padded space-y-3">
                         <Skeleton className="h-5 w-20" />
                         <Skeleton className="h-3 w-full" />
@@ -78,7 +71,6 @@ export default function CommunityDetailsSkeleton() {
                         </div>
                     </div>
 
-                    {/* Admin panel */}
                     <div className="content-card-padded space-y-3">
                         <Skeleton className="h-5 w-16" />
                         <div className="flex items-center gap-3">
@@ -90,7 +82,6 @@ export default function CommunityDetailsSkeleton() {
                         </div>
                     </div>
 
-                    {/* Active members panel */}
                     <div className="content-card-padded space-y-3">
                         <Skeleton className="h-5 w-32" />
                         {[0, 1, 2, 3].map((i) => (
@@ -104,7 +95,6 @@ export default function CommunityDetailsSkeleton() {
                         ))}
                     </div>
 
-                    {/* Highlights panel */}
                     <div className="content-card-padded space-y-3">
                         <Skeleton className="h-5 w-24" />
                         <div className="flex flex-wrap gap-2">

@@ -31,7 +31,6 @@ export default function ChangePasswordForm() {
         try {
             await changePassword(values.currentPassword, values.newPassword);
 
-            // Changing the password revokes every session, this one included.
             setUserData(null);
             toast.success("Password changed. Please sign in again.");
             navigate("/signin", { replace: true });

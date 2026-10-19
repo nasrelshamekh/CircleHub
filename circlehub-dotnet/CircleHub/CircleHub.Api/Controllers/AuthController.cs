@@ -152,8 +152,6 @@ namespace CircleHub.Api.Controllers
         {
             await _passwordReset.RequestAsync(dto.Email);
 
-            // Same response whether or not the email exists, so the endpoint
-            // can't be used to discover registered accounts.
             return Ok(new ApiResponse<string>
             {
                 Success = true,

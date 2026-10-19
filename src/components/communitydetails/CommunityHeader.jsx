@@ -65,8 +65,6 @@ export default function CommunityHeader({ community, membersCount, postsCount, o
                                             Manage
                                         </Link>
                                     )}
-                                    {/* Leave is available to moderators and regular members. Admins can't
-                                        leave without transferring ownership — no button. */}
                                     {!isAdmin && isJoined && (
                                         <button
                                             type="button"
@@ -77,7 +75,6 @@ export default function CommunityHeader({ community, membersCount, postsCount, o
                                             Leave
                                         </button>
                                     )}
-                                    {/* Not-yet-a-member states: Request pending, Join, or Request. */}
                                     {!canManage && !isJoined && (
                                         <button
                                             type="button"

@@ -10,8 +10,6 @@ export function useSendMessage() {
         mutationFn: sendMessage,
 
         onSuccess: (result, variables) => {
-            // The inbox owns the ordering and previews; invalidating the
-            // "conversations" prefix also refreshes every open thread.
             queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
 
             if (variables?.recipientUsername) {

@@ -24,11 +24,6 @@
         public bool IsFollowedByMe { get; set; }
         public bool FollowsMe { get; set; }
 
-        /// <summary>
-        /// True when the viewer may not see this user's posts and lists because
-        /// of their profile visibility setting. The header stays visible so the
-        /// viewer can still follow them.
-        /// </summary>
         public bool IsProfileLocked { get; set; }
     }
 }

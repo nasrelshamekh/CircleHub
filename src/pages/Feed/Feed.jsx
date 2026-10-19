@@ -69,12 +69,10 @@ export default function Feed() {
                     />
                 ))}
 
-                {/* Invisible sentinel — triggers loadMore when it enters view. */}
                 {!isLoading && hasMore && (
                     <div ref={sentinelRef} className="h-1" />
                 )}
 
-                {/* Skeletons at the bottom while the next page loads. */}
                 {isLoadingMore && (
                     <>
                         <PostSkeleton />

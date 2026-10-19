@@ -24,8 +24,6 @@ export function useToggleFollow() {
             queryClient.setQueryData(queryKeys.user(targetUsername), (old) => {
                 if (!old) return old;
 
-                // Following a followers-only account unlocks its content right
-                // away; unfollowing locks it again. Private accounts stay locked.
                 let isProfileLocked = old.isProfileLocked;
 
                 if (old.profileVisibility === "followers" && !old.isCurrentUser) {
@@ -129,8 +127,6 @@ export function useToggleFollow() {
         },
 
         onSettled: (data, error, { targetUsername }) => {
-            // Refetch the profile and its content so a newly-unlocked
-            // (or newly-locked) account shows the right posts immediately.
             queryClient.invalidateQueries({
                 queryKey: queryKeys.user(targetUsername),
             });
@@ -151,8 +147,6 @@ export function useToggleFollow() {
                     queryKey: queryKeys.userFollowing(myUsername),
                 });
             }
-            // The "send post to a friend" picker lists people you follow, so it
-            // goes stale the moment the follow graph changes.
             queryClient.invalidateQueries({
                 queryKey: queryKeys.messageRecipients(),
             });

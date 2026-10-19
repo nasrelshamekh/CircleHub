@@ -12,8 +12,6 @@ namespace CircleHub.Api.Dtos
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Guid? PostId { get; set; }
 
-        // Projected for the viewer; null when the shared post is gone or no
-        // longer visible to them.
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public PostDto? Post { get; set; }
 

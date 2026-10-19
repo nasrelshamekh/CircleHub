@@ -9,7 +9,6 @@ namespace CircleHub.Api.Entities
         public required string Username { get; set; }
         public required string Email { get; set; }
         public required string PasswordHash { get; set; }
-        // Bumped on every password change; tokens carrying an older version are rejected.
         public int TokenVersion { get; set; }
         public string? Gender { get; set; }
         public DateTime? DateOfBirth { get; set; }
@@ -19,7 +18,6 @@ namespace CircleHub.Api.Entities
         public string? Bio { get; set; }
         public string? Location { get; set; }
         public string? Website { get; set; }
-        // Privacy and notification preferences, all managed from the Settings tab.
         public ProfileVisibility ProfileVisibility { get; set; } = ProfileVisibility.Public;
         public MessagesFrom MessagesFrom { get; set; } = MessagesFrom.Followers;
         public bool EmailNotifications { get; set; } = true;

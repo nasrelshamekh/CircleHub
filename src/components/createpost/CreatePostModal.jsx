@@ -40,9 +40,6 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                     handleRemovePhoto();
                     onOpenChange(false);
 
-                    // Public posts land in the feed so the new post is visible,
-                    // no matter which page the composer was opened from.
-                    // Community posts stay in their community.
                     if (!community) {
                         navigate("/feed");
                         window.scrollTo({ top: 0, behavior: "smooth" });

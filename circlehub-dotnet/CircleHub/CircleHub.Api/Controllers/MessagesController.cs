@@ -38,11 +38,6 @@ namespace CircleHub.Api.Controllers
                 StatusCode = status
             };
 
-        /// <summary>
-        /// Whether the sender may start or continue a conversation with the
-        /// recipient, per the recipient's "messages from" setting: everyone,
-        /// the recipient's followers, or nobody.
-        /// </summary>
         private async Task<bool> CanMessage(User recipient, Guid senderId)
         {
             if (recipient.Id == senderId)
@@ -158,12 +153,10 @@ namespace CircleHub.Api.Controllers
                 })
                 .ToListAsync();
 
-            // The page came back newest-first; show it oldest-first.
             messages.Reverse();
 
             await AttachPosts(messages, currentUserId);
 
-            // Opening the thread marks it read for the current user.
             if (mine.LastReadAt == null || mine.LastReadAt < DateTime.UtcNow)
             {
                 mine.LastReadAt = DateTime.UtcNow;
