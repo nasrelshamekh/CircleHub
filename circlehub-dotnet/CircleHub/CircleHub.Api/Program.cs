@@ -65,6 +65,8 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, CircleHubUserIdProvider>();
 // Connection state is per-instance; see IConnectionTracker for the scale-out caveat.
 builder.Services.AddSingleton<IConnectionTracker, ConnectionTracker>();
+// Per-connection typing buckets: hub-wide state, so it must be a singleton like the tracker above.
+builder.Services.AddSingleton<TypingRateLimiter>();
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {

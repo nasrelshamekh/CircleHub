@@ -50,6 +50,7 @@ namespace CircleHub.Api.Hubs
         private readonly MessagePolicyService _policy;
         private readonly IConnectionTracker _connections;
         private readonly PresenceService _presence;
+        private readonly TypingRateLimiter _typingLimiter;
         private readonly ILogger<ChatHub> _logger;
 
         public ChatHub(
@@ -57,12 +58,14 @@ namespace CircleHub.Api.Hubs
             MessagePolicyService policy,
             IConnectionTracker connections,
             PresenceService presence,
+            TypingRateLimiter typingLimiter,
             ILogger<ChatHub> logger)
         {
             _db = db;
             _policy = policy;
             _connections = connections;
             _presence = presence;
+            _typingLimiter = typingLimiter;
             _logger = logger;
         }
 
@@ -91,6 +94,10 @@ namespace CircleHub.Api.Hubs
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
+            // Drop the connection's typing bucket with it, so the map cannot outlive its connection and
+            // a reconnecting client starts over with a full allowance.
+            _typingLimiter.Remove(Context.ConnectionId);
+
             if (Guid.TryParse(Context.UserIdentifier, out var userId))
             {
                 _connections.Remove(userId, Context.ConnectionId);
@@ -189,9 +196,20 @@ namespace CircleHub.Api.Hubs
         /// <param name="isTyping">True while typing started or continues; false once it stops.</param>
         public async Task SendTyping(string recipientId, bool isTyping)
         {
-            // Every rejection here is silent, unlike SendEncryptedMessage: this signal is raised
-            // automatically while the user types, so there is nothing to shout at them about. A dropped
-            // claim simply never appears on the other end.
+            // Cheapest gate first: a hostile client must not be able to re-render one recipient's UI
+            // faster than a real typist, and the bucket check costs no DB round trip, so even a flood of
+            // malformed ids never reaches the queries below. Every rejection here is silent, unlike
+            // SendEncryptedMessage: this signal is raised automatically while the user types, so there is
+            // nothing to shout at them about. A dropped claim simply never appears on the other end.
+            if (!_typingLimiter.TryPass(Context.ConnectionId))
+            {
+                _logger.LogDebug(
+                    "Dropped typing signal from connection {ConnectionId} (rate limit)",
+                    Context.ConnectionId);
+
+                return;
+            }
+
             if (!Guid.TryParse(Context.UserIdentifier, out var senderId))
                 return;
 

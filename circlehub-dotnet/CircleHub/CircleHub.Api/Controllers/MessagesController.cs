@@ -307,22 +307,22 @@ namespace CircleHub.Api.Controllers
 
             await _db.SaveChangesAsync();
 
-            // Mirror the stored message to whoever the recipient has connected right now. This runs after
-            // the commit so a client that reacts by fetching always finds the row, and it deliberately
-            // ignores RequestAborted: the message exists either way, so a caller hanging up must not
-            // silently swallow the notification. Content is opaque here, so encrypted and plain messages
-            // take the same route.
-            if (!string.IsNullOrEmpty(message.Content))
+            // Mirror the stored message to whoever the recipient has connected right now, and to the
+            // sender's own other tabs and devices. This runs after the commit so a client that reacts by
+            // fetching always finds the row, and it deliberately ignores RequestAborted: the message
+            // exists either way, so a caller hanging up must not silently swallow the notification.
+            // Content is opaque here, so encrypted and plain messages take the same route. A post-only
+            // message carries no content and used to skip this entirely, which made it the one message
+            // that arrived silently; it now fans out with an empty payload, and the client announces it
+            // ("Shared a post") exactly like a text one.
+            await _delivery.DeliverAsync(recipient.Id, currentUserId, new EncryptedMessageEnvelope
             {
-                await _delivery.DeliverAsync(recipient.Id, new EncryptedMessageEnvelope
-                {
-                    SenderId = currentUserId.ToString(),
-                    EncryptedPayload = message.Content,
-                    SentAt = message.CreatedAt,
-                    MessageId = message.Id.ToString(),
-                    ConversationId = conversation.Id.ToString()
-                });
-            }
+                SenderId = currentUserId.ToString(),
+                EncryptedPayload = message.Content ?? string.Empty,
+                SentAt = message.CreatedAt,
+                MessageId = message.Id.ToString(),
+                ConversationId = conversation.Id.ToString()
+            });
 
             var sender = await _db.Users.FirstAsync(u => u.Id == currentUserId);
 

@@ -97,6 +97,16 @@ export default function ChatConnectionContextProvider({ children }) {
     // changes identity is never a reason to re-render the app.
     const connectionRef = useRef(null);
 
+    // The signed-in user's id, read at event time like every other decision in this handler. Putting
+    // userData in the connection effect's deps would tear the hub down and reconnect it whenever
+    // userData changed identity (a profile edit), so the id rides a ref the handler reads instead —
+    // written from an effect, never during render.
+    const myUserIdRef = useRef(null);
+
+    useEffect(() => {
+        myUserIdRef.current = userData?.id;
+    }, [userData]);
+
     const isAuthenticated = Boolean(userData);
 
     useEffect(() => {
@@ -110,30 +120,43 @@ export default function ChatConnectionContextProvider({ children }) {
         connectionRef.current = connection;
 
         connection.on(RECEIVE_MESSAGE_EVENT, (message) => {
-            // The sound is for a message the reader cannot see landing: it stays quiet while they are
-            // looking at that very thread with the tab in front.
-            chimeForIncomingMessage(message);
+            // The fan-out echoes a message to the sender's own connections too, so a send made in tab A
+            // lands in tab B (and on the sender's phone) without waiting for a refetch. That echo is app
+            // data for them — the invalidation below — but never a reason to ring or toast: nobody gets
+            // notified about their own message. Compared at event time through myUserIdRef.
+            const isOwnEcho =
+                message?.senderId != null && message.senderId === myUserIdRef.current;
 
-            // Away from the messages page there is nothing on screen that would say a message arrived, so
-            // the same event also gets a card in the corner. Its title and avatar come from the cached
-            // conversation list, which the layout keeps loaded for the unread badge.
-            if (shouldToast()) {
-                const sender = findConversationByPartner(
-                    queryClient,
-                    message?.senderId
-                );
+            if (!isOwnEcho) {
+                // The sound is for a message the reader cannot see landing: it stays quiet while they are
+                // looking at that very thread with the tab in front.
+                chimeForIncomingMessage(message);
 
-                showMessageToast({
-                    messageId: message?.messageId,
-                    conversationId: message?.conversationId ?? sender?.id,
-                    sender: sender?.otherUser,
-                    preview: message?.encryptedPayload,
-                });
+                // Away from the messages page there is nothing on screen that would say a message arrived, so
+                // the same event also gets a card in the corner. Its title and avatar come from the cached
+                // conversation list, which the layout keeps loaded for the unread badge.
+                if (shouldToast()) {
+                    const sender = findConversationByPartner(
+                        queryClient,
+                        message?.senderId
+                    );
+
+                    showMessageToast({
+                        messageId: message?.messageId,
+                        conversationId: message?.conversationId ?? sender?.id,
+                        sender: sender?.otherUser,
+                        // A post-only message carries no payload; the card falls back to the same
+                        // wording the conversation list shows for it in the preview.
+                        preview: message?.encryptedPayload || "Shared a post",
+                    });
+                }
             }
 
-            // A message from someone else affects the conversation list, the open thread and the unread
-            // badge. conversations() is a prefix of conversation(id), so one invalidation refreshes all
-            // three and the server stays the source of truth for their contents.
+            // A message from someone else — or an echo of one's own — affects the conversation list, the
+            // open thread and the unread badge. conversations() is a prefix of conversation(id), so one
+            // invalidation refreshes all three and the server stays the source of truth for their
+            // contents. The echo's invalidation is also how the sender's other tabs learn about the
+            // message: this handler is the only write path they have.
             queryClient.invalidateQueries({
                 queryKey: queryKeys.conversations(),
             });
