@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import {
     decryptMessageContent,
+    getDecryptCacheVersion,
     isEncryptedContent,
     peekDecrypted,
+    subscribeDecryptCache,
 } from "@/services/messageCrypto";
 
 /**
@@ -13,6 +15,11 @@ import {
  */
 export function useDecryptedContent(content) {
     const encrypted = isEncryptedContent(content);
+    const cacheVersion = useSyncExternalStore(
+        subscribeDecryptCache,
+        getDecryptCacheVersion,
+        getDecryptCacheVersion
+    );
     // Nothing but ciphertext needs the async path, so that case never touches state at all.
     const [decrypted, setDecrypted] = useState(() => (encrypted ? peekDecrypted(content) ?? "" : ""));
 
@@ -27,7 +34,7 @@ export function useDecryptedContent(content) {
         return () => {
             live = false;
         };
-    }, [content, encrypted]);
+    }, [content, encrypted, cacheVersion]);
 
-    return encrypted ? decrypted : content ?? "";
+    return encrypted ? (peekDecrypted(content) ?? decrypted) : content ?? "";
 }

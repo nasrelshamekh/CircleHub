@@ -71,7 +71,7 @@ flowchart TD
     C -->|Yes| D["Prompt 'Unlock' toast or open Settings → 'Unlock on this device'"]
     C -->|No| E["Keep current device key"]
     D --> F["User enters 12 words in RecoveryRestoreDialog"]
-    F --> G["Verify BIP39 checksum & derive PBKDF2 key (310,000 iterations)"]
+    F --> G["Verify BIP39 checksum & derive PBKDF2 key (stored kdfIterations, 100,000 for new backups)"]
     G --> H["Unwrap account key + device PKCS#8 bytes"]
     H --> I["Import device private key non-extractable into IndexedDB"]
     I --> J["Set localStorage circlehub-device-id + publish public key"]

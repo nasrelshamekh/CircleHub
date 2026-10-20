@@ -49,7 +49,7 @@ project owner before implementation; see `TASKS.md` for status.
 | Typing signals | Hub-only and ephemeral: relayed to whatever is live, never stored, never pushed, refused silently, rate limited per connection, and believed by the recipient for a few seconds at a time. |
 | Message sound | Plays for a message the reader cannot see landing — silent only when that conversation's thread is open in a tab that is both visible and focused. A short committed sound file (the owner's own), with a client-side mute toggle in Settings (`circlehub-mute-message-sound`). |
 | Encryption scope | End-to-end on the web client (Step 17): WebCrypto ECDH P-256 + AES-GCM, one ephemeral keypair per message, a per-device key directory on the server. The server relays and stores ciphertext it cannot read. Mobile parity is a later step. |
-| Key recovery | 12-word BIP39 recovery phrase (Step 18): wraps a random 32-byte account key and the device private key under a PBKDF2-HMAC-SHA-256 key (310,000 iterations), stored opaquely in `UserKeyBackups` (`GET/PUT/DELETE /api/keys/backup`). |
+| Key recovery | 12-word BIP39 recovery phrase (Step 18): wraps a random 32-byte account key and the device keyring under a PBKDF2-HMAC-SHA-256 key (100,000 iterations for new backups — the `KeyBackupController` floor; restores honor the stored `KdfIterations`, so older 310,000-iteration backups still unlock), stored opaquely in `UserKeyBackups` (`GET/PUT/DELETE /api/keys/backup`). |
 | Rollout order | Web app first, then the Expo mobile app. |
 
 ### Server surface
@@ -301,11 +301,17 @@ relays one opaque `Message.Content` string, so this is a client contract plus th
   included. That is deliberate and load-bearing: the Step 16 fan-out echoes a send back to the sender's other
   tabs, and those tabs must be able to render it. A wrap list keyed to the recipient only would turn every one
   of the sender's own messages into a placeholder in their second tab.
-- **Private keys never leave the device.** They are generated with WebCrypto as **non-extractable** and stored
-  in IndexedDB (`circlehub-keyvault`), so no script — including one injected by an XSS — can read them back out
-  or export them. The device id is a plain `localStorage` value (`circlehub-device-id`); it is an identifier,
-  not a secret. Consequence: the keys are per-browser-profile and cannot be backed up or moved, so a wiped
-  profile loses the ability to read that device's history (see the limits below).
+- **Private keys and IndexedDB.** The keys are generated with WebCrypto and kept in IndexedDB
+  (`circlehub-keyvault`) as **non-extractable** `CryptoKey`s, so ordinary script cannot `exportKey` them.
+  But each record also carries the raw key bytes as `pkcs8B64` — without them the 12-word backup could
+  never wrap a key WebCrypto refuses to export, and messages sent before recovery setup would be orphaned
+  on restore (see Step 18) — so a same-origin script (an XSS) that opens the database *can* read the key
+  material after all. That is a deliberate trade-off, not an oversight: non-extractability only blocked
+  durable key theft, while same-origin code could already read every decrypted message in memory and call
+  the API as the user, and the backup's recovery value outweighs the residual risk. The device id is a
+  plain `localStorage` value (`circlehub-device-id`); it is an identifier, not a secret. Consequence: the
+  keys are per-browser-profile, and a wiped profile can only read that device's history back by restoring
+  the recovery-phrase backup (see the limits below).
 - **Publishing.** `src/components/messages/DeviceKeyPublisher.jsx` (mounted in `src/main.jsx`) generates the
   device key on first need and `POST`s the public half once per signed-in session. It is idempotent server-side
   (the upsert), so a re-publish is a no-op rather than an error.
@@ -337,11 +343,14 @@ and the UI components `src/components/editprofile/MessageRecoveryCard.jsx`,
 - **12-word BIP39 mnemonic (`bip39Words.js`, `keyRecovery.js`).** 128 bits of WebCrypto CSPRNG entropy + 4-bit
   SHA-256 checksum mapped to the standard 2048-word English wordlist (`generateRecoveryPhrase`,
   `validatePhrase`).
-- **Key hierarchy.** The phrase never encrypts messages directly. Instead, PBKDF2-HMAC-SHA-256 (310,000
-  iterations, random 16-byte salt) derives an AES-256-GCM wrapping key from the phrase, which wraps a random
-  32-byte account key alongside the device's PKCS#8 private key (`createRecoverableDeviceKey`). Once backed up,
+- **Key hierarchy.** The phrase never encrypts messages directly. Instead, PBKDF2-HMAC-SHA-256 (100,000
+  iterations for new backups — the server's `KdfIterations` floor; restore re-derives with the stored value,
+  so backups created at 310,000 iterations still unlock — random 16-byte salt) derives an AES-256-GCM wrapping
+  key from the phrase, which wraps a random 32-byte account key alongside the device's PKCS#8 private key
+  (`createRecoverableDeviceKey`). Once backed up,
   the device key is re-imported into IndexedDB (`circlehub-keyvault`) with `extractable: false`
-  (`importDeviceKey`), preserving XSS non-extractability during normal operation.
+  (`importDeviceKey`), while the record keeps `pkcs8B64` so a later re-setup can wrap it again (see the
+  IndexedDB trade-off above).
 - **Setup & restore flows.** Users manage backups in Settings (`EditProfile.jsx` → `MessageRecoveryCard.jsx`).
   `RecoverySetupDialog` displays the 12 words in a numbered grid with copy-to-clipboard and requires explicit
   confirmation before closing. `RecoveryRestoreDialog` validates all 12 words and their checksum live, unwraps
@@ -374,17 +383,25 @@ and the UI components `src/components/editprofile/MessageRecoveryCard.jsx`,
 - The card shows the payload exactly as the thread does — it goes through `useDecryptedContent`, so it renders
   decrypted text and the `[Can't decrypt this message]` placeholder, never ciphertext.
 - **Key recovery (Step 18).** A 12-word BIP39 recovery phrase protects a random 32-byte account key, which
-  wraps the device private key for backup without compromising non-extractable storage in IndexedDB. Stored
-  in `UserKeyBackups` via `KeyBackupController` (`/api/keys/backup`). Clearing site data or opening a new browser
-  allows restoring message history by entering the phrase.
+  wraps the user's device private key and historical keyring (`keys: Array<{ deviceId, pkcs8B64 }>`) for backup.
+  `createAndStoreKey` preserves `pkcs8B64` and `createRecoverableDeviceKey` reuses the existing device key so
+  generating a recovery phrase never orphans pre-backup messages. Stored in `UserKeyBackups` via
+  `KeyBackupController` (`/api/keys/backup`). On both web and mobile, `useDecryptedContent` subscribes to
+  `subscribeDecryptCache` / `getDecryptCacheVersion` via `useSyncExternalStore` (and never caches
+  `UNREADABLE_PLACEHOLDER` in `settledCache`), so unlocking a phrase immediately re-decrypts all mounted messages.
+  On the web client, `messageCrypto.js` mirrors all merged IndexedDB keys in a `memoryKeys` `Map` so backgrounded
+  or minimized tabs never lose decryption capability if IndexedDB is temporarily throttled.
 - **Encryption is opportunistic, not guaranteed.** A recipient who has not published a key receives plaintext,
   and the sender is not told. This is what keeps the rollout from breaking conversations, but it does mean
   `Message.Content` is not uniformly ciphertext and a mixed history is normal.
 - **Mobile parity (`c:\Projects\circlehub-mobile`, Step 8):** The Expo mobile client implements full SignalR
-  real-time delivery, presence, typing indicators, Expo push token registration (`POST/DELETE /api/devices`),
-  the `/notifications` screen, WebCrypto-interoperable `ENC:v1:` E2EE (`@noble/curves`, `@noble/hashes`,
-  `@noble/ciphers` + `expo-secure-store`), and 12-word BIP39 recovery phrase setup & restore (`PBKDF2-HMAC-SHA-256`
-  310,000 iterations).
+  real-time delivery, presence, typing indicators (header `TypingLabel` + thread bottom animated `TypingBubble`
+  with case-insensitive GUID matching), categorized native emoji picker (`emojipicker.tsx`), seamless optimistic
+  message handoff (pre-seeded `settledCache` + server ID transition before query refetch), Expo push token
+  registration (`POST/DELETE /api/devices`), the `/notifications` screen, WebCrypto-interoperable `ENC:v1:` E2EE
+  (`@noble/curves`, `@noble/hashes`, `@noble/ciphers` + `expo-secure-store`), and fast 12-word BIP39 recovery
+  phrase setup & restore (`PBKDF2-HMAC-SHA-256` with a single 30ms UI yield + tight-loop `pbkdf2`). See
+  `c:\Projects\circlehub-mobile\docs\updates-and-fixes.md` for detailed bug root causes and fixes.
 
 ## In-app notification feed
 
@@ -512,7 +529,8 @@ removed, role changed, post removed).
 - Copying a file into `public/` while the dev server is watching can crash it: the watcher tries to add the
   new file, Windows still has it locked, and Node exits on `EBUSY: resource busy or locked, watch
   '...\public\message-chime.mp3'`. Restart the dev server; it starts clean once the file is settled.
-- The message-crypto private keys are non-extractable and live in IndexedDB, so an `ENC:v1:` envelope written
+- The message-crypto private keys live only in this browser's IndexedDB (the `pkcs8B64` copies included), so
+  an `ENC:v1:` envelope written
   by a **Node** harness (whose keys live in a file) can never be opened in the browser — it will always render
   the placeholder. That is the design working, not a bug; the harness deletes its own `node-%` device keys so
   they do not accumulate in the directory.

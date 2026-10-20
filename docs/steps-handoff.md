@@ -9,7 +9,7 @@
 
 In **Step 17**, end-to-end encryption (WebCrypto ECDH P-256 + AES-GCM) was implemented on the web client. The device private key was generated non-extractable and persisted exclusively in IndexedDB (`circlehub-keyvault`).
 - **The Problem:** Clearing browser data, reinstalling the OS, or opening CircleHub on a new device/machine permanently wiped the device private key, causing all previously received/sent encrypted messages to show as `[Can't decrypt this message]`.
-- **The Solution (Step 18):** User-held **12-word BIP39 recovery phrase** wrapping a random 32-byte account key and device private key (PBKDF2-HMAC-SHA-256 derivation with 310,000 iterations and per-user salt). The server stores only opaque ciphertext in `UserKeyBackups` via `PUT /api/keys/backup` and cannot decrypt messages or recover the phrase.
+- **The Solution (Step 18):** User-held **12-word BIP39 recovery phrase** wrapping a random 32-byte account key and device keyring (PBKDF2-HMAC-SHA-256 derivation — 100,000 iterations for new backups per the server's `KdfIterations` floor, restores honor the stored value so older 310,000-iteration backups still unlock — with per-user salt). The server stores only opaque ciphertext in `UserKeyBackups` via `PUT /api/keys/backup` and cannot decrypt messages or recover the phrase.
 
 ---
 
@@ -64,11 +64,27 @@ In **Step 17**, end-to-end encryption (WebCrypto ECDH P-256 + AES-GCM) was imple
 
 ---
 
-## 4. Verification Summary
+## 4. Mobile Phase (`circlehub-mobile` — Steps 5, 6, 8) & Post-Implementation Fixes
+
+1. **Expo Push Fallback & Device Tokens (`CircleHub.Api`):**
+   - `DeviceToken` entity (`20261020144854_AddDeviceTokens`), `DevicesController` (`POST /api/devices`, `DELETE /api/devices`), and `ExpoPushService` batch delivery to `https://exp.host/--/api/v2/push/send` with automatic `DeviceNotRegistered` token pruning and E2EE-safe generic push banners.
+2. **Mobile Real-Time, Notifications, E2EE & 12-Word Key Recovery (`circlehub-mobile`):**
+   - SignalR connection context (`src/context/chatconnectioncontext.tsx`), presence (`PresenceLabel`, `PresenceDot`), typing indicators (header `TypingLabel` + thread bottom animated `TypingBubble`, case-insensitive user ID normalization), categorized native emoji picker (`src/components/messages/emojipicker.tsx`), `/notifications` screen, WebCrypto-interoperable `ENC:v1:` E2EE (`src/services/messageCrypto.ts`), and 12-word BIP39 recovery (`src/services/keyRecovery.ts`, `src/components/profile/messagerecoverycard.tsx`).
+3. **Bug Fixes & UX Polish (Web & Mobile):**
+   - **Multi-key historical keyring (`KeyBackupBundleV1.keys`):** Preserved `pkcs8B64` across key generation and recovery setup (`createAndStoreKey` / `createRecoverableDeviceKey`) and backed up/restored all historical device keys (`device-keys:<userId>`) on both web and mobile so pre-backup messages remain readable across devices.
+   - **Fast mobile PBKDF2 unlock & live re-decryption:** Replaced slow `pbkdf2Async` (300+ `setTimeout` yields) with a single 30ms UI yield + tight-loop `pbkdf2`, stopped caching `UNREADABLE_PLACEHOLDER` in `settledCache`, and wired `useSyncExternalStore` (`subscribeDecryptCache` / `getDecryptCacheVersion`) into `useDecryptedContent` on both mobile and web so messages immediately re-decrypt upon unlocking a recovery phrase.
+   - **Web IndexedDB minimize/focus fix (`src/services/messageCrypto.js`):** Removed the `if (memoryFallback) return Promise.resolve(null);` short-circuit in `openStore()` that permanently disabled IndexedDB after `saveStoredKey()` or background tab throttling, and cached merged keys in `memoryKeys` `Map`.
+   - **Mobile seamless optimistic send handoff (`src/components/messages/messagethread.tsx`, `src/services/messageCrypto.ts`):** Pre-seeded `settledCache` on encrypt and transitioned optimistic `pendingMessages` entries to the server's `response.data.message.id` (`pending: false`) until the conversation query cache includes that message ID, eliminating send flicker.
+   - **Mobile UI fixes:** Wrapped `"Encrypted Message\nRecovery"` title in `MessageRecoveryCard` to prevent badge overlap; replaced transparent icon with 1024×1024 opaque `#FFFFFF` `circlehub-app-icon.png` for Expo Go; updated Create Post (`compose` in `src/app/_layout.tsx` & `src/app/compose.tsx`) to use `presentation: "transparentModal"`, `animation: "slide_from_bottom"`, `bg-background`, and the circular `X` close button matching `SharePostModal`.
+
+---
+
+## 5. Verification Summary
 
 | Check | Tool / Command | Result |
 |---|---|---|
 | C# Backend Compilation | `dotnet build CircleHub.Api.csproj -o <temp>` | **0 Warnings, 0 Errors** |
-| Frontend Linting | `npm run lint` (`eslint .`) | **0 Errors, 0 Warnings** |
-| Frontend Production Build | `npm run build` (`vite build`) | **Success in ~640ms**, 0 errors |
-| StrictMode & Hooks Compliance | `react-hooks/set-state-in-effect` | Compliant |
+| Web Frontend Linting | `npm run lint` (`eslint .`) | **0 Errors, 0 Warnings** |
+| Web Frontend Production Build | `npm run build` (`vite build`) | **Success in ~640ms**, 0 errors |
+| Mobile TypeScript & Linting | `npx tsc --noEmit && npm run lint` | **0 Errors, 0 Warnings** |
+| Mobile Jest Test Suite | `npm test -- --watchAll=false` | **10/10 suites passed (74/74 tests)** |

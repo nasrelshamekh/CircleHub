@@ -41,6 +41,34 @@ const USER_DATA_KEY = "user-data"; // AuthContext's own cache, the signed-in use
 const decryptCache = new Map();
 const settledCache = new Map();
 const DECRYPT_CACHE_LIMIT = 1000;
+let cacheVersion = 0;
+const cacheListeners = new Set();
+
+function notifyDecryptCacheChanged() {
+    cacheVersion += 1;
+    for (const listener of cacheListeners) {
+        listener();
+    }
+}
+
+export function subscribeDecryptCache(listener) {
+    cacheListeners.add(listener);
+    return () => {
+        cacheListeners.delete(listener);
+    };
+}
+
+export function getDecryptCacheVersion() {
+    return cacheVersion;
+}
+
+if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            notifyDecryptCacheChanged();
+        }
+    });
+}
 
 // How long to wait for the vault before giving up on persistence entirely. `indexedDB.open` can sit with
 // no event at all (see `openStore`), so every part of the key path is bounded rather than trusted to fire.
@@ -81,18 +109,29 @@ function randomBytes(length) {
 /* ------------------------------------------------------------------ key store */
 
 // IndexedDB holds CryptoKey objects by structured clone, so the private key can be generated
-// non-extractable and still survives a reload — it can never be read back out as bytes, only used.
+// non-extractable and still survive a reload — that CryptoKey can be used but not exported. The record
+// also carries the raw bytes as `pkcs8B64` so the recovery backup can wrap them (the same-origin
+// trade-off documented in AGENTS.md): the non-extractability guarantee covers the CryptoKey, not the row.
 // Two tabs of the same browser share one store, which is also how the two-tabs-publish-at-once race
 // heals: whichever key ended up published, the other tab finds its private half here.
 let storePromise = null;
-let memoryFallback = null;
+let memoryKeys = [];
+
+function mergeKeyLists(primary, secondary) {
+    const byId = new Map();
+    for (const entry of [...(primary ?? []), ...(secondary ?? [])]) {
+        if (entry?.localId) {
+            byId.set(entry.localId, entry);
+        }
+    }
+    return Array.from(byId.values());
+}
 
 function openStore() {
-    if (memoryFallback) return Promise.resolve(null);
     if (!storePromise) {
         storePromise = new Promise((resolve) => {
-            if (!("indexedDB" in window)) {
-                memoryFallback = [];
+            if (typeof window === "undefined" || !("indexedDB" in window)) {
+                storePromise = null;
                 resolve(null);
                 return;
             }
@@ -106,7 +145,6 @@ function openStore() {
             const giveUp = setTimeout(() => {
                 if (settled) return;
                 settled = true;
-                memoryFallback = memoryFallback ?? [];
                 storePromise = null;
                 resolve(null);
             }, STORE_OPEN_TIMEOUT_MS);
@@ -123,18 +161,19 @@ function openStore() {
             request.onupgradeneeded = () => {
                 request.result.createObjectStore("privateKeys", { keyPath: "localId" });
             };
-            request.onsuccess = () => finish(request.result);
+            request.onsuccess = () => {
+                const db = request.result;
+                db.onversionchange = () => {
+                    db.close();
+                    storePromise = null;
+                };
+                finish(db);
+            };
             request.onerror = () => {
-                // No persistent vault (private browsing, blocked storage): keep keys in memory for the
-                // life of the tab instead. Old messages that were wrapped to a lost key render as the
-                // unreadable placeholder rather than breaking the thread.
-                memoryFallback = [];
                 storePromise = null;
                 finish(null);
             };
             request.onblocked = () => {
-                // Another connection is holding the upgrade back; stop waiting for it.
-                memoryFallback = memoryFallback ?? [];
                 storePromise = null;
                 finish(null);
             };
@@ -145,53 +184,56 @@ function openStore() {
 
 async function loadStoredKeys() {
     const db = await openStore();
-    if (!db) return memoryFallback ?? [];
+    if (!db) return memoryKeys;
 
     // A transaction against a wedged database fires no event either, and a decrypt that never settles
-    // renders an empty bubble forever. Treat a stalled read as "nothing stored".
+    // renders an empty bubble forever. Treat a stalled read as whatever we already hold in memory.
     return new Promise((resolve) => {
-        const timer = setTimeout(() => resolve(memoryFallback ?? []), STORE_OPEN_TIMEOUT_MS);
+        const timer = setTimeout(() => resolve(memoryKeys), STORE_OPEN_TIMEOUT_MS);
         const finish = (value) => {
             clearTimeout(timer);
-            resolve(value);
+            memoryKeys = mergeKeyLists(value, memoryKeys);
+            resolve(memoryKeys);
         };
 
         try {
             const request = db.transaction("privateKeys", "readonly").objectStore("privateKeys").getAll();
             request.onsuccess = () => finish(request.result ?? []);
-            request.onerror = () => finish(memoryFallback ?? []);
+            request.onerror = () => finish(memoryKeys);
         } catch {
-            finish(memoryFallback ?? []);
+            storePromise = null;
+            finish(memoryKeys);
         }
     });
 }
 
 async function saveStoredKey(record) {
-    const db = await openStore();
-
     // Always keep a copy in memory as well: it makes the session work even if the write never lands, and
     // the vault is only ever a cache of what the server will be told about anyway.
-    memoryFallback = memoryFallback ?? [];
-    memoryFallback.push(record);
+    memoryKeys = mergeKeyLists(memoryKeys, [record]);
 
-    if (!db) return;
+    const db = await openStore();
+    if (db) {
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(resolve, STORE_OPEN_TIMEOUT_MS);
+            const finish = (error) => {
+                clearTimeout(timer);
+                if (error) reject(error);
+                else resolve();
+            };
 
-    await new Promise((resolve, reject) => {
-        const timer = setTimeout(resolve, STORE_OPEN_TIMEOUT_MS);
-        const finish = (error) => {
-            clearTimeout(timer);
-            if (error) reject(error);
-            else resolve();
-        };
+            try {
+                const request = db.transaction("privateKeys", "readwrite").objectStore("privateKeys").put(record);
+                request.onsuccess = () => finish(null);
+                request.onerror = () => finish(request.error);
+            } catch (error) {
+                storePromise = null;
+                finish(error);
+            }
+        });
+    }
 
-        try {
-            const request = db.transaction("privateKeys", "readwrite").objectStore("privateKeys").put(record);
-            request.onsuccess = () => finish(null);
-            request.onerror = () => finish(request.error);
-        } catch (error) {
-            finish(error);
-        }
-    });
+    clearDecryptCache();
 }
 
 export function getDeviceId() {
@@ -224,32 +266,37 @@ function currentUsername() {
 /* ------------------------------------------------------------------ device keys */
 
 async function createAndStoreKey(deviceId) {
-    const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, false, [
+    const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, [
         "deriveKey",
         "deriveBits",
     ]);
+    const pkcs8 = new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey));
     const raw = await crypto.subtle.exportKey("raw", pair.publicKey);
-    const record = {
-        localId: crypto.randomUUID(),
-        deviceId,
-        publicKeyB64: toBase64(new Uint8Array(raw)),
-        privateKey: pair.privateKey,
-        createdAt: Date.now(),
-    };
-    await saveStoredKey(record);
-    return record;
+    return importDeviceKey(deviceId, pkcs8, toBase64(new Uint8Array(raw)));
 }
 
 /**
  * Makes a device key that *can* be backed up, for the recovery setup path.
  *
- * This is the one place a key is generated extractable, and it is unavoidable: WebCrypto will not wrap a
- * non-extractable key, so a key generated the way `createAndStoreKey` does it can never be uploaded. The
- * trick is that extractable is only needed for the *moment* of export - the PKCS#8 bytes go straight into
- * the wrapped blob, and the key this device actually keeps is a fresh import of those same bytes with
- * `extractable: false`, so what sits in IndexedDB still cannot be exported by any script.
+ * WebCrypto will not wrap a non-extractable key, so a key destined for the backup blob has to exist in
+ * exportable form at the moment of export. Both key paths (`createAndStoreKey` and this one) generate
+ * extractable, export the PKCS#8 once, and keep a fresh import of those same bytes with
+ * `extractable: false` for daily use; the record persists the bytes as `pkcs8B64` so a later re-setup
+ * can wrap them again (see the IndexedDB trade-off in AGENTS.md).
+ *
+ * If this device already has such a record it is reused instead of rotating: the backup must contain the
+ * key messages are already wrapped to, or everything sent before setup would be unreadable after a
+ * restore on a new device.
  */
 export async function createRecoverableDeviceKey(deviceId) {
+    const stored = await loadStoredKeys();
+    const existing = [...stored]
+        .reverse()
+        .find((entry) => entry.deviceId === deviceId && entry.pkcs8B64);
+    if (existing) {
+        return { record: existing, pkcs8: fromBase64(existing.pkcs8B64) };
+    }
+
     const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, [
         "deriveKey",
         "deriveBits",
@@ -281,6 +328,7 @@ export async function importDeviceKey(deviceId, pkcs8Bytes, publicKeyB64) {
         deviceId,
         publicKeyB64,
         privateKey,
+        pkcs8B64: toBase64(pkcs8Bytes),
         createdAt: Date.now(),
     };
     await saveStoredKey(record);
@@ -539,6 +587,10 @@ export function decryptMessageContent(content) {
     if (cached) return cached;
 
     const promise = decryptFresh(content).then((text) => {
+        if (text === UNREADABLE) {
+            decryptCache.delete(content);
+            return text;
+        }
         settledCache.set(content, text);
         if (decryptCache.size > DECRYPT_CACHE_LIMIT) {
             const oldest = decryptCache.keys().next().value;
@@ -560,4 +612,5 @@ export function peekDecrypted(content) {
 export function clearDecryptCache() {
     decryptCache.clear();
     settledCache.clear();
+    notifyDecryptCacheChanged();
 }

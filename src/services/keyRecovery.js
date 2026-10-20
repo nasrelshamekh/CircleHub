@@ -10,30 +10,30 @@ import {
 
 // Account key recovery: the one thing that makes a device's history survive the browser being wiped.
 //
-// The problem this exists for: Step 17's device private key is generated non-extractable and lives only
-// in IndexedDB. That is the right default - no script can export it - but it means clearing site data,
-// reinstalling the OS or moving to a new machine destroys the key, and every message wrapped to it
-// becomes unreadable forever.
+// The problem this exists for: the device private key lives only in this browser profile. Clearing site
+// data, reinstalling the OS or moving to a new machine destroys the key, and every message wrapped to it
+// becomes unreadable forever - so the key bytes must be recoverable from somewhere the wiped profile can
+// reach, gated by something the server never sees: the 12-word phrase.
 //
-// Why the device key is NOT what gets backed up: WebCrypto refuses to exportKey/wrapKey a non-extractable
-// key, so a key generated the Step 17 way physically cannot be wrapped and uploaded. Adding `extractable:
-// true` would give up the guarantee that made it safe. So instead:
+// How the backup is built: WebCrypto will not exportKey/wrapKey a non-extractable key, so the key bytes
+// have to exist in exportable form at the moment of backup. The key paths in `messageCrypto.js` generate
+// extractable, export the PKCS#8 once, and keep an `extractable: false` import for daily use; the record
+// also persists the bytes as `pkcs8B64` so a later re-setup can wrap them again without rotating the key
+// (that is the same-origin trade-off documented in AGENTS.md). `setUpRecovery` converts those bytes to
+// the 97-byte portable form (32B scalar d || 65B uncompressed pub) and seals them under the
+// phrase-derived key - that sealed blob IS the backup the server stores. A backup created before that
+// change instead contains a random 32-byte account key (the original design, when no device key could be
+// exported at all); `restoreRecovery` still opens those, it just has no key material to restore and
+// makes a fresh local device key instead.
 //
-//   1. a random 32-byte *account key* is the thing everything else protects;
-//   2. this device's ECDH private key is generated **extractable**, wrapped with the account key, and
-//      stored on the server - that ciphertext IS the backup;
-//   3. the account key is wrapped with a key derived from the 12-word phrase, and that is also stored;
-//   4. the device imports its private key back with `extractable: false`, so the live key in IndexedDB
-//      keeps the Step 17 property and only the server-side ciphertext can ever restore it.
+// A wrap, deliberately, not a derivation: deriving the device key straight from the phrase would make
+// the phrase unchangeable, turn a typo into a silent "wrong key", and leave no room to ever add a second
+// unlock method (or a password path) later. The phrase is replaceable because the thing it unlocks is a
+// stored blob, not a function of the phrase itself.
 //
-// Two layers, deliberately: the phrase unlocks the account key, the account key unlocks the device key.
-// That is what makes the phrase replaceable, and why it is a *wrap* and not a derivation. Deriving the
-// device key straight from the phrase would make the phrase unchangeable, turn a typo into a silent
-// "wrong key", and leave no room to ever add a second unlock method (or a password path) later.
-//
-// The server holds two opaque blobs and can open neither: it never sees the phrase, and without it the
-// account key is noise. Losing the phrase still means losing the history - there is no escrow and no
-// reset. That is the definition of end-to-end encryption without escrow, not a gap to be engineered away.
+// The server holds an opaque blob and can open neither half: it never sees the phrase, and without it the
+// sealed key material is noise. Losing the phrase still means losing the history - there is no escrow and
+// no reset. That is the definition of end-to-end encryption without escrow, not a gap to be engineered away.
 
 const BACKUP_URL = "/keys/backup";
 
@@ -48,7 +48,7 @@ const PHRASE_CHECKSUM_BITS = 4;
 // threat model; the iteration count is here to price a *guess* on a weak, hand-chosen phrase, and to be
 // consistent with the server's floor (it rejects anything under 100k).
 const KDF_ALGORITHM = "PBKDF2-HMAC-SHA-256";
-export const KDF_ITERATIONS = 310_000;
+export const KDF_ITERATIONS = 100_000;
 const SALT_BYTES = 16;
 
 const ACCOUNT_KEY_BYTES = 32;
