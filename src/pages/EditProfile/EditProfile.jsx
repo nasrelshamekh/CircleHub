@@ -1,6 +1,7 @@
-﻿import EditProfileForm from "@/components/editprofile/EditProfileForm";
+import EditProfileForm from "@/components/editprofile/EditProfileForm";
 import ChangePasswordForm from "@/components/editprofile/ChangePasswordForm";
 import ProfileSettingsForm from "@/components/editprofile/ProfileSettingsForm";
+import MessageRecoveryCard from "@/components/editprofile/MessageRecoveryCard";
 import {
     Tabs,
     TabsContent,
@@ -92,7 +93,10 @@ export default function EditProfile() {
                     </TabsContent>
 
                     <TabsContent value="settings">
-                        <ProfileSettingsForm />
+                        <div className="flex flex-col gap-6">
+                            <ProfileSettingsForm />
+                            <MessageRecoveryCard />
+                        </div>
                     </TabsContent>
                 </Tabs>
             </section>

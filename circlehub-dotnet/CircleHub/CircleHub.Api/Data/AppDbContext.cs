@@ -23,6 +23,7 @@ namespace CircleHub.Api.Data
         public DbSet<Message> Messages => Set<Message>();
         public DbSet<Notification> Notifications => Set<Notification>();
         public DbSet<UserDeviceKey> UserDeviceKeys => Set<UserDeviceKey>();
+        public DbSet<UserKeyBackup> UserKeyBackups => Set<UserKeyBackup>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -106,6 +107,17 @@ namespace CircleHub.Api.Data
             modelBuilder.Entity<UserDeviceKey>().Property(k => k.DeviceId).HasMaxLength(64);
             modelBuilder.Entity<UserDeviceKey>().Property(k => k.PublicKey).HasMaxLength(200);
 
+            // A backup exists only for its owner; deleting the user takes the wrapped blob with it.
+            modelBuilder.Entity<UserKeyBackup>()
+                .HasOne(b => b.User)
+                .WithMany()
+                .HasForeignKey(b => b.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserKeyBackup>().Property(b => b.WrappedAccountKey).HasMaxLength(500);
+            modelBuilder.Entity<UserKeyBackup>().Property(b => b.Salt).HasMaxLength(100);
+            modelBuilder.Entity<UserKeyBackup>().Property(b => b.KdfAlgorithm).HasMaxLength(40);
+
             modelBuilder.Entity<User>().Property(u => u.ProfileVisibility).HasConversion<string>().HasMaxLength(20);
             modelBuilder.Entity<User>().Property(u => u.MessagesFrom).HasConversion<string>().HasMaxLength(20);
             modelBuilder.Entity<Community>().Property(c => c.Visibility).HasConversion<string>();
@@ -130,6 +142,8 @@ namespace CircleHub.Api.Data
             modelBuilder.Entity<Message>().HasIndex(m => new { m.ConversationId, m.CreatedAt });
             // One row per device per user: the register call is an upsert on this pair.
             modelBuilder.Entity<UserDeviceKey>().HasIndex(k => new { k.UserId, k.DeviceId }).IsUnique();
+            // One backup per user: saving again replaces it, so this is also the upsert key.
+            modelBuilder.Entity<UserKeyBackup>().HasIndex(b => b.UserId).IsUnique();
             // The feed is always "this user's rows, newest first"; the unread count reads the same index.
             modelBuilder.Entity<Notification>().HasIndex(n => new { n.UserId, n.CreatedAt });
         }

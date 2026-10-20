@@ -553,6 +553,47 @@ namespace CircleHub.Api.Migrations
                     b.ToTable("UserDeviceKeys");
                 });
 
+            modelBuilder.Entity("CircleHub.Api.Entities.UserKeyBackup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("KdfAlgorithm")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<int>("KdfIterations")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Salt")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("WrappedAccountKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserKeyBackups");
+                });
+
             modelBuilder.Entity("CircleHub.Api.Entities.Comment", b =>
                 {
                     b.HasOne("CircleHub.Api.Entities.User", "Author")
@@ -774,6 +815,17 @@ namespace CircleHub.Api.Migrations
                 });
 
             modelBuilder.Entity("CircleHub.Api.Entities.UserDeviceKey", b =>
+                {
+                    b.HasOne("CircleHub.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CircleHub.Api.Entities.UserKeyBackup", b =>
                 {
                     b.HasOne("CircleHub.Api.Entities.User", "User")
                         .WithMany()

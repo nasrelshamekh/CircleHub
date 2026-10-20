@@ -240,6 +240,52 @@ async function createAndStoreKey(deviceId) {
     return record;
 }
 
+/**
+ * Makes a device key that *can* be backed up, for the recovery setup path.
+ *
+ * This is the one place a key is generated extractable, and it is unavoidable: WebCrypto will not wrap a
+ * non-extractable key, so a key generated the way `createAndStoreKey` does it can never be uploaded. The
+ * trick is that extractable is only needed for the *moment* of export - the PKCS#8 bytes go straight into
+ * the wrapped blob, and the key this device actually keeps is a fresh import of those same bytes with
+ * `extractable: false`, so what sits in IndexedDB still cannot be exported by any script.
+ */
+export async function createRecoverableDeviceKey(deviceId) {
+    const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, [
+        "deriveKey",
+        "deriveBits",
+    ]);
+
+    const pkcs8 = new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey));
+    const raw = await crypto.subtle.exportKey("raw", pair.publicKey);
+
+    const record = await importDeviceKey(deviceId, pkcs8, toBase64(new Uint8Array(raw)));
+    await saveStoredKey(record);
+
+    return { record, pkcs8 };
+}
+
+/**
+ * Imports PKCS#8 private-key bytes as this browser's device key, storing it non-extractable. Used both
+ * for the recovery-setup path (re-importing what was just made) and for restoring on a new device.
+ */
+export async function importDeviceKey(deviceId, pkcs8Bytes, publicKeyB64) {
+    const privateKey = await crypto.subtle.importKey(
+        "pkcs8",
+        pkcs8Bytes,
+        { name: "ECDH", namedCurve: "P-256" },
+        false,
+        ["deriveKey", "deriveBits"],
+    );
+
+    return {
+        localId: crypto.randomUUID(),
+        deviceId,
+        publicKeyB64,
+        privateKey,
+        createdAt: Date.now(),
+    };
+}
+
 async function fetchDeviceKeys(username) {
     if (!username) return [];
     try {
@@ -253,7 +299,7 @@ async function fetchDeviceKeys(username) {
     }
 }
 
-async function publishKey(deviceId, publicKey) {
+export async function publishKey(deviceId, publicKey) {
     await apiClient.post("/keys", { deviceId, publicKey });
 }
 

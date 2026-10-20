@@ -28,6 +28,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 15 | Notification polish: join-request rows open the manage page on Requests; sidebar count pills sit on the icons | done, verified |
 | 16 | Messaging fan-out gaps: post-only messages delivered live, sender's other tabs hear their own echo, typing rate limit on the hub | done, verified |
 | 17 | End-to-end encryption on the web client: per-device key directory, WebCrypto ECDH + AES-GCM envelope, plaintext fallback for a recipient with no published key | done, verified |
+| 18 | Key recovery: random account key wrapped by a 12-word phrase, so history follows the account to any device without giving up E2EE | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -819,12 +820,115 @@ verification were stopped afterwards; ports 5289 and 5173 are free.
 
 Harness: `%TEMP%\opencode\step17-e2e.ps1`, `sigtest\step17-test.mjs`, `s17b-cleanup.ps1 [-Apply]`.
 
+## Step 18 — Key recovery: history on any device, without giving up E2EE (done, verified)
+
+### Implementation
+
+Added:
+- `Controllers/KeyBackupController.cs` — `GET`, `PUT`, `DELETE /api/keys/backup` with owner authorization via JWT `sub` claim.
+- `Entities/UserKeyBackup.cs` + migration `20261020112344_AddUserKeyBackups` — stores `WrappedAccountKey`, `Salt`, `KdfIterations`, `KdfAlgorithm` with unique index on `UserId`.
+- `src/services/bip39Words.js` — frozen BIP39 English wordlist (2048 words).
+- `src/services/keyRecovery.js` — phrase generation (128-bit entropy + 4-bit SHA-256 checksum), checksum verification, PBKDF2 derivation, AES-GCM wrapping, `setUpRecovery`, `unlockBackup`, `initializeRecovery`, `restoreRecovery`, `getBackupInfo`, `removeBackup`.
+- `src/services/messageCrypto.js` — exported `publishKey`, `createRecoverableDeviceKey`, `importDeviceKey`.
+- `src/components/messages/RecoverySetupDialog.jsx` — 12-word display modal with copy button, confirmation safeguard, and responsive grid.
+- `src/components/messages/RecoveryRestoreDialog.jsx` — phrase entry modal with live word count, BIP39 checksum validation, and key unlock.
+- `src/components/messages/DeviceKeyPublisher.jsx` — background backup detector on sign-in; toasts an unobtrusive prompt on new devices to unlock history.
+- `src/components/editprofile/MessageRecoveryCard.jsx` — recovery status card in Settings tab (Profile Settings) displaying status badge, timestamp, unlock, regenerate, and removal options.
+- `src/pages/EditProfile/EditProfile.jsx` — integrated `MessageRecoveryCard` into Settings tab.
+
+### The problem this solves
+
+Step 17's private keys are non-extractable and live only in IndexedDB. That is the right default — no script
+can export them — but it has one failure mode with real teeth: **clearing browser site data, reinstalling the
+OS, or moving to a new machine destroys the key, and every message wrapped to it becomes
+`[Can't decrypt this message]`.** The ciphertext is still in the database; nothing on Earth can open it. The
+owner's requirement is the ordinary user expectation: *"if I open my account on any device, I should see my
+message history."*
+
+### The decision, and why it is not a contradiction
+
+That expectation and real end-to-end encryption are normally in tension. It is worth recording exactly why,
+because the trade-off shapes the whole design — you can have any **two** of:
+
+1. the server genuinely cannot read messages,
+2. history appears on any device you sign in from,
+3. no user action required.
+
+WhatsApp does **not** have all three: a new phone shows an empty app unless a backup was made and restored,
+and an unencrypted backup means the plaintext sat in Google's or Apple's servers. Telegram's
+"appears everywhere" cloud chats are **not** end-to-end encrypted — Telegram holds the keys (its actual E2EE,
+Secret Chats, is device-locked and does not sync). Signal keeps real E2EE and picks (1) + (3), transferring
+keys by approving a QR code from an existing device — which fails exactly when the old device is gone.
+
+**The owner chose (1) + (2): keep true E2EE, make the key portable, accept one setup step.** The server
+keeps holding only ciphertext; the user holds a **12-word recovery phrase**; signing in on a new device means
+entering the phrase once and then seeing the history.
+
+### Design
+
+- **A random account recovery key, wrapped by the phrase — not derived from it.** This is the load-bearing
+  choice. Deriving the key from the phrase would make the phrase unchangeable, would turn a typo into a
+  silent "wrong key", and would leave no room to ever add a second unlock method. Wrapping a random key keeps
+  the phrase replaceable and the design extensible. (This is also how Whatsapp's vault works: the password
+  unlocks *access to* a random key, it does not *become* it. See the WhatsApp model below.)
+- **Why a phrase and not the login password.** `AuthController.ResetPassword` sets a new password from an
+  emailed token and never sees the old one, so anything password-*derived* would be destroyed by a forgotten
+  password — a routine event. A phrase is immune to that flow and does not couple message history to login
+  security. WhatsApp can offer a password path because an HSM-enforced rate limit makes it safe; we are not
+  building an HSM.
+- **New `UserKeyBackups` table**: one row per user holding the recovery key wrapped under the phrase-derived
+  key, plus the KDF salt and parameters. The server stores an opaque blob it cannot open — same shape as
+  `UserDeviceKeys`, one row per user instead of per device. Phrase-derived key via PBKDF2-HMAC-SHA-256
+  (WebCrypto-native; Argon2 would mean shipping a WASM dependency for a threat — offline brute force of a
+  12-word phrase — that does not exist).
+- **What "restore" actually does.** The phrase unwraps the recovery key; that key is then used to re-wrap
+  **the current device's** private key, and the device publishes its public half as usual. Messages become
+  readable because a message's wraps are stored *in the message* and the recovered key now matches one of
+  them.
+- **Envelope, server message path and Step 17 contract: unchanged.** This is purely additive, which is what
+  keeps the 38 verified checks meaningful.
+
+### What this does and does not recover
+
+| Scenario | Before Step 18 | After |
+| --- | --- | --- |
+| Reload / close the tab | readable (IndexedDB) | unchanged |
+| Second browser or device | only messages sent after its key existed | **readable after entering the phrase** |
+| Browser site data cleared | **lost** | **recoverable with the phrase** |
+| New machine / OS reinstall | **lost** | **recoverable with the phrase** |
+| Phrase lost | — | **lost, permanently, for everyone** |
+
+Honest ceiling, to be stated in the UI and not buried: the phrase protects **keys**, and keys open messages
+wrapped to them. It cannot recover a device key that was never backed up, and it cannot help if the phrase
+itself is lost — there is no escrow and no reset. **That is the definition of E2EE without escrow, not a
+limitation to engineer away.**
+
+### Deliberately out of scope
+
+- **The HSM-style Backup Key Vault and attempt lockout.** It exists to defend a *server-held* key against
+  brute force. Our server holds only ciphertext and the phrase has ample entropy, so it would be large
+  infrastructure that re-introduces server-side trust into the unlock path.
+- **Backing up device identity to keep safety numbers stable.** WhatsApp does not do this and neither should
+  we: a new device is a new key, and that is the honest behaviour.
+- **Encrypting existing plaintext history.** The owner chose to leave it as-is: old rows stay readable, no
+  destructive bulk rewrite of history, and the already-documented mixed-history state continues.
+- **Trusted-device QR approval (Signal's model).** Nicer UX, but it needs a working second device, so it
+  fails in the new-machine case this step exists to fix.
+
+### WhatsApp, for the record
+
+Its recovery is two mechanisms, usually conflated: message history is encrypted at rest with a random
+**64-digit key**, which is either written down by the user or kept in an HSM vault and released after a
+password check (attempt-limited, key destroyed after too many failures). Its **identity keys are not backed
+up at all** — a new phone changes your safety number and everyone sees it. We take the random-key-wrapped-
+by-a-user-secret shape and the phrase, drop the HSM, and use 12 words instead of 64 digits because users
+transcribe words reliably and digits badly.
+
 ## Open questions
 
 - Mobile parity for Step 17: the mobile client must publish its own device key and decrypt the same envelope
-  (the wrap list makes this additive — the server and the format do not change). Key backup/recovery across a
-  cleared browser profile is still open: today a wiped IndexedDB means the historical ciphertext for that
-  device is unreadable.
+  (the wrap list makes this additive — the server and the format do not change). It should also be able to
+  *restore* from the phrase, so a phone can read history the same way a browser does.
 
 ## Incidents
 

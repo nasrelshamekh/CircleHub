@@ -315,9 +315,10 @@ relays one opaque `Message.Content` string, so this is a client contract plus th
   the channels that carry it.
 - The card shows the payload exactly as the thread does — it goes through `useDecryptedContent`, so it renders
   decrypted text and the `[Can't decrypt this message]` placeholder, never ciphertext.
-- **Key loss is permanent.** The private keys are non-extractable and IndexedDB-lived, so clearing site data,
-  a different browser, or a different device means that device cannot read its history. There is no backup,
-  escrow or recovery phrase yet — this is the biggest open question in the encryption work.
+- **Key recovery (Step 18).** A 12-word BIP39 recovery phrase protects a random 32-byte account key, which
+  wraps the device private key for backup without compromising non-extractable storage in IndexedDB. Stored
+  in `UserKeyBackups` via `KeyBackupController` (`/api/keys/backup`). Clearing site data or opening a new browser
+  allows restoring message history by entering the phrase.
 - **Encryption is opportunistic, not guaranteed.** A recipient who has not published a key (a browser that has
   never signed in since Step 17, or the mobile client before its own step) receives plaintext, and the sender
   is not told. This is what keeps the rollout from breaking conversations, but it does mean `Message.Content`
