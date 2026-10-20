@@ -314,7 +314,14 @@ removed, role changed, post removed).
   StrictMode cancellation guard went with it: the only write is to the query cache, which outlives the
   component, and cancelling is what left the badge unpatched when React re-ran the effect.
 - Badges: the navbar bell and `SidebarNav` both read `useUnreadNotifications`, which shares the feed's own
-  query — one cache, one refetch, three consumers (page pill, bell, sidebar).
+  query — one cache, one refetch, three consumers (page pill, bell, sidebar). The sidebar count is a pill
+  pinned to the icon itself (`SidebarNavItem`: `relative` icon wrapper, `absolute -right-2 -top-2`), so it
+  reads identically collapsed and expanded, matching the navbar's icon buttons; nothing is rendered at zero.
+- A `CommunityJoinRequested` row opens `/communities/<slug>/manage?tab=requests` (`notificationLink`), so the
+  reviewer lands on the action instead of the community's public page, where it does not exist.
+  `ManageCommunity` drives its tab from `?tab=`: an unknown or admin-only value (moderator) falls back to the
+  role default, and the tab change is written with `replace` so the URL describes the pane without filling
+  the history.
 - Row actions (`Mark as read` only while unread, `Delete`) sit **outside** the row's `<Link>`: a `<button>`
   inside an `<a>` is invalid HTML and its click would navigate. Both mutate by REST and then invalidate
   `notifications()` — no hand-patching of counts. Clicking the row's link itself counts as reading too: its

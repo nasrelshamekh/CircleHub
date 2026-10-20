@@ -25,6 +25,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 12 | Message toast away from the messages page: themed card, click to open | done, verified |
 | 13 | In-app notification feed (`/notifications`): follows, likes, comments, community membership and moderation events | done, verified |
 | 14 | Notification feed follow-up: live count badge, per-row mark-as-read/delete, notification chime (owner's wav), message-style toast | done, verified |
+| 15 | Notification polish: join-request rows open the manage page on Requests; sidebar count pills sit on the icons | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -630,6 +631,45 @@ appearance → navigated to the post, badge 0, `ReadAt` set on the second row. C
 documented StrictMode negotiation line; `eslint` exits 0 and `npm run build` succeeds. Dev database restored
 as found (the two test notifications and two labelled comments deleted; the two pre-existing community-test
 rows untouched).
+
+### Step 15 — Notification polish: join-request deep link, sidebar count pills (done, verified)
+
+Two follow-ups picked from the feed's first days of use. The session that started this work was cut short by
+a rate limit with the code written but unrecorded; it was finished, verified and committed the next day.
+
+**A join-request notification opens on the action.** `CommunityJoinRequested` rows used to link to the
+community's public page, where the reviewer has no way to approve or decline. `notificationLink` now returns
+`/communities/<slug>/manage?tab=requests` for that type, and `ManageCommunity` made its tab controlled by
+`?tab=`: a value this reader cannot see — unknown, or admin-only for a moderator — falls back to the role
+default, and the tab change is written with `replace` so clicking through tabs does not fill the history and
+the role default clears the param. The address bar therefore describes the pane on screen, and the toast
+card's click (same `notificationLink`) lands the reviewer straight on the queue.
+
+**The count sits on the icon.** `SidebarNavItem` used to place the badge at the end of the row when expanded
+and drop a bare dot on the icon when collapsed. The badge is now one pill pinned to the icon itself
+(`relative` wrapper, `absolute -right-2 -top-2`), so Messages and Notifications read the same in both states
+and match the navbar's icon buttons. `chatHub.js` gained a comment correction (`NotificationCreated` carries
+the DTO, it is not payload-free).
+
+Verification: `npx eslint .` exits 0 and `npm run build` succeeds. No server change, no migration. Driven in a
+real browser against the running API + dev server as `gina_travel` (admin of Wanderlust) and `carla_dev` (its
+moderator); the sidebar sits behind the `lg:` breakpoint at a 912px viewport, so it was measured in place with
+the layout's grid template pinned inline:
+
+| Check | Result |
+| --- | --- |
+| Pill, expanded sidebar | 16×16 badge on the 20×20 icon's top-right corner, offset exactly +8px/−8px; the label keeps its place after the icon |
+| Pill, collapsed sidebar | same geometry, label gone, icon centered — the two states now read identically (the old code showed a bare dot here) |
+| No badge at zero | `hasBadge = badge > 0`: Notifications at 0 unread renders no pill |
+| Join request → toast → click | card raised for the community's admins, click navigated to `/communities/wanderlust/manage?tab=requests` with Requests the active tab |
+| Owner's end-to-end | the request → notification → Requests-tab journey and both sidebar badges were confirmed by the owner in their own browser |
+
+Cost / cleanup: the dev database was restored as found — the 8 notification rows the interrupted session and
+this verification left (5 from the cut-off session's checks, 2 from the join-request trigger, 1 from the
+owner's click-test), the two pending join requests they produced (`frank_fit` → Wanderlust, `testuser` →
+Developers United), bob's labelled `pill-check comment`, and the two follows created in the same seconds as
+the deleted Follow notifications. The two pre-existing join requests and bob→alice's harness follow were
+deliberately left alone.
 
 ## Open questions
 
