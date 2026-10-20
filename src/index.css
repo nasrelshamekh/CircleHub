@@ -494,7 +494,12 @@ img {
 .circlehub-toast[data-sonner-toast][data-styled="true"] {
   align-items: flex-start;
   gap: 0.75rem;
-  padding: 0.875rem 1rem;
+  /* Sonner's fixed 356px default squeezes the content column (title + description share the row
+     with the action buttons) until the copy crowds the toast's edges. Roomier padding and a wider
+     floor keep the text comfortably inside the border; min() caps it so the toast never exceeds
+     a narrow viewport. */
+  padding: 1rem 1.25rem;
+  min-width: min(440px, calc(100vw - 4rem));
   background: var(--surface-lowest);
   border: 1px solid var(--border);
   border-left: 4px solid var(--primary);
@@ -536,33 +541,41 @@ img {
   color: var(--error);
 }
 
-.circlehub-toast-title[data-title] {
+/* Sonner injects its own stylesheet at runtime (after this file) and wraps every rule below in
+   attribute chains such as [data-sonner-toast][data-styled='true'] [data-button], plus dark-theme
+   overrides for [data-cancel] and [data-description]. A plain `.class[data-attr]` rule therefore
+   loses on specificity, and at equal weight would lose on injection order — which is why the
+   Unlock/Later buttons rendered with sonner's fixed palette (inverted surface colors,
+   rgba(255,255,255,0.3)) instead of the app's tokens. These selectors carry an extra
+   `.circlehub-toast[data-sonner-toast]` / `[data-sonner-toaster]` anchor so they out-specify
+   sonner outright, in either theme and regardless of cascade order. */
+.circlehub-toast[data-sonner-toast] .circlehub-toast-title[data-title] {
   font-size: var(--text-label-md);
   font-weight: 600;
   line-height: var(--leading-label-md);
   color: var(--text-primary);
 }
 
-.circlehub-toast-description[data-description] {
+.circlehub-toast[data-sonner-toast] .circlehub-toast-description[data-description] {
   font-size: var(--text-label-sm);
   font-weight: 400;
   line-height: var(--leading-label-sm);
   color: var(--text-secondary);
 }
 
-.circlehub-toast-close[data-close-button] {
+[data-sonner-toaster] .circlehub-toast[data-sonner-toast] .circlehub-toast-close[data-close-button] {
   background: var(--surface-lowest);
   border-color: var(--border);
   color: var(--text-secondary);
 }
 
-.circlehub-toast-close[data-close-button]:hover {
+[data-sonner-toaster] .circlehub-toast[data-sonner-toast]:hover .circlehub-toast-close[data-close-button]:hover {
   background: var(--hover);
   border-color: var(--border);
   color: var(--primary);
 }
 
-.circlehub-toast-action[data-button] {
+.circlehub-toast[data-sonner-toast][data-styled="true"] .circlehub-toast-action[data-button] {
   background: linear-gradient(135deg,
       var(--primary-gradient-start),
       var(--primary-gradient-end));
@@ -570,8 +583,23 @@ img {
   color: var(--button-gradient-text);
 }
 
-.circlehub-toast-cancel[data-cancel] {
+.circlehub-toast[data-sonner-toast][data-styled="true"] .circlehub-toast-action[data-button]:hover {
+  opacity: 0.9;
+}
+
+.circlehub-toast[data-sonner-toast][data-styled="true"] .circlehub-toast-action[data-button]:focus-visible,
+[data-sonner-toaster] .circlehub-toast[data-sonner-toast][data-styled="true"] .circlehub-toast-cancel[data-cancel]:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Extra [data-sonner-toaster] anchor (beyond the action's) because sonner's dark-theme [data-cancel]
+   override sits at that same weight and its runtime injection would win a tie. */
+[data-sonner-toaster] .circlehub-toast[data-sonner-toast][data-styled="true"] .circlehub-toast-cancel[data-cancel] {
   background: var(--surface-low);
   border-radius: var(--radius-full);
   color: var(--text-primary);
+}
+
+[data-sonner-toaster] .circlehub-toast[data-sonner-toast][data-styled="true"] .circlehub-toast-cancel[data-cancel]:hover {
+  background: var(--hover);
 }
