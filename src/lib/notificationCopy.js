@@ -73,6 +73,13 @@ export function notificationLink(notification) {
         case "PostLike":
         case "PostComment":
             return notification.postId ? `/post/${notification.postId}` : null;
+        // The reviewer's whole reason for opening this is to approve or decline, so the row goes straight to
+        // the Requests tab rather than the community's public page, where that action does not exist. The
+        // page falls back to the role default if this reader cannot see the tab.
+        case "CommunityJoinRequested":
+            return notification.communitySlug
+                ? `/communities/${notification.communitySlug}/manage?tab=requests`
+                : null;
         default:
             return notification.communitySlug
                 ? `/communities/${notification.communitySlug}`

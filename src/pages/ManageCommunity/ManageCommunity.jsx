@@ -1,5 +1,5 @@
 ﻿import { CheckCircle, MoveLeft, Settings, UserPlus, Users } from "lucide-react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import CommunityMembersManager from "@/components/managecommunity/CommunityMembersManager";
 import CommunityRequestsManager from "@/components/managecommunity/CommunityRequestsManager";
@@ -45,6 +45,7 @@ const allTabs = [
 export default function ManageCommunity() {
     const { slug } = useParams();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const {
         communities,
         isLoading: isLoadingCommunities,
@@ -63,7 +64,21 @@ export default function ManageCommunity() {
     const isModerator = currentUserMember?.communityRole === "moderator";
     const canManage = isAdmin || isModerator;
     const visibleTabs = allTabs.filter((tab) => isAdmin || !tab.adminOnly);
-    const defaultTab = isAdmin ? "manage" : "members";
+    const fallbackTab = isAdmin ? "manage" : "members";
+
+    // The tab is driven by `?tab=`, so a notification can open this page straight on Requests instead of
+    // dropping the reviewer on Manage to find it themselves. An unknown or admin-only value (or one this
+    // user cannot see) falls back to the role default rather than rendering an empty pane.
+    const requestedTab = searchParams.get("tab");
+    const activeTab = visibleTabs.some((tab) => tab.value === requestedTab)
+        ? requestedTab
+        : fallbackTab;
+
+    // Keeps the URL honest once the page is open: the address bar describes the tab on screen, and Back
+    // returns to the previous one. replace so switching tabs does not fill the history with each click.
+    function handleTabChange(value) {
+        setSearchParams(value === fallbackTab ? {} : { tab: value }, { replace: true });
+    }
 
     if (!community) {
         if (isLoadingCommunities) {
@@ -173,7 +188,7 @@ export default function ManageCommunity() {
                 </div>
             </div>
 
-            <Tabs defaultValue={defaultTab} className="min-w-0">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="min-w-0">
                 <div className="py-2">
                     <TabsList className={visibleTabs.length === 1 ? "sm:grid-cols-1" : visibleTabs.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}>
                         {visibleTabs.map((tab) => {

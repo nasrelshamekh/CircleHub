@@ -11,7 +11,8 @@ export const PRESENCE_CHANGED_EVENT = "PresenceChanged";
 export const TYPING_CHANGED_EVENT = "TypingChanged";
 
 // Event the API raises when a new row lands in our notification feed
-// (ChatHub.NotificationCreatedMethod). Payload-free: the feed is refetched, never patched.
+// (ChatHub.NotificationCreatedMethod). Carries the row as a NotificationDto so the client can chime and
+// toast it immediately; the feed is still refetched, because the server stays the source of truth.
 export const NOTIFICATION_CREATED_EVENT = "NotificationCreated";
 
 // Hub method we invoke to say that we are (or are no longer) typing (ChatHub.SendTyping).
