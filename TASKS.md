@@ -27,6 +27,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 14 | Notification feed follow-up: live count badge, per-row mark-as-read/delete, notification chime (owner's wav), message-style toast | done, verified |
 | 15 | Notification polish: join-request rows open the manage page on Requests; sidebar count pills sit on the icons | done, verified |
 | 16 | Messaging fan-out gaps: post-only messages delivered live, sender's other tabs hear their own echo, typing rate limit on the hub | done, verified |
+| 17 | End-to-end encryption on the web client: per-device key directory, WebCrypto ECDH + AES-GCM envelope, plaintext fallback for a recipient with no published key | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -729,10 +730,101 @@ today remain. `LastMessageAt` repaired to `MAX(CreatedAt)` on both surviving con
 2026-10-13 10:37:58, `1d98b7cd` → 2026-10-19 17:55:53), undoing the staleness this kind of deletion caused
 before. Pre-existing rows untouched (7 + 2 messages respectively).
 
+### Step 17 — End-to-end encryption on the web client (done, verified)
+
+The owner's phase order: the web app gets real end-to-end encryption first, mobile follows. The server stays
+exactly what it was — a dumb pipe that stores and relays ciphertext it cannot read — so this step is almost
+entirely client-side, plus one new endpoint to publish and fetch the public keys a sender needs.
+
+**Envelope format.** One string in `Message.Content`, so the column, the REST contract, the hub envelope and
+the fan-out are all unchanged: `ENC:v1:` + base64 of `{v, alg, e, iv, ct, w:[{d,k}]}` — `e` the sender's
+ephemeral P-256 public key, `iv` the 12-byte GCM nonce, `ct` the AES-GCM ciphertext, `w` one wrapped copy of
+the CEK per device. The CEK is wrapped for **both** participants' devices, the sender's own included: that is
+what makes the Step 16 self-echo render its real text in the sender's other tabs instead of a placeholder.
+One ephemeral keypair per message, so nothing links two messages from the same sender.
+
+**Key directory.** New `UserDeviceKeys` table (unique `(UserId, DeviceId)`, upserted with
+`INSERT ... ON DUPLICATE KEY UPDATE` so a re-publish is an update and not a duplicate), migration
+`20261020100420_AddUserDeviceKeys`. `KeysController` exposes `POST /api/keys` (register this device's public
+key) and `GET /api/keys/{username}` (the devices of the person you are writing to). The read is gated by the
+*same* `MessagePolicyService` rule as sending and answers with the *same* generic 403 wording ("This user
+isn't accepting messages right now"), so the directory cannot be used to probe for users or to read around a
+`MessagesFrom` setting; your own keys are always readable, and an unknown username is a plain 404. `Register`
+validates the public key as a base64 uncompressed P-256 point (65 bytes, leading `0x04`) before storing it.
+
+**Client.** `src/services/messageCrypto.js` is the whole implementation: envelope encode/decode, the keyvault,
+send and receive, and the legacy decode path. Private keys are generated with WebCrypto as **non-extractable**
+and live in IndexedDB (`circlehub-keyvault`), so they cannot be read back out by script or exfiltrated by an
+XSS; the device id is a plain `localStorage` value (`circlehub-device-id`). `DeviceKeyPublisher` publishes the
+key once per signed-in session (mounted in `src/main.jsx`), and `useDecryptedContent` is the single render
+hook the thread, the conversation-list preview and the message toast all decrypt through. Every call site
+(`MessageThread`, `ConversationList`, `MessageToast`, `MessageComposer`, `useSendMessage`) is a thin wrapper —
+the crypto has one home.
+
+**Never breaks the rollout.** A recipient with no published key gets plaintext, stored verbatim, so the
+feature degrades to exactly what shipped in Step 16 rather than failing. Rows with no `ENC:v1:` prefix pass
+through untouched, an envelope a device cannot open (a foreign device's, or one from a test key that no longer
+exists) renders `[Can't decrypt this message]`, and a malformed envelope resolves to the same placeholder —
+ciphertext is never shown to the reader.
+
+**Limits.** `MessagesController.MaxContentLength` 2000 → 12000 (this is the *envelope*, not the plaintext),
+`SendMessageDto.Content` `[MaxLength(14000)]` so model binding cannot silently truncate an envelope (the
+default 4000 was cutting them off), and the client's `MAX_PLAINTEXT_LENGTH` is 4000.
+
+Verification: `dotnet build` 0 warnings / 0 errors, `npx eslint .` exits 0, `npm run build` succeeds, and the
+migration is applied. The hub/REST contract ran **38/38 checks passed** from
+`%TEMP%\opencode\step17-e2e.ps1` + `sigtest\step17-test.mjs`, then the real-browser half was driven against a
+temp API build on 5289 plus the Vite dev server.
+
+| Check | Result |
+| --- | --- |
+| Device key on login | published automatically as `a1dad22e-…`; `GET /api/keys/alice_wonder` → 200 with 3 rows exposing only `deviceId`/`publicKey`/`createdAt` |
+| Encrypted send | `alice_wonder` → `nasrdev` 200, stored envelope 1239 characters, prefix `ENC:v1:` |
+| Thread + list preview | both render the decrypted plaintext |
+| Cross-user receive | `nasrdev` read all four of alice's messages, **including his own send decrypted from its 4-wrap envelope** — the Step 16 echo stays readable |
+| Sender's own device | can open their own send (`decrypted: true`, the 1 wrap for the local device) |
+| Foreign-device envelope | renders `[Can't decrypt this message]` in the thread, in the list preview **and** in the copy path — the copy button wrote the placeholder, never the envelope |
+| No-key fallback | sending to `bob_builder` (0 published keys) produced plaintext, stored verbatim |
+| Legacy + malformed | old rows still decode; a malformed `ENC:v1:` handle resolves to the placeholder |
+| Long message | a 4012-character plaintext → 8119-character envelope, stored and rendered intact |
+| Over-cap | client throws `Messages can be at most 4000 characters`; server 400 `Messages can be at most 12000 characters`, no row written |
+| No ciphertext on screen | 0 occurrences of `ENC:v1:` anywhere in the DOM |
+| Toast | called directly with a raw ciphertext preview (as `ChatConnectionContext` does): renders the decrypted text, no leak |
+| Live fan-out | a real REST fan-out as bob while Alice sat on `/feed` → one chime (`plays: 1`) and one card `Bob Alvarez \| live-relay-plain` |
+| Access control | a non-participant got 404 `Conversation not found` |
+
+Two notes worth keeping. The browser's private keys are non-extractable and IndexedDB-lived, so an envelope
+written by `sigtest`'s node keys can *never* be read in the browser — that is the real reason those rows show
+the placeholder, not a bug, and the harness deletes its `node-%` device keys. And this sandboxed model cannot
+view screenshots, so every visual check above was measured through DOM/JS evaluation rather than by eye.
+
+Also fixed in the same pass, from the owner's first look at the result: **long messages rendered as one
+horizontal line.** The bubble put `max-w-[80%]` on a flex *column*, so the text box sized itself to its
+content and `break-words` could not break a token with no spaces. The wrapper now carries `min-w-0` (so the
+80% cap actually binds) and the bubble carries `max-w-full` + `[overflow-wrap:anywhere]`; the 4012-character
+message now measures 653 px × 1236 px, a wrapped block inside the column. **The suggested people/communities
+rail is gone on `/messages`** — `AppLayout` drops the third grid column there (the right sidebar is still
+rendered on every other route: on `/feed` the 25 rem column and both headings are untouched), so the thread
+takes the whole width. The conversation-list preview also gained `min-w-0 flex-1` so a long body cannot
+stretch that row.
+
+Cost / cleanup: the dev database was restored as found. The 8 rows this session wrote were deleted (their
+conversations' `LastMessageAt` repaired to `MAX(CreatedAt)`, which also undid the staleness the earlier
+deletions had left in `c4811a5f` and `cdf5b507`), the browser-published device key `a1dad22e-…` was removed
+(keys back to the 5 pre-existing rows), and the legacy odd rows in the "known cleanups" list
+(`ENC:v1:b2ZmbGluZQ==` in the gina thread, `ENC:v1:Q29kZS1pcy1vcGFxdWU=…` in the erin thread — 4 rows in
+total) were deleted as that note said they should be. Pre-existing `ENC:v1:` rows from another session's
+harness and `should not land` were left alone. The temp API build and the Vite dev server started for
+verification were stopped afterwards; ports 5289 and 5173 are free.
+
+Harness: `%TEMP%\opencode\step17-e2e.ps1`, `sigtest\step17-test.mjs`, `s17b-cleanup.ps1 [-Apply]`.
+
 ## Open questions
 
-- Where does the client-side key exchange live (per-device key bundles, WebCrypto ECDH), and does the
-  2000-character `Message.Content` cap need to grow first? Base64 ciphertext for a long message will not fit.
+- Mobile parity for Step 17: the mobile client must publish its own device key and decrypt the same envelope
+  (the wrap list makes this additive — the server and the format do not change). Key backup/recovery across a
+  cleared browser profile is still open: today a wiped IndexedDB means the historical ciphertext for that
+  device is unreadable.
 
 ## Incidents
 
@@ -750,9 +842,10 @@ before. Pre-existing rows untouched (7 + 2 messages respectively).
 - `bob_builder.LastSeenAt` was set by the presence checks (12 minutes ago, then ~1 minute ago) to exercise the
   wording. The next time he connects it is overwritten with a real value; until then his row reads a
   plausible-but-invented time.
-- Alice's conversation with `erin_photo` and the one with `gina_travel` still hold `ENC:v1:…` payloads written
-  by an early harness. They are the *only* rows in those threads, so deleting them would leave a conversation
-  with no messages and a `LastMessageAt` pointing at nothing; left alone, but they are not seed data either.
+- Alice's conversation with `erin_photo` (`5929a15c`) is now **empty**: Step 17 deleted the harness rows that were
+  its only messages, so `LastMessageAt` points at a message that no longer exists. Left as it is — an empty
+  conversation is worse to repair than to leave visible, and it will be filled by the next real message. The
+  conversation with `gina_travel` (`1d98b7cd`) kept its 3 real messages and was repaired.
 - An earlier cleanup deleted the newest message of Alice's thread with `testuser` without repairing
   `LastMessageAt`, which is why that column was stale. Any future row deletion needs the same repair — the
   cleanup script in the section above shows the shape.

@@ -48,7 +48,7 @@ project owner before implementation; see `TASKS.md` for status.
 | Push tokens | A dedicated `DeviceToken` table (multi-device), pruned when Expo reports `DeviceNotRegistered`. |
 | Typing signals | Hub-only and ephemeral: relayed to whatever is live, never stored, never pushed, refused silently, rate limited per connection, and believed by the recipient for a few seconds at a time. |
 | Message sound | Plays for a message the reader cannot see landing — silent only when that conversation's thread is open in a tab that is both visible and focused. A short committed sound file (the owner's own), no mute control yet. |
-| Encryption scope | The server is a dumb pipe; the actual crypto (WebCrypto ECDH + AES-GCM) is a later phase. |
+| Encryption scope | End-to-end on the web client (Step 17): WebCrypto ECDH P-256 + AES-GCM, one ephemeral keypair per message, a per-device key directory on the server. The server relays and stores ciphertext it cannot read. Mobile parity is a later step. |
 | Rollout order | Web app first, then the Expo mobile app. |
 
 ### Server surface
@@ -89,6 +89,17 @@ project owner before implementation; see `TASKS.md` for status.
   the row, and it is deliberately *not* tied to `RequestAborted`: the message is stored either way, so a
   caller hanging up must not swallow the notification. A recipient with no live connection is logged there,
   which is exactly where the Expo push fallback goes.
+- Key directory: `POST /api/keys` registers **this device's** public key, `GET /api/keys/{username}` returns
+  the devices of the person you are writing to. Storage is `Entities/UserDeviceKey` (unique `(UserId, DeviceId)`,
+  so a re-publish is an upsert via `INSERT ... ON DUPLICATE KEY UPDATE`, never a duplicate row; migration
+  `AddUserDeviceKeys`). `KeysController.Register` validates the key as a base64 uncompressed P-256 point — 65
+  bytes, leading `0x04` — before storing it, to keep the table from becoming a place where any blob can be
+  parked. The read is gated by the **same** `MessagePolicyService` rule as sending a message and answers with
+  the **same** generic 403 wording ("This user isn't accepting messages right now"), so the directory cannot be
+  used to enumerate users or to read around a `MessagesFrom=Followers` setting; your own keys are always
+  readable, and an unknown username is a plain 404. The response exposes only `deviceId`, `publicKey` and
+  `createdAt` — never a user id, and there is nothing secret to leak because a public key is public by
+  definition.
 
 ### Security invariants
 
@@ -245,12 +256,47 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
   class on `<html>` — rather than `next-themes`, which the app never mounts: sonner's own palette only knows light
   and dark and cannot know which one the app is showing, which is how a white card ended up on a dark surface.
 
+### End-to-end encryption (web client, Step 17)
+
+The whole implementation is `src/services/messageCrypto.js`. The server is unchanged by it: it still stores and
+relays one opaque `Message.Content` string, so this is a client contract plus the key directory above.
+
+- **Envelope.** `ENC:v1:` + base64 of `{v, alg, e, iv, ct, w:[{d,k}]}` — `e` the sender's ephemeral P-256
+  public key, `iv` the 12-byte AES-GCM nonce, `ct` the ciphertext, `w` one wrapped CEK per device (`d` = device
+  id, `k` = the KEK-wrapped key). One **ephemeral keypair per message**, so two messages from the same sender
+  share nothing that would let them be linked.
+- **Recipients of a wrap.** The CEK is wrapped for every device of *both* participants, the sender's own
+  included. That is deliberate and load-bearing: the Step 16 fan-out echoes a send back to the sender's other
+  tabs, and those tabs must be able to render it. A wrap list keyed to the recipient only would turn every one
+  of the sender's own messages into a placeholder in their second tab.
+- **Private keys never leave the device.** They are generated with WebCrypto as **non-extractable** and stored
+  in IndexedDB (`circlehub-keyvault`), so no script — including one injected by an XSS — can read them back out
+  or export them. The device id is a plain `localStorage` value (`circlehub-device-id`); it is an identifier,
+  not a secret. Consequence: the keys are per-browser-profile and cannot be backed up or moved, so a wiped
+  profile loses the ability to read that device's history (see the limits below).
+- **Publishing.** `src/components/messages/DeviceKeyPublisher.jsx` (mounted in `src/main.jsx`) generates the
+  device key on first need and `POST`s the public half once per signed-in session. It is idempotent server-side
+  (the upsert), so a re-publish is a no-op rather than an error.
+- **Rendering.** `src/hooks/useDecryptedContent.jsx` is the **only** place decryption happens at render time,
+  and the thread (`MessageThread`), the conversation-list preview (`ConversationList`) and the message toast
+  (`MessageToast`) all go through it. Adding a new surface that shows a message body means using this hook —
+  showing `Content` directly is how ciphertext would reach the screen.
+- **Fallback, in order.** (1) A recipient with no published key → the message is sent as **plaintext**, stored
+  verbatim; the feature degrades to Step 16 rather than failing, which is what keeps the rollout from breaking
+  conversations. (2) A row with no `ENC:v1:` prefix → passed through untouched (every legacy message). (3) An
+  envelope this device cannot open — a foreign device's key, a test key that no longer exists — → renders
+  `[Can't decrypt this message]`. (4) A malformed envelope → the same placeholder. Ciphertext is never shown to
+  the reader in any of these cases.
+- **Copy path.** The copy button writes the **decrypted** text, and writes the placeholder (never the envelope)
+  when the body cannot be opened — so a copy can't be used to smuggle ciphertext to the clipboard.
+- **Limits.** The server caps the *envelope* at `MessagesController.MaxContentLength` = 12000 and
+  `SendMessageDto.Content` is `[MaxLength(14000)]`, deliberately above it so model binding never silently
+  truncates an envelope before the controller sees it (the 4000 default did exactly that). The client caps the
+  *plaintext* at `MAX_PLAINTEXT_LENGTH` = 4000, which is ~7.9 KB of envelope with four devices on the message —
+  comfortably inside 12000. Changing any one of those three numbers means re-checking the other two.
+
 ### Known limits in this phase
 
-- `MessagesController.MaxContentLength` is 2000 characters, and `Message.Content` is sized for that. Base64
-  ciphertext runs larger than the plaintext (plus a tag/nonce), so the column and the cap need revisiting
-  before client-side encryption lands — a decision the owner explicitly deferred ("migration only if the
-  limit needs extending").
 - The fan-out targets the recipient and the sender's other connections; a pure hub relay still targets the
   recipient only, so a mobile client that talks to the hub directly will not echo its own send back to the
   sender's other tabs.
@@ -267,8 +313,17 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
 - A toast's expiry timer does not run while its tab is in the background, so cards accumulate unseen there and
   dismiss the moment the tab is looked at again. For a hidden tab the chime and the `(n)` title prefix are still
   the channels that carry it.
-- The card shows the payload exactly as the thread does. Once client-side crypto lands it needs the same decrypt
-  step, and must not become the one place where ciphertext is shown to the reader.
+- The card shows the payload exactly as the thread does — it goes through `useDecryptedContent`, so it renders
+  decrypted text and the `[Can't decrypt this message]` placeholder, never ciphertext.
+- **Key loss is permanent.** The private keys are non-extractable and IndexedDB-lived, so clearing site data,
+  a different browser, or a different device means that device cannot read its history. There is no backup,
+  escrow or recovery phrase yet — this is the biggest open question in the encryption work.
+- **Encryption is opportunistic, not guaranteed.** A recipient who has not published a key (a browser that has
+  never signed in since Step 17, or the mobile client before its own step) receives plaintext, and the sender
+  is not told. This is what keeps the rollout from breaking conversations, but it does mean `Message.Content`
+  is not uniformly ciphertext and a mixed history is normal.
+- Mobile parity has not landed: the mobile client neither publishes a device key nor decrypts the envelope
+  (the wrap list makes this additive — no server or format change is needed).
 
 ## In-app notification feed
 
@@ -395,6 +450,10 @@ removed, role changed, post removed).
 - Copying a file into `public/` while the dev server is watching can crash it: the watcher tries to add the
   new file, Windows still has it locked, and Node exits on `EBUSY: resource busy or locked, watch
   '...\public\message-chime.mp3'`. Restart the dev server; it starts clean once the file is settled.
+- The message-crypto private keys are non-extractable and live in IndexedDB, so an `ENC:v1:` envelope written
+  by a **Node** harness (whose keys live in a file) can never be opened in the browser — it will always render
+  the placeholder. That is the design working, not a bug; the harness deletes its own `node-%` device keys so
+  they do not accumulate in the directory.
 
 ## Verification
 
@@ -436,6 +495,11 @@ database by the throwaway harness in `%TEMP%\opencode` (started so it does not d
   `-Apply` deletes them, then prints the counts again).
 - `toast-cleanup.ps1 [-Apply]` — the same shape, for the rows the message-toast checks leave in Alice's
   conversation with `bob_builder`.
+- `step17-e2e.ps1` + `sigtest\step17-test.mjs` — the Step 17 contract (38 checks) on a temp build of its own:
+  device-key registration and validation, the `GET /api/keys/{username}` policy gate and its generic refusal,
+  the envelope round-trip (both participants' devices wrapped), the no-key plaintext fallback, and the
+  over-cap server rejection. `s17b-cleanup.ps1 [-Apply]` deletes the rows and the browser-published device key
+  it leaves behind and repairs `Conversations.LastMessageAt`.
 
 It requires MySQL running locally plus `npm install @microsoft/signalr` in that directory. Keep it in sync
 with the hub contract when the contract changes.
