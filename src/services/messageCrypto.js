@@ -259,7 +259,6 @@ export async function createRecoverableDeviceKey(deviceId) {
     const raw = await crypto.subtle.exportKey("raw", pair.publicKey);
 
     const record = await importDeviceKey(deviceId, pkcs8, toBase64(new Uint8Array(raw)));
-    await saveStoredKey(record);
 
     return { record, pkcs8 };
 }
@@ -277,13 +276,15 @@ export async function importDeviceKey(deviceId, pkcs8Bytes, publicKeyB64) {
         ["deriveKey", "deriveBits"],
     );
 
-    return {
+    const record = {
         localId: crypto.randomUUID(),
         deviceId,
         publicKeyB64,
         privateKey,
         createdAt: Date.now(),
     };
+    await saveStoredKey(record);
+    return record;
 }
 
 async function fetchDeviceKeys(username) {
@@ -554,4 +555,9 @@ export function decryptMessageContent(content) {
 /** Settled plaintext for a ciphertext, or null while it is still (or never) decrypted. */
 export function peekDecrypted(content) {
     return settledCache.get(content) ?? null;
+}
+
+export function clearDecryptCache() {
+    decryptCache.clear();
+    settledCache.clear();
 }

@@ -1,6 +1,12 @@
 import { apiClient } from "./apiClient";
 import { BIP39_WORDS } from "./bip39Words";
-import { createRecoverableDeviceKey, getDeviceId, publishKey } from "./messageCrypto";
+import {
+    clearDecryptCache,
+    createRecoverableDeviceKey,
+    getDeviceId,
+    importDeviceKey,
+    publishKey,
+} from "./messageCrypto";
 
 // Account key recovery: the one thing that makes a device's history survive the browser being wiped.
 //
@@ -46,7 +52,38 @@ export const KDF_ITERATIONS = 310_000;
 const SALT_BYTES = 16;
 
 const ACCOUNT_KEY_BYTES = 32;
+const PUBLIC_KEY_BYTES = 65;
+const PORTABLE_KEY_BYTES = ACCOUNT_KEY_BYTES + PUBLIC_KEY_BYTES; // 97 bytes: 32B scalar d || 65B uncompressed pub
 const GCM_IV_BYTES = 12;
+
+// Fixed ASN.1 DER framing for a WebCrypto P-256 PKCS#8 private key (138 bytes total):
+//   [0..36]   PKCS8_HEADER (36 bytes)
+//   [36..68]  32-byte P-256 private scalar d
+//   [68..73]  PKCS8_MID (5 bytes)
+//   [73..138] 65-byte uncompressed P-256 public point (0x04 || X || Y)
+const PKCS8_HEADER = new Uint8Array([
+    0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86,
+    0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d,
+    0x03, 0x01, 0x07, 0x04, 0x6d, 0x30, 0x6b, 0x02, 0x01, 0x01, 0x04, 0x20,
+]);
+const PKCS8_MID = new Uint8Array([0xa1, 0x44, 0x03, 0x42, 0x00]);
+
+function pkcs8ToPortableKey(pkcs8Bytes) {
+    const secretKey = pkcs8Bytes.slice(36, 68);
+    const publicKey = pkcs8Bytes.slice(73, 138);
+    return concat(secretKey, publicKey);
+}
+
+function portableKeyToPkcs8(portableBytes) {
+    const secretKey = portableBytes.slice(0, 32);
+    const publicKey = portableBytes.slice(32, 97);
+    const out = new Uint8Array(138);
+    out.set(PKCS8_HEADER, 0);
+    out.set(secretKey, 36);
+    out.set(PKCS8_MID, 68);
+    out.set(publicKey, 73);
+    return { pkcs8: out, publicKeyB64: toBase64(publicKey) };
+}
 
 /* ------------------------------------------------------------------ encoding */
 
@@ -213,9 +250,10 @@ async function fetchBackup() {
 }
 
 async function saveBackup({ wrappedAccountKey, salt }) {
+    const saltB64 = typeof salt === "string" ? salt : toBase64(salt);
     await apiClient.put(BACKUP_URL, {
         wrappedAccountKey,
-        salt,
+        salt: saltB64,
         kdfIterations: KDF_ITERATIONS,
         kdfAlgorithm: KDF_ALGORITHM,
     });
@@ -248,22 +286,18 @@ export async function setUpRecovery({ devicePrivateKeyPkcs8 }) {
     const salt = randomBytes(SALT_BYTES);
 
     const phraseKey = await derivePhraseKey(phrase, salt, KDF_ITERATIONS);
-    const accountKey = randomBytes(ACCOUNT_KEY_BYTES);
+    const portableKey =
+        devicePrivateKeyPkcs8?.length === 138
+            ? pkcs8ToPortableKey(devicePrivateKeyPkcs8)
+            : randomBytes(ACCOUNT_KEY_BYTES);
 
-    // Layer 2: the account key protects the device private key.
-    const accountAes = await crypto.subtle.importKey("raw", accountKey, { name: "AES-GCM" }, false, [
-        "encrypt",
-        "decrypt",
-    ]);
-    const wrappedDeviceKey = await seal(accountAes, devicePrivateKeyPkcs8);
+    // The phrase-derived AES-256-GCM key wraps the portable P-256 key material (97 bytes -> 168 base64 chars).
+    const wrappedAccountKey = await seal(phraseKey, portableKey);
 
-    // Layer 1: the phrase protects the account key. Both blobs go to the server, neither is openable
-    // there -- it has no phrase.
-    const wrappedAccountKey = await seal(phraseKey, accountKey);
+    await saveBackup({ wrappedAccountKey, salt: toBase64(salt) });
+    clearDecryptCache();
 
-    await saveBackup({ wrappedAccountKey, salt });
-
-    return { phrase, accountKey, wrappedDeviceKey };
+    return { phrase, accountKey: portableKey, wrappedDeviceKey: wrappedAccountKey };
 }
 
 /**
@@ -305,13 +339,24 @@ export async function unlockBackup({ phrase }) {
 }
 
 /**
- * High-level restore: verifies the phrase against the server backup, derives the account key, and
- * creates a new recoverable device key for this device so future messages can be decrypted.
+ * High-level restore: verifies the phrase against the server backup, unwraps the backed-up P-256 keypair,
+ * imports it non-extractably into IndexedDB for this device, and publishes its public key so both past
+ * and future messages can be decrypted.
  */
 export async function restoreRecovery(phrase) {
     const { accountKey } = await unlockBackup({ phrase });
     const deviceId = getDeviceId();
-    const { record } = await createRecoverableDeviceKey(deviceId);
+
+    let record;
+    if (accountKey.length === PORTABLE_KEY_BYTES) {
+        const { pkcs8, publicKeyB64 } = portableKeyToPkcs8(accountKey);
+        record = await importDeviceKey(deviceId, pkcs8, publicKeyB64);
+    } else {
+        const created = await createRecoverableDeviceKey(deviceId);
+        record = created.record;
+    }
+
     await publishKey(deviceId, record.publicKeyB64);
+    clearDecryptCache();
     return { accountKey, record };
 }
