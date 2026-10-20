@@ -29,6 +29,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 16 | Messaging fan-out gaps: post-only messages delivered live, sender's other tabs hear their own echo, typing rate limit on the hub | done, verified |
 | 17 | End-to-end encryption on the web client: per-device key directory, WebCrypto ECDH + AES-GCM envelope, plaintext fallback for a recipient with no published key | done, verified |
 | 18 | Key recovery: random account key wrapped by a 12-word phrase, so history follows the account to any device without giving up E2EE | done, verified |
+| 19 | Web quality of life & layout alignment: native emoji picker, auto-resizing multiline composer + character counter, failed-send retry, sound mute toggles, Messages/Notifications width & header alignment | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -923,6 +924,48 @@ password check (attempt-limited, key destroyed after too many failures). Its **i
 up at all** — a new phone changes your safety number and everyone sees it. We take the random-key-wrapped-
 by-a-user-secret shape and the phrase, drop the HSM, and use 12 words instead of 64 digits because users
 transcribe words reliably and digits badly.
+
+### Verification (commit `0c17ba0`)
+
+- `dotnet build CircleHub.Api.csproj`: 0 warnings, 0 errors.
+- `npm run lint` (`eslint .`): 0 errors, 0 warnings (verified no synchronous `setState` inside effects under `eslint-plugin-react-hooks` v7).
+- `npm run build` (`vite build`): succeeded with 0 errors.
+- Archived implementation plan and flow diagrams in `docs/steps-plan.md`.
+
+### Step 19 — Web quality of life & layout alignment (done, verified — commit `020dcd2`)
+
+Before moving to the Expo mobile phase, the owner requested a web quality-of-life pass covering emoji sending,
+multi-line auto-resizing message composition, character limit visibility, failed-send retry, alert sound mute
+toggles, and layout/width consistency across `Messages` and `Notifications`:
+
+Added & updated:
+
+- `src/components/messages/EmojiPicker.jsx` — dependency-free categorized native Unicode emoji picker across 4
+  tabs (`Smileys & Emotion`, `Hands & Gestures`, `Hearts & Symbols`, `Animals & Food`), with live keyword
+  search, click-outside dismissal, and <kbd>Esc</kbd> handling.
+- `src/components/messages/MessageComposer.jsx` — replaced the single-line `<input>` with an auto-resizing
+  `<textarea>` (`42px` single-line height up to `160px` max height, `placeholder="Write a message..."`).
+  Pressing <kbd>Enter</kbd> sends the message; <kbd>Shift</kbd>+<kbd>Enter</kbd> inserts a line break. Emoji
+  selection inserts at the exact cursor selection and re-adjusts height. Added a live character counter
+  (`x / 4000`) when messages exceed 2,500 characters (turning red above 3,800) to surface the
+  `MAX_PLAINTEXT_LENGTH` ceiling before hitting the server's 12,000-character envelope limit.
+- `src/components/messages/MessageThread.jsx` + `MessageComposer.jsx` — when a send fails (`onError`), the
+  optimistic bubble transitions to `{ pending: false, failed: true }` with an error border and a 1-click
+  **Retry** button that re-transmits the failed message.
+- `src/components/editprofile/ProfileSettingsForm.jsx`, `src/lib/messageChime.js`,
+  `src/lib/notificationChime.js` — added **Message Alert Sounds** (`circlehub-mute-message-sound`) and
+  **Notification Alert Sounds** (`circlehub-mute-notification-sound`) toggles in the Settings tab, checked by
+  `shouldChime` and `shouldChimeNotification`.
+- `src/pages/Messages/Messages.jsx`, `src/components/messages/ConversationList.jsx`,
+  `src/pages/Notifications/Notifications.jsx` — aligned `Messages` with the shared `content-stack` page header
+  (`type-headline-responsive` title + subtitle, `Conversations` card header with count pill, rounded list rows,
+  and unified empty-state styling) while keeping `RightSidebar` omitted on `/messages` (`AppLayout.jsx`) and
+  centering the two-pane workspace at `max-w-[96rem]` (`h-[calc(100dvh-10rem)] lg:h-[calc(100dvh-5rem)]`).
+  Widened `Notifications.jsx` from `max-w-5xl` to `max-w-7xl` to match `Explore`, `Communities`, `Followers`,
+  and `EditProfile`.
+
+Verification: `npm run lint` 0 warnings / 0 errors, `npm run build` succeeded in ~640ms, `dotnet build -o <temp>`
+0 warnings / 0 errors.
 
 ## Open questions
 

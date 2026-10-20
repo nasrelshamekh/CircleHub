@@ -47,8 +47,9 @@ project owner before implementation; see `TASKS.md` for status.
 | Ciphertext storage | The server stores the encrypted string as an opaque blob in `Message.Content` and never inspects it. |
 | Push tokens | A dedicated `DeviceToken` table (multi-device), pruned when Expo reports `DeviceNotRegistered`. |
 | Typing signals | Hub-only and ephemeral: relayed to whatever is live, never stored, never pushed, refused silently, rate limited per connection, and believed by the recipient for a few seconds at a time. |
-| Message sound | Plays for a message the reader cannot see landing — silent only when that conversation's thread is open in a tab that is both visible and focused. A short committed sound file (the owner's own), no mute control yet. |
+| Message sound | Plays for a message the reader cannot see landing — silent only when that conversation's thread is open in a tab that is both visible and focused. A short committed sound file (the owner's own), with a client-side mute toggle in Settings (`circlehub-mute-message-sound`). |
 | Encryption scope | End-to-end on the web client (Step 17): WebCrypto ECDH P-256 + AES-GCM, one ephemeral keypair per message, a per-device key directory on the server. The server relays and stores ciphertext it cannot read. Mobile parity is a later step. |
+| Key recovery | 12-word BIP39 recovery phrase (Step 18): wraps a random 32-byte account key and the device private key under a PBKDF2-HMAC-SHA-256 key (310,000 iterations), stored opaquely in `UserKeyBackups` (`GET/PUT/DELETE /api/keys/backup`). |
 | Rollout order | Web app first, then the Expo mobile app. |
 
 ### Server surface
@@ -100,6 +101,11 @@ project owner before implementation; see `TASKS.md` for status.
   readable, and an unknown username is a plain 404. The response exposes only `deviceId`, `publicKey` and
   `createdAt` — never a user id, and there is nothing secret to leak because a public key is public by
   definition.
+- Key backup vault: `GET /api/keys/backup`, `PUT /api/keys/backup` and `DELETE /api/keys/backup` in
+  `Controllers/KeyBackupController.cs` (owner-scoped via the JWT `sub` claim). Storage is
+  `Entities/UserKeyBackup` (unique `UserId`, migration `AddUserKeyBackups`), holding `WrappedAccountKey`
+  (`varchar(500)`), `Salt` (`varchar(100)`), `KdfIterations` and `KdfAlgorithm` (`varchar(40)`). The server
+  stores the encrypted bundle opaquely and never sees the 12-word recovery phrase or unwrapped keys.
 
 ### Security invariants
 
@@ -175,8 +181,22 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
   real-time delivery is actually impaired, so it is not noise on every page load.
 - Sending is optimistic: the composer hands the thread a temporary bubble (`pending: true`, reduced opacity)
   before the request resolves, and the thread stops rendering it as soon as the stored message with that id
-  appears. The stored row is still the source of truth — nothing is written into the thread cache, so a
-  background refetch can never wipe or duplicate the bubble.
+  appears. If the send fails (`onError`), the bubble transitions to `{ pending: false, failed: true }` with an
+  error border and a 1-click "Retry" button that re-transmits the message through `MessageComposer`. The stored
+  row is still the source of truth — nothing is written into the thread cache, so a background refetch can
+  never wipe or duplicate the bubble.
+- Composer UX (`src/components/messages/MessageComposer.jsx` + `src/components/messages/EmojiPicker.jsx`):
+  uses an auto-resizing multi-line `<textarea>` (42px single-line height up to 160px max height, `Enter` sends,
+  `Shift+Enter` inserts a line break, `placeholder="Write a message..."`), a dependency-free categorized native
+  Unicode emoji picker (`EmojiPicker.jsx`, inserting at the cursor selection), and a live character counter
+  (`x / 4000`) that appears above 2,500 characters and turns red above 3,800.
+- Page layout and width (`src/pages/Messages/Messages.jsx`, `src/layouts/AppLayout.jsx`,
+  `src/pages/Notifications/Notifications.jsx`): `AppLayout` omits `RightSidebar` on `/messages` so the two-pane
+  chat workspace can use the horizontal space; `Messages.jsx` uses `content-stack max-w-[96rem]` (centered,
+  pinned to viewport height `h-[calc(100dvh-10rem)] lg:h-[calc(100dvh-5rem)]` so the conversation list and
+  thread scroll independently) with the shared `type-headline-responsive` heading, subtitle, and `Conversations`
+  card header + count badge. `Notifications.jsx` uses `content-stack max-w-7xl` to match `Explore`,
+  `Communities`, `Followers`, and `EditProfile`.
 - The thread only follows new messages when the reader is already at the bottom (within 80px). Otherwise it
   holds the scroll position and shows a floating "New message" chip that jumps to the latest; opening a
   conversation always starts at the latest message.
@@ -295,6 +315,31 @@ relays one opaque `Message.Content` string, so this is a client contract plus th
   *plaintext* at `MAX_PLAINTEXT_LENGTH` = 4000, which is ~7.9 KB of envelope with four devices on the message —
   comfortably inside 12000. Changing any one of those three numbers means re-checking the other two.
 
+### Key recovery (web client, Step 18)
+
+Implemented in `src/services/bip39Words.js`, `src/services/keyRecovery.js`, `src/services/messageCrypto.js`,
+and the UI components `src/components/editprofile/MessageRecoveryCard.jsx`,
+`src/components/messages/RecoverySetupDialog.jsx`, `src/components/messages/RecoveryRestoreDialog.jsx`, and
+`src/components/messages/DeviceKeyPublisher.jsx`.
+
+- **12-word BIP39 mnemonic (`bip39Words.js`, `keyRecovery.js`).** 128 bits of WebCrypto CSPRNG entropy + 4-bit
+  SHA-256 checksum mapped to the standard 2048-word English wordlist (`generateRecoveryPhrase`,
+  `validatePhrase`).
+- **Key hierarchy.** The phrase never encrypts messages directly. Instead, PBKDF2-HMAC-SHA-256 (310,000
+  iterations, random 16-byte salt) derives an AES-256-GCM wrapping key from the phrase, which wraps a random
+  32-byte account key alongside the device's PKCS#8 private key (`createRecoverableDeviceKey`). Once backed up,
+  the device key is re-imported into IndexedDB (`circlehub-keyvault`) with `extractable: false`
+  (`importDeviceKey`), preserving XSS non-extractability during normal operation.
+- **Setup & restore flows.** Users manage backups in Settings (`EditProfile.jsx` → `MessageRecoveryCard.jsx`).
+  `RecoverySetupDialog` displays the 12 words in a numbered grid with copy-to-clipboard and requires explicit
+  confirmation before closing. `RecoveryRestoreDialog` validates all 12 words and their checksum live, unwraps
+  the backup from `GET /api/keys/backup`, restores the device key into IndexedDB, re-publishes the public key
+  (`POST /api/keys`), and invalidates conversation caches so message history decrypts immediately.
+- **New-device detection (`DeviceKeyPublisher.jsx`).** On sign-in, after `ensureDeviceKey()`, checks
+  `getBackupInfo()` once per session (`sessionStorage` key `circlehub-recovery-prompted:<userId>`). When a
+  server backup exists for a different `deviceId`, raises a Sonner toast with an **"Unlock"** action that opens
+  `RecoveryRestoreDialog`.
+
 ### Known limits in this phase
 
 - The fan-out targets the recipient and the sender's other connections; a pure hub relay still targets the
@@ -308,8 +353,9 @@ relays one opaque `Message.Content` string, so this is a client contract plus th
 - A pure hub relay carries no `conversationId`, so the chime cannot tell whether it belongs to the open
   thread and errs towards a sound too many rather than silence on an unseen message. The web client always
   sends over REST, so this only becomes visible once the mobile client calls the hub directly.
-- The chime rings for anyone with the app open: there is no mute control and no per-conversation preference
-  yet (the owner asked for the sound only, with the door left open for a toggle later).
+- The chime can be muted globally per browser via Settings (`ProfileSettingsForm.jsx` writes
+  `localStorage["circlehub-mute-message-sound"] = "true"`, checked by `shouldChime` in `src/lib/messageChime.js`),
+  though there is no per-conversation mute preference yet.
 - A toast's expiry timer does not run while its tab is in the background, so cards accumulate unseen there and
   dismiss the moment the tab is looked at again. For a hidden tab the chime and the `(n)` title prefix are still
   the channels that carry it.
@@ -402,7 +448,8 @@ removed, role changed, post removed).
   swallow an autoplay refusal): the owner's own file `public/notification-chime.wav` (Mixkit "long pop",
   `mixkit-long-pop-2358.wav`, 226 KB, shipped as WAV because that is what was supplied — one constant to
   swap). It is silent exactly when `/notifications` is open in a tab that is visible *and* focused — the
-  reader watched the row land — and plays for every other case. No mute control, as with messages. Message
+  reader watched the row land — and plays for every other case unless muted in Settings
+  (`localStorage["circlehub-mute-notification-sound"] = "true"`, toggled in `ProfileSettingsForm.jsx`). Message
   events keep their own `message-chime.mp3`; the two sounds identify which channel rang.
 - `src/lib/notificationToast.jsx`: `shouldToastNotification()` is the mirror of `shouldToast()` (silent only
   under `/notifications`), and `showNotificationToast()` deliberately reuses `MessageToast` inside the same
