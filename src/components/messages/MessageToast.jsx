@@ -1,10 +1,15 @@
 import Avatar from "@/components/profileimages/Avatar";
+import { useDecryptedContent } from "@/hooks/useDecryptedContent";
 
 /**
  * The body of a "you have a message" toast. It is a button because there is exactly one thing to do with a
  * notification — go and read it — so the whole card is the click target rather than a link tucked inside it.
+ * The preview arrives raw: a message body is ciphertext until this component decrypts it (notification copy
+ * is plain text and falls straight through the same hook).
  */
 export default function MessageToast({ name, avatarUrl, preview, onOpen }) {
+    const body = useDecryptedContent(preview);
+
     return (
         <button
             type="button"
@@ -22,7 +27,7 @@ export default function MessageToast({ name, avatarUrl, preview, onOpen }) {
                     {name}
                 </span>
                 <span className="type-body-sm text-secondary line-clamp-2">
-                    {preview}
+                    {body}
                 </span>
             </span>
         </button>

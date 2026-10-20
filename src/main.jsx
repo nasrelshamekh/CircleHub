@@ -5,6 +5,7 @@ import App from './App.jsx'
 import ThemeContextProvider from './context/ThemeContext.jsx'
 import AuthContextProvider from './context/AuthContext.jsx'
 import ChatConnectionContextProvider from './context/ChatConnectionContext.jsx'
+import DeviceKeyPublisher from './components/messages/DeviceKeyPublisher'
 import { Toaster } from './components/ui/sonner'
 import { MESSAGE_TOASTER_ID } from './lib/messageToast'
 import SidebarContextProvider from './context/SidebarContext.jsx'
@@ -18,6 +19,9 @@ createRoot(document.getElementById('root')).render(
     <QueryClientProvider client={queryClient}>
       <ThemeContextProvider>
         <AuthContextProvider>
+          {/* Gives this browser its message encryption keypair once per signed-in session, before any
+              conversation is opened — the send path calls ensureDeviceKey again as a safety net. */}
+          <DeviceKeyPublisher />
           <ChatConnectionContextProvider>
             <SidebarContextProvider>
               <App />

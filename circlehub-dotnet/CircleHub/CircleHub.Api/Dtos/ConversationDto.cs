@@ -17,6 +17,11 @@ namespace CircleHub.Api.Dtos
     {
         public Guid Id { get; set; }
 
+        /// <summary>
+        /// The last message's stored body (usually a ciphertext envelope) so the list can render a real
+        /// preview rather than a placeholder. Sized like <see cref="SendMessageDto.Content"/>: no
+        /// DataAnnotations cap, because a truncated envelope is unreadable while still looking plausible.
+        /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Content { get; set; }
 

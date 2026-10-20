@@ -523,6 +523,36 @@ namespace CircleHub.Api.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("CircleHub.Api.Entities.UserDeviceKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DeviceId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("PublicKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "DeviceId")
+                        .IsUnique();
+
+                    b.ToTable("UserDeviceKeys");
+                });
+
             modelBuilder.Entity("CircleHub.Api.Entities.Comment", b =>
                 {
                     b.HasOne("CircleHub.Api.Entities.User", "Author")
@@ -741,6 +771,17 @@ namespace CircleHub.Api.Migrations
                     b.Navigation("Author");
 
                     b.Navigation("Community");
+                });
+
+            modelBuilder.Entity("CircleHub.Api.Entities.UserDeviceKey", b =>
+                {
+                    b.HasOne("CircleHub.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CircleHub.Api.Entities.Community", b =>

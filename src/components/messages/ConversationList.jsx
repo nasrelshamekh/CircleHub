@@ -5,18 +5,35 @@ import PresenceDot from "@/components/messages/PresenceDot";
 import PresenceLabel from "@/components/messages/PresenceLabel";
 import TypingLabel from "@/components/messages/TypingLabel";
 import { isTypingNow, useTypingUsers } from "@/hooks/useTypingIndicator";
+import { useDecryptedContent } from "@/hooks/useDecryptedContent";
 import { formatShortTime } from "@/lib/formatDate";
 
-function previewText(conversation) {
+function previewParts(conversation) {
     const last = conversation.lastMessage;
 
-    if (!last) return "No messages yet";
+    if (!last) return null;
 
     const body = last.hasPost
         ? last.content || "Shared a post"
         : last.content || "";
 
-    return last.isMine ? `You: ${body}` : body;
+    return { body, prefix: last.isMine ? "You: " : "" };
+}
+
+// Its own component because the preview body may be ciphertext and decrypting it is a hook: the row
+// map can't call a hook per row from the list itself.
+function ConversationPreview({ conversation }) {
+    const parts = previewParts(conversation);
+    const body = useDecryptedContent(parts ? parts.body : "");
+
+    if (!parts) return <>No messages yet</>;
+
+    return (
+        <>
+            {parts.prefix}
+            {body}
+        </>
+    );
 }
 
 export default function ConversationList({ conversations, activeId }) {
@@ -95,13 +112,15 @@ export default function ConversationList({ conversations, activeId }) {
                                         <TypingLabel className="type-body-sm truncate" />
                                     ) : (
                                         <span
-                                            className={`type-body-sm truncate ${
+                                            className={`type-body-sm min-w-0 flex-1 truncate ${
                                                 unread
                                                     ? "font-semibold text-primary"
                                                     : "text-secondary"
                                             }`}
                                         >
-                                            {previewText(conversation)}
+                                            <ConversationPreview
+                                                conversation={conversation}
+                                            />
                                         </span>
                                     )}
 

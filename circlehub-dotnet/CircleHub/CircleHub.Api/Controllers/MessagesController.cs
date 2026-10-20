@@ -15,7 +15,14 @@ namespace CircleHub.Api.Controllers
     [Authorize]
     public class MessagesController : ControllerBase
     {
-        private const int MaxContentLength = 2000;
+        // Ciphertext is base64 (≈ +33%) plus one wrap per device of *both* participants, so the cap sizes
+        // the *envelope*, not what a person can type: the client holds its plaintext budget at 5000, which
+        // lands around 9.7 KB with 36-character device ids and two devices on each side. 12000 covers a
+        // realistic multi-device pair with room to spare, and stays under the hub's 16 KB payload cap. The
+        // column is longtext, so only this constant decides. It is also the *only* cap that applies: the
+        // DTO's own [MaxLength] is deliberately higher, because a model-binding truncation would store half
+        // an envelope and still return 200.
+        private const int MaxContentLength = 12000;
 
         private readonly AppDbContext _db;
         private readonly MessagePolicyService _policy;

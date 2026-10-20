@@ -16,12 +16,16 @@ import PresenceLabel from "./PresenceLabel";
 import SharedPostCard from "./SharedPostCard";
 import TypingLabel from "./TypingLabel";
 import { formatMessageDate, formatMessageTime } from "@/lib/formatDate";
+import { useDecryptedContent } from "@/hooks/useDecryptedContent";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 
 function MessageBubble({ message, otherUser }) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     const hasContent = Boolean(message.content);
+    // The stored row is ciphertext; the reader only ever sees the decrypted body (the optimistic
+    // pending bubble never had it — that text came straight from the composer).
+    const text = useDecryptedContent(message.content);
 
     function toggleDetails() {
         setIsExpanded((expanded) => !expanded);
@@ -38,7 +42,7 @@ function MessageBubble({ message, otherUser }) {
         event.stopPropagation();
 
         try {
-            await navigator.clipboard.writeText(message.content);
+            await navigator.clipboard.writeText(text);
             toast.success("Message copied");
         } catch {
             toast.error("Could not copy the message.");
@@ -68,19 +72,19 @@ function MessageBubble({ message, otherUser }) {
                 )}
 
                 <div
-                    className={`flex max-w-[80%] flex-col ${
+                    className={`flex min-w-0 max-w-[80%] flex-col ${
                         message.isMine ? "items-end" : "items-start"
                     }`}
                 >
                     {hasContent && (
                         <div
-                            className={`type-body-sm whitespace-pre-wrap break-words rounded-2xl px-4 py-2 ${
+                            className={`type-body-sm min-w-0 max-w-full whitespace-pre-wrap break-words rounded-2xl px-4 py-2 [overflow-wrap:anywhere] ${
                                 message.isMine
                                     ? "bg-(--primary) text-(--on-primary)"
                                     : "bg-(--surface-container) text-primary"
                             }${message.pending ? " opacity-70" : ""}`}
                         >
-                            {message.content}
+                            {text}
                         </div>
                     )}
 

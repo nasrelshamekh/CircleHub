@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { useSendMessage } from "@/hooks/mutations/useSendMessage";
 import { useTypingBroadcast } from "@/hooks/useTypingBroadcast";
+import { MAX_PLAINTEXT_LENGTH } from "@/services/messageCrypto";
 
 export default function MessageComposer({
     recipientId,
@@ -53,9 +54,13 @@ export default function MessageComposer({
                 onError: (error) => {
                     onOptimisticMessage?.(null);
 
+                    // A server refusal carries its message; a local failure (crypto, the plaintext
+                    // cap) has no response, so say what actually went wrong instead of a generic line.
                     toast.error(
                         error.response?.data?.message ||
-                            "Could not send the message"
+                            (error.response
+                                ? "Could not send the message"
+                                : error.message)
                     );
                 },
             }
@@ -72,7 +77,7 @@ export default function MessageComposer({
                 onChange={handleChange}
                 placeholder="Write a message..."
                 aria-label="Message"
-                maxLength={2000}
+                maxLength={MAX_PLAINTEXT_LENGTH}
                 className="input-surface type-body-sm min-w-0 flex-1 rounded-full border border-(--border) px-4 py-2.5"
             />
 

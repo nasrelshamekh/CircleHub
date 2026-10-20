@@ -22,6 +22,7 @@ namespace CircleHub.Api.Data
         public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
         public DbSet<Message> Messages => Set<Message>();
         public DbSet<Notification> Notifications => Set<Notification>();
+        public DbSet<UserDeviceKey> UserDeviceKeys => Set<UserDeviceKey>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -95,6 +96,16 @@ namespace CircleHub.Api.Data
                 .HasForeignKey(m => m.PostId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // A device key exists only for its owner; deleting the user takes every published key with it.
+            modelBuilder.Entity<UserDeviceKey>()
+                .HasOne(k => k.User)
+                .WithMany()
+                .HasForeignKey(k => k.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserDeviceKey>().Property(k => k.DeviceId).HasMaxLength(64);
+            modelBuilder.Entity<UserDeviceKey>().Property(k => k.PublicKey).HasMaxLength(200);
+
             modelBuilder.Entity<User>().Property(u => u.ProfileVisibility).HasConversion<string>().HasMaxLength(20);
             modelBuilder.Entity<User>().Property(u => u.MessagesFrom).HasConversion<string>().HasMaxLength(20);
             modelBuilder.Entity<Community>().Property(c => c.Visibility).HasConversion<string>();
@@ -117,6 +128,8 @@ namespace CircleHub.Api.Data
             modelBuilder.Entity<ConversationParticipant>().HasIndex(p => new { p.ConversationId, p.UserId }).IsUnique();
             modelBuilder.Entity<Conversation>().HasIndex(c => c.LastMessageAt);
             modelBuilder.Entity<Message>().HasIndex(m => new { m.ConversationId, m.CreatedAt });
+            // One row per device per user: the register call is an upsert on this pair.
+            modelBuilder.Entity<UserDeviceKey>().HasIndex(k => new { k.UserId, k.DeviceId }).IsUnique();
             // The feed is always "this user's rows, newest first"; the unread count reads the same index.
             modelBuilder.Entity<Notification>().HasIndex(n => new { n.UserId, n.CreatedAt });
         }
