@@ -18,7 +18,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 5 | `DeviceToken` entity + registration endpoints + migration | done, verified |
 | 6 | Expo Push Service fallback for offline recipients | done, verified |
 | 7 | Web client: `@microsoft/signalr` connection, live thread + unread badge, then polish (status, optimistic send, scroll, tab title) | done, verified |
-| 8 | Mobile client (SignalR + Expo push) | deferred until the web app is accepted |
+| 8 | Mobile client (`circlehub-mobile`: SignalR, presence, typing, Expo push, `/notifications`, `ENC:v1:` E2EE, 12-word recovery) | done, verified |
 | 9 | Presence: online / last seen in the thread header and the conversation list | done, verified |
 | 10 | Typing indicator: `SendTyping` hub signal + web client (thread header + conversation list) | done, verified |
 | 11 | Incoming-message sound: committed sound file (the owner's own), silent while the reader is looking at that thread | done, verified |
@@ -1017,11 +1017,36 @@ Verification (`step5-6-e2e.ps1` + `sigtest\step5-6-test.mjs` against a local moc
 | `POST /api/messages` to online recipient (connected via SignalR) | Delivered live over SignalR; 0 Expo push requests sent |
 | `DELETE /api/devices` (query & route) | Removes remaining test tokens cleanly (0 test rows left in DB) |
 
+### Step 8 — Mobile Client (`circlehub-mobile`: SignalR, Presence, Typing, Expo Push, Notifications, E2EE & 12-Word Recovery) (done, verified)
+
+Implemented full real-time messaging, notification feed, Expo push registration, and WebCrypto-interoperable end-to-end encryption + 12-word BIP39 key recovery in `c:\Projects\circlehub-mobile`:
+
+Added & updated:
+
+- **Dependencies (Expo SDK 57):** `@microsoft/signalr`, `expo-notifications`, `expo-crypto`, `@noble/curves`, `@noble/hashes`, `@noble/ciphers`.
+- **SignalR Real-Time, Presence & Typing (`src/services/chatHub.ts`, `src/context/chatconnectioncontext.tsx`, `src/hooks/useTypingIndicator.ts`, `src/hooks/useTypingBroadcast.ts`):**
+  - Connects to `/hubs/chat` with `accessTokenFactory` reading the JWT from `expo-secure-store`, retrying every 10s indefinitely and retrying initial `start()` every 5s.
+  - Handles `ReceiveEncryptedMessage` (invalidating `queryKeys.conversations()`), `NotificationCreated` (invalidating `queryKeys.notifications()`), `PresenceChanged` (patching `isOnline` + `lastSeenAt` directly into list and thread caches without refetching), and `TypingChanged` (6s deadline per sender with 1s sweep).
+  - Added `PresenceLabel`, `PresenceDot`, `TypingLabel`, `ChatConnectionStatus`, and `NewMessageModal` (`src/components/messages/*`).
+  - Added optimistic send bubbles (`pending: true`) and 1-click **Retry** (`failed: true`) in `src/app/(tabs)/messages/[id].tsx` and `src/components/messages/messagethread.tsx`.
+- **Expo Push Registration (`src/services/pushNotifications.ts`, `src/api/devices.ts`, `src/context/authcontext.tsx`):**
+  - Requests permission on physical devices, obtains the Expo push token, and registers it with `POST /api/devices` on sign-in; unregisters with `DELETE /api/devices` on `signOut`.
+  - Handles notification tap events (`addNotificationResponseReceivedListener`) to navigate directly to `/messages/<conversationId>` or `/notifications`.
+- **In-App Notification Feed (`src/app/(tabs)/notifications.tsx`, `src/hooks/useNotifications.ts`, `src/lib/notificationCopy.ts`, `src/components/header.tsx`):**
+  - Full `/notifications` screen with once-per-visit `markNotificationsSeen` stamp, **Mark all as read** button, per-row mark-as-read and delete actions, and deep-linking (`CommunityJoinRequested` opens `/community-manage?slug=…&tab=requests`).
+  - Live unread count badge on the header Bell icon (`src/components/header.tsx`).
+- **End-to-End Encryption & 12-Word BIP39 Recovery (`src/services/messageCrypto.ts`, `src/services/keyRecovery.ts`, `src/services/bip39Words.ts`, `src/hooks/useDecryptedContent.ts`, `src/components/profile/messagerecoverycard.tsx`):**
+  - Byte-for-byte WebCrypto-interoperable `ENC:v1:` envelope (`ECDH-P256+HKDF-SHA256+AES-256-GCM`) using `@noble/curves/nist.js` (`p256`), `@noble/hashes/hkdf.js`, and `@noble/ciphers/aes.js`, storing the per-user device keypair in `expo-secure-store` and publishing the 65-byte uncompressed P-256 public key to `POST /api/keys`.
+  - 12-word BIP39 recovery phrase generation, checksum verification, and `PBKDF2-HMAC-SHA-256` (310,000 iterations) + `AES-256-GCM` PKCS#8 P-256 key wrapping/unwrapping (`GET/PUT/DELETE /api/keys/backup`), with setup and unlock modals in the mobile Settings tab (`EditProfileScreen`).
+
+Verification in `c:\Projects\circlehub-mobile`:
+- `npx tsc --noEmit`: 0 errors.
+- `npm run lint`: 0 errors, 0 warnings.
+- `npm test -- --watchAll=false`: 10/10 test suites passed (73/73 tests, including `__tests__/lib/messageCryptoAndRecovery.test.ts`).
+
 ## Open questions
 
-- Mobile parity for Step 17: the mobile client must publish its own device key and decrypt the same envelope
-  (the wrap list makes this additive — the server and the format do not change). It should also be able to
-  *restore* from the phrase, so a phone can read history the same way a browser does.
+- None — all backend, web, and mobile steps (Steps 1–19) are complete and verified.
 
 ## Incidents
 

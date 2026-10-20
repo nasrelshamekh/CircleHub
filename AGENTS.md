@@ -377,12 +377,14 @@ and the UI components `src/components/editprofile/MessageRecoveryCard.jsx`,
   wraps the device private key for backup without compromising non-extractable storage in IndexedDB. Stored
   in `UserKeyBackups` via `KeyBackupController` (`/api/keys/backup`). Clearing site data or opening a new browser
   allows restoring message history by entering the phrase.
-- **Encryption is opportunistic, not guaranteed.** A recipient who has not published a key (a browser that has
-  never signed in since Step 17, or the mobile client before its own step) receives plaintext, and the sender
-  is not told. This is what keeps the rollout from breaking conversations, but it does mean `Message.Content`
-  is not uniformly ciphertext and a mixed history is normal.
-- Mobile parity has not landed: the mobile client neither publishes a device key nor decrypts the envelope
-  (the wrap list makes this additive — no server or format change is needed).
+- **Encryption is opportunistic, not guaranteed.** A recipient who has not published a key receives plaintext,
+  and the sender is not told. This is what keeps the rollout from breaking conversations, but it does mean
+  `Message.Content` is not uniformly ciphertext and a mixed history is normal.
+- **Mobile parity (`c:\Projects\circlehub-mobile`, Step 8):** The Expo mobile client implements full SignalR
+  real-time delivery, presence, typing indicators, Expo push token registration (`POST/DELETE /api/devices`),
+  the `/notifications` screen, WebCrypto-interoperable `ENC:v1:` E2EE (`@noble/curves`, `@noble/hashes`,
+  `@noble/ciphers` + `expo-secure-store`), and 12-word BIP39 recovery phrase setup & restore (`PBKDF2-HMAC-SHA-256`
+  310,000 iterations).
 
 ## In-app notification feed
 

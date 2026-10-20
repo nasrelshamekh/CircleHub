@@ -164,6 +164,9 @@ export default function MessageThread({
 }) {
     const bottomRef = useRef(null);
     const scrollRef = useRef(null);
+    const contentRef = useRef(null);
+    const isAtBottomRef = useRef(true);
+    const lastScrollTopRef = useRef(0);
     const anchorRef = useRef({ conversationId: null, firstId: null, height: 0 });
     const previousConversationRef = useRef(conversationId);
 
@@ -190,17 +193,44 @@ export default function MessageThread({
         Boolean(pendingMessage) &&
         !messages.some((message) => message.id === pendingMessage.id);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
+        const element = scrollRef.current;
         const conversationChanged =
             previousConversationRef.current !== conversationId;
         previousConversationRef.current = conversationId;
 
+        if (conversationChanged) {
+            isAtBottomRef.current = true;
+            lastScrollTopRef.current = 0;
+        }
+
         // A conversation always opens at its latest message; a new one only follows the reader down when
         // they are already at the bottom, so catching up on history is not interrupted.
-        if (conversationChanged || isAtBottom) {
-            bottomRef.current?.scrollIntoView({ block: "end" });
+        if (element && (conversationChanged || isAtBottomRef.current)) {
+            element.scrollTop = element.scrollHeight;
+            lastScrollTopRef.current = element.scrollTop;
         }
-    }, [conversationId, lastMessageId, isAtBottom]);
+    }, [conversationId, lastMessageId]);
+
+    useEffect(() => {
+        const contentEl = contentRef.current;
+        const scrollEl = scrollRef.current;
+        if (!contentEl || !scrollEl || typeof ResizeObserver === "undefined") {
+            return undefined;
+        }
+
+        // Encrypted messages resolve asynchronously via WebCrypto after initial mount; keep the scroll
+        // container pinned to the bottom as message bubbles expand while the reader is at the bottom.
+        const observer = new ResizeObserver(() => {
+            if (isAtBottomRef.current) {
+                scrollEl.scrollTop = scrollEl.scrollHeight;
+                lastScrollTopRef.current = scrollEl.scrollTop;
+            }
+        });
+
+        observer.observe(contentEl);
+        return () => observer.disconnect();
+    }, [conversationId]);
 
     useLayoutEffect(() => {
         const element = scrollRef.current;
@@ -214,6 +244,7 @@ export default function MessageThread({
 
         if (prepended) {
             element.scrollTop += element.scrollHeight - anchor.height;
+            lastScrollTopRef.current = element.scrollTop;
         }
 
         anchorRef.current = {
@@ -224,9 +255,10 @@ export default function MessageThread({
     }, [conversationId, firstMessageId, messages.length]);
 
     function scrollToLatest() {
-        bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+        isAtBottomRef.current = true;
         setIsAtBottom(true);
         setSeen({ conversationId, messageId: lastMessageId });
+        bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
     }
 
     function handleOptimisticMessage(message) {
@@ -234,21 +266,31 @@ export default function MessageThread({
 
         // Sending is a deliberate jump to the end, even when the reader had scrolled up.
         if (message) {
-            bottomRef.current?.scrollIntoView({
-                block: "end",
-                behavior: "smooth",
-            });
+            isAtBottomRef.current = true;
+            setIsAtBottom(true);
+            const element = scrollRef.current;
+            if (element) {
+                element.scrollTop = element.scrollHeight;
+                lastScrollTopRef.current = element.scrollTop;
+            }
         }
     }
 
     function handleScroll(event) {
         const element = event.currentTarget;
+        const currentScrollTop = element.scrollTop;
+        const scrolledUp = currentScrollTop < lastScrollTopRef.current - 2;
+        lastScrollTopRef.current = currentScrollTop;
+
         const distanceFromBottom =
-            element.scrollHeight - element.scrollTop - element.clientHeight;
+            element.scrollHeight - currentScrollTop - element.clientHeight;
         const nearBottom = distanceFromBottom < 80;
+        const nextAtBottom =
+            nearBottom || (isAtBottomRef.current && !scrolledUp);
+        isAtBottomRef.current = nextAtBottom;
 
         setIsAtBottom((current) =>
-            current === nearBottom ? current : nearBottom
+            current === nextAtBottom ? current : nextAtBottom
         );
 
         // Recorded on any scroll, not only at the bottom: a thread that opens already at the bottom has no
@@ -308,45 +350,49 @@ export default function MessageThread({
                 <div
                     ref={scrollRef}
                     onScroll={handleScroll}
-                    className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 [overflow-anchor:none]"
+                    className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 [overflow-anchor:none]"
                 >
-                    {isLoading && (
-                        <p className="type-body-sm text-secondary">Loading…</p>
-                    )}
+                    <div ref={contentRef} className="flex flex-col gap-4">
+                        {isLoading && (
+                            <p className="type-body-sm text-secondary">
+                                Loading…
+                            </p>
+                        )}
 
-                    {isLoadingOlder && (
-                        <p className="type-body-sm text-center text-secondary">
-                            Loading earlier messages…
-                        </p>
-                    )}
+                        {isLoadingOlder && (
+                            <p className="type-body-sm text-center text-secondary">
+                                Loading earlier messages…
+                            </p>
+                        )}
 
-                    {!isLoading && messages.length === 0 && (
-                        <p className="type-body-sm m-auto text-secondary">
-                            No messages yet. Say hello.
-                        </p>
-                    )}
+                        {!isLoading && messages.length === 0 && (
+                            <p className="type-body-sm m-auto py-12 text-secondary">
+                                No messages yet. Say hello.
+                            </p>
+                        )}
 
-                    {messages.map((message, index) => (
-                        <Fragment key={message.id}>
-                            {isNewDay(
-                                message.createdAt,
-                                messages[index - 1]?.createdAt
-                            ) && <DateDivider value={message.createdAt} />}
+                        {messages.map((message, index) => (
+                            <Fragment key={message.id}>
+                                {isNewDay(
+                                    message.createdAt,
+                                    messages[index - 1]?.createdAt
+                                ) && <DateDivider value={message.createdAt} />}
 
+                                <MessageBubble
+                                    message={message}
+                                    otherUser={otherUser}
+                                />
+                            </Fragment>
+                        ))}
+
+                        {showPendingMessage && (
                             <MessageBubble
-                                message={message}
+                                message={pendingMessage}
                                 otherUser={otherUser}
+                                onRetry={(msg) => setRetryText(msg.content)}
                             />
-                        </Fragment>
-                    ))}
-
-                    {showPendingMessage && (
-                        <MessageBubble
-                            message={pendingMessage}
-                            otherUser={otherUser}
-                            onRetry={(msg) => setRetryText(msg.content)}
-                        />
-                    )}
+                        )}
+                    </div>
 
                     <div ref={bottomRef} />
                 </div>
