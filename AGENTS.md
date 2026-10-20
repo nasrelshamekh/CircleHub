@@ -356,10 +356,14 @@ and the UI components `src/components/editprofile/MessageRecoveryCard.jsx`,
   confirmation before closing. `RecoveryRestoreDialog` validates all 12 words and their checksum live, unwraps
   the backup from `GET /api/keys/backup`, restores the device key into IndexedDB, re-publishes the public key
   (`POST /api/keys`), and invalidates conversation caches so message history decrypts immediately.
-- **New-device detection (`DeviceKeyPublisher.jsx`).** On sign-in, after `ensureDeviceKey()`, checks
-  `getBackupInfo()` once per session (`sessionStorage` key `circlehub-recovery-prompted:<userId>`). When a
-  server backup exists for a different `deviceId`, raises a Sonner toast with an **"Unlock"** action that opens
-  `RecoveryRestoreDialog`.
+- **New-device detection (`DeviceKeyPublisher.jsx`).** On sign-in, after `ensureDeviceKey()`, reads two
+  `localStorage` flags and — when neither is set — calls `hasBackup()`. If a server backup exists, a Sonner
+  toast offers **"Unlock"** (opens `RecoveryRestoreDialog`) and **"Later"** (writes
+  `circlehub-recovery-prompt-dismissed`). A successful restore writes `…-restored` and `…-dismissed`; a
+  successful setup writes `…-dismissed` (the browser that created the backup already reads its own history);
+  removing the backup clears both, so a backup created later can prompt again. The flags are per-browser,
+  not per-account, and any network or policy failure in the background check stays silent. The mobile app
+  mirrors this prompt with the same flag names in `src/services/recoveryPrompt.ts`.
 
 ### Known limits in this phase
 
@@ -399,8 +403,10 @@ and the UI components `src/components/editprofile/MessageRecoveryCard.jsx`,
   with case-insensitive GUID matching), categorized native emoji picker (`emojipicker.tsx`), seamless optimistic
   message handoff (pre-seeded `settledCache` + server ID transition before query refetch), Expo push token
   registration (`POST/DELETE /api/devices`), the `/notifications` screen, WebCrypto-interoperable `ENC:v1:` E2EE
-  (`@noble/curves`, `@noble/hashes`, `@noble/ciphers` + `expo-secure-store`), and fast 12-word BIP39 recovery
-  phrase setup & restore (`PBKDF2-HMAC-SHA-256` with a single 30ms UI yield + tight-loop `pbkdf2`). See
+  (`@noble/curves`, `@noble/hashes`, `@noble/ciphers` + `expo-secure-store`), fast 12-word BIP39 recovery
+  phrase setup & restore (`PBKDF2-HMAC-SHA-256` with a single 30ms UI yield + tight-loop `pbkdf2`), and the
+  new-device unlock prompt mirroring web `DeviceKeyPublisher` (sign-in `Alert` → `/edit-profile?recoveryUnlock=1`,
+  flags in `recoveryPrompt.ts`). See
   `c:\Projects\circlehub-mobile\docs\updates-and-fixes.md` for detailed bug root causes and fixes.
 
 ## In-app notification feed

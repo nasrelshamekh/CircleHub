@@ -38,8 +38,8 @@ A modal shown when a backup exists on the server and the user unlocks their hist
 
 Updated to:
 - Ensure the local device key is published via `ensureDeviceKey()`
-- Check `getBackupInfo()` once per signed-in session (tracked per user in `sessionStorage` under `circlehub-recovery-prompted:<id>`)
-- If a server backup exists for a different `deviceId` than the local browser's, surface an unobtrusive Sonner toast with an **"Unlock"** action button that opens `RecoveryRestoreDialog` directly
+- Check `hasBackup()` once per sign-in unless a `localStorage` flag settles the prompt first (`circlehub-recovery-prompt-dismissed` is written by "Later" or by a successful setup on this browser; `circlehub-recovery-restored` is written by a successful restore; removing the backup clears both)
+- If a server backup exists, surface an unobtrusive Sonner toast with an **"Unlock"** action button that opens `RecoveryRestoreDialog` directly, plus a **"Later"** action that persists the dismissal
 
 ### 5. Settings tab integration
 **File:** `src/pages/EditProfile/EditProfile.jsx`

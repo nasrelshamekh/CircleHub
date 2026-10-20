@@ -38,6 +38,9 @@ export default function RecoverySetupDialog({ open, onOpenChange, onSuccess }) {
             const result = await initializeRecovery();
             setPhrase(result.phrase);
             setStep("display");
+            // The backup was created from this browser's own key, so it already reads its history:
+            // the sign-in unlock prompt must never fire here.
+            localStorage.setItem("circlehub-recovery-prompt-dismissed", "true");
         } catch (error) {
             toast.error(
                 error.response?.data?.message ||
