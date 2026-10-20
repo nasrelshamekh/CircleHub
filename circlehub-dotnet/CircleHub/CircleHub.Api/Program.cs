@@ -1,4 +1,4 @@
-﻿using CircleHub.Api.Data;
+using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
 using CircleHub.Api.Filters;
@@ -56,6 +56,7 @@ builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<EmailVerificationService>();
 builder.Services.AddScoped<PasswordResetService>();
 builder.Services.AddScoped<MessagePolicyService>();
+builder.Services.AddHttpClient<ExpoPushService>();
 builder.Services.AddScoped<MessageDeliveryService>();
 builder.Services.AddScoped<PresenceService>();
 builder.Services.AddScoped<NotificationService>();

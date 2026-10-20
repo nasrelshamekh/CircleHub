@@ -6,28 +6,31 @@ namespace CircleHub.Api.Services
 {
     /// <summary>
     /// Mirrors a stored message to the recipient's live connections and to the sender's own other
-    /// connections.
+    /// connections, and falls back to the Expo Push Service when the recipient has no live connection.
     /// <para>
     /// The REST write path stays the single source of truth (history, unread counts); this only tells
-    /// whoever is connected right now that the message exists. Anyone else loads it on their next
-    /// request, and the push fallback will hang off the same place. The sender's other tabs and devices
-    /// are echoed too, so a message sent from one tab appears on the rest without waiting for a refetch;
-    /// the client recognises its own sender id and invalidates without ringing or toasting.
+    /// whoever is connected right now that the message exists, or nudges their registered mobile devices
+    /// when they are offline. The sender's other tabs and devices are echoed too, so a message sent from
+    /// one tab appears on the rest without waiting for a refetch; the client recognises its own sender id
+    /// and invalidates without ringing or toasting.
     /// </para>
     /// </summary>
     public class MessageDeliveryService
     {
         private readonly IHubContext<ChatHub> _hub;
         private readonly IConnectionTracker _connections;
+        private readonly ExpoPushService _push;
         private readonly ILogger<MessageDeliveryService> _logger;
 
         public MessageDeliveryService(
             IHubContext<ChatHub> hub,
             IConnectionTracker connections,
+            ExpoPushService push,
             ILogger<MessageDeliveryService> logger)
         {
             _hub = hub;
             _connections = connections;
+            _push = push;
             _logger = logger;
         }
 
@@ -35,6 +38,7 @@ namespace CircleHub.Api.Services
             Guid recipientId,
             Guid senderId,
             EncryptedMessageEnvelope envelope,
+            string? senderName = null,
             CancellationToken cancellationToken = default)
         {
             // Two audiences, one call: the recipient's live connections get the message, and the
@@ -53,6 +57,26 @@ namespace CircleHub.Api.Services
                     "Recipient {RecipientId} has no live connection; message {MessageId} is stored but was not delivered in real time",
                     recipientId,
                     envelope.MessageId);
+
+                // Message.Content is opaque (and usually an ENC:v1: E2EE envelope), so the push banner
+                // deliberately never includes or inspects the message text.
+                var title = string.IsNullOrWhiteSpace(senderName) ? "New message" : senderName;
+                var body = string.IsNullOrEmpty(envelope.EncryptedPayload)
+                    ? "Shared a post"
+                    : "Sent you a message";
+
+                await _push.SendToUserAsync(
+                    recipientId,
+                    title,
+                    body,
+                    new
+                    {
+                        type = "message",
+                        conversationId = envelope.ConversationId,
+                        messageId = envelope.MessageId,
+                        senderId = envelope.SenderId
+                    },
+                    cancellationToken);
             }
         }
     }

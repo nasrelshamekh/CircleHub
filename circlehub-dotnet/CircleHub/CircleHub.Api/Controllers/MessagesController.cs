@@ -314,6 +314,8 @@ namespace CircleHub.Api.Controllers
 
             await _db.SaveChangesAsync();
 
+            var sender = await _db.Users.FirstAsync(u => u.Id == currentUserId);
+
             // Mirror the stored message to whoever the recipient has connected right now, and to the
             // sender's own other tabs and devices. This runs after the commit so a client that reacts by
             // fetching always finds the row, and it deliberately ignores RequestAborted: the message
@@ -322,16 +324,18 @@ namespace CircleHub.Api.Controllers
             // message carries no content and used to skip this entirely, which made it the one message
             // that arrived silently; it now fans out with an empty payload, and the client announces it
             // ("Shared a post") exactly like a text one.
-            await _delivery.DeliverAsync(recipient.Id, currentUserId, new EncryptedMessageEnvelope
-            {
-                SenderId = currentUserId.ToString(),
-                EncryptedPayload = message.Content ?? string.Empty,
-                SentAt = message.CreatedAt,
-                MessageId = message.Id.ToString(),
-                ConversationId = conversation.Id.ToString()
-            });
-
-            var sender = await _db.Users.FirstAsync(u => u.Id == currentUserId);
+            await _delivery.DeliverAsync(
+                recipient.Id,
+                currentUserId,
+                new EncryptedMessageEnvelope
+                {
+                    SenderId = currentUserId.ToString(),
+                    EncryptedPayload = message.Content ?? string.Empty,
+                    SentAt = message.CreatedAt,
+                    MessageId = message.Id.ToString(),
+                    ConversationId = conversation.Id.ToString()
+                },
+                senderName: sender.Name);
 
             return Ok(new ApiResponse<SendMessageResultDto>
             {

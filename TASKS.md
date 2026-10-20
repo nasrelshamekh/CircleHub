@@ -15,8 +15,8 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 2 | Hub, user-id mapping, JWT-over-query-string, CORS | done, verified |
 | 3 | Recipient policy on the hub + presence tracking | done, verified |
 | 4 | Hub fan-out from the REST send path | done, verified |
-| 5 | `DeviceToken` entity + registration endpoints + migration | deferred to the mobile phase |
-| 6 | Expo Push Service fallback for offline recipients | deferred to the mobile phase |
+| 5 | `DeviceToken` entity + registration endpoints + migration | done, verified |
+| 6 | Expo Push Service fallback for offline recipients | done, verified |
 | 7 | Web client: `@microsoft/signalr` connection, live thread + unread badge, then polish (status, optimistic send, scroll, tab title) | done, verified |
 | 8 | Mobile client (SignalR + Expo push) | deferred until the web app is accepted |
 | 9 | Presence: online / last seen in the thread header and the conversation list | done, verified |
@@ -976,6 +976,46 @@ Added & updated:
 
 Verification: `npm run lint` 0 warnings / 0 errors, `npm run build` succeeded in ~600ms (0 chunk size warnings),
 `dotnet build -o <temp>` 0 warnings / 0 errors.
+
+### Step 5 & Step 6 — `DeviceToken` Registration & Expo Push Service Fallback (done, verified)
+
+Implemented the server-side Expo push infrastructure for the mobile phase:
+
+Added & updated:
+
+- `Entities/DeviceToken.cs` + `Data/AppDbContext.cs` + migration `20261020144854_AddDeviceTokens` — `DeviceTokens`
+  table (`Id`, `UserId`, `Token` `varchar(255)`, `Platform` `varchar(20)`, `CreatedAt`, `UpdatedAt`) with cascade
+  delete on `User`, a unique index on `Token`, and a lookup index on `UserId`. Indexing `Token` as unique means
+  re-registering on the same physical phone (even after switching user accounts without a prior sign-out) atomically
+  rebinds the token to the active account via `INSERT ... ON DUPLICATE KEY UPDATE`.
+- `Dtos/DeviceTokenDtos.cs` + `Controllers/DevicesController.cs` — `POST /api/devices` validates Expo push tokens
+  (`ExponentPushToken[…]` / `ExpoPushToken[…]`) and platform (`ios`, `android`, `unknown`), and upserts the row
+  scoped to the JWT `sub` claim. `DELETE /api/devices/{token}` and `DELETE /api/devices?token=…` (or JSON body)
+  remove the token on sign-out, owner-scoped so a user can never delete another user's token.
+- `Services/ExpoPushService.cs` (registered via `AddHttpClient<ExpoPushService>()` in `Program.cs`) — batches
+  registered device tokens (up to 100 per request) and posts to `https://exp.host/--/api/v2/push/send`
+  (configurable via `ExpoPush:Endpoint` and optional `ExpoPush:AccessToken`). Inspects per-ticket responses and
+  immediately deletes any token from `DeviceTokens` where Expo reports `details.error == "DeviceNotRegistered"`.
+- `Services/MessageDeliveryService.cs` + `Controllers/MessagesController.cs` + `Services/NotificationService.cs` —
+  when `!_connections.IsOnline(recipientId)`, falls back to `ExpoPushService.SendToUserAsync`. Message pushes use
+  the sender's display name as the title and `"Sent you a message"` / `"Shared a post"` as the body so `ENC:v1:`
+  ciphertext is never inspected or leaked on lock screens.
+
+Verification (`step5-6-e2e.ps1` + `sigtest\step5-6-test.mjs` against a local mock Expo Push HTTP server and MySQL 8,
+12/12 checks passing):
+
+| Check | Result |
+| --- | --- |
+| `dotnet build` | 0 warnings, 0 errors |
+| `POST /api/devices` without JWT | 401 |
+| `POST /api/devices` with non-Expo token or invalid platform | 400 |
+| `POST /api/devices` register + repeat upsert | 200, updates platform and timestamp in place |
+| Account switch on shared physical device token | Rebound to new user; previous user's `DELETE` cannot remove it |
+| `POST /api/messages` to offline recipient (2 registered tokens: 1 valid, 1 stale) | 200; Expo Push Service receives 1 batch with both tokens |
+| Push banner E2EE privacy | `title="Alice Wonder"`, `body="Sent you a message"` (`ENC:v1:` never leaked) |
+| `DeviceNotRegistered` token pruning | Stale token automatically deleted from `DeviceTokens`; valid token kept |
+| `POST /api/messages` to online recipient (connected via SignalR) | Delivered live over SignalR; 0 Expo push requests sent |
+| `DELETE /api/devices` (query & route) | Removes remaining test tokens cleanly (0 test rows left in DB) |
 
 ## Open questions
 

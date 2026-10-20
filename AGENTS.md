@@ -106,6 +106,15 @@ project owner before implementation; see `TASKS.md` for status.
   `Entities/UserKeyBackup` (unique `UserId`, migration `AddUserKeyBackups`), holding `WrappedAccountKey`
   (`varchar(500)`), `Salt` (`varchar(100)`), `KdfIterations` and `KdfAlgorithm` (`varchar(40)`). The server
   stores the encrypted bundle opaquely and never sees the 12-word recovery phrase or unwrapped keys.
+- Push token directory & Expo fallback (Steps 5 & 6): `POST /api/devices` registers or refreshes an Expo push
+  token (`ExponentPushToken[…]` / `ExpoPushToken[…]`) and `DELETE /api/devices/{token}` (or
+  `DELETE /api/devices?token=…`) removes it on sign-out (`Controllers/DevicesController.cs`). Storage is
+  `Entities/DeviceToken` (unique `Token`, indexed `UserId`, migration `AddDeviceTokens`); upserting on `Token`
+  rebinds the physical device to the newly signed-in user if accounts are switched on the same phone. When
+  `!_connections.IsOnline(recipientId)`, `MessageDeliveryService` and `NotificationService` call
+  `Services/ExpoPushService` (`https://exp.host/--/api/v2/push/send`), which sends a generic `"Sent you a message"`
+  / `"Shared a post"` banner (never inspecting or leaking `ENC:v1:` ciphertext) and automatically prunes any token
+  from `DeviceTokens` when Expo returns `DeviceNotRegistered`.
 
 ### Security invariants
 
@@ -551,6 +560,10 @@ database by the throwaway harness in `%TEMP%\opencode` (started so it does not d
   the envelope round-trip (both participants' devices wrapped), the no-key plaintext fallback, and the
   over-cap server rejection. `s17b-cleanup.ps1 [-Apply]` deletes the rows and the browser-published device key
   it leaves behind and repairs `Conversations.LastMessageAt`.
+- `step5-6-e2e.ps1` + `sigtest\step5-6-test.mjs` — the Step 5 & Step 6 contract (12 checks) against a local mock
+  Expo Push HTTP server and MySQL 8: `POST /api/devices` validation and upsert, account-switch token rebinding,
+  offline message push fallback, E2EE ciphertext privacy on push banners, automatic `DeviceNotRegistered` token
+  pruning in MySQL, online recipient push suppression, and `DELETE /api/devices` cleanup.
 
 It requires MySQL running locally plus `npm install @microsoft/signalr` in that directory. Keep it in sync
 with the hub contract when the contract changes.

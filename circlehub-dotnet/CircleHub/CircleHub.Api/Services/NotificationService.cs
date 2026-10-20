@@ -12,21 +12,31 @@ namespace CircleHub.Api.Services
     /// The single writer for the notification feed, so "never notify yourself" and the de-duplication of
     /// repeatable actions live in one place instead of at every call site.
     /// <para>
-    /// Each call commits on its own and then nudges the recipient's live connections over the hub. That is
-    /// deliberately <em>after</em> the action's own commit: the notification is a side effect, so a crash in
-    /// between loses one row rather than leaving a notification pointing at something that never happened.
-    /// A recipient with no live connection simply gets the row, and sees it on their next fetch.
+    /// Each call commits on its own and then nudges the recipient's live connections over the hub, falling
+    /// back to the Expo Push Service when the recipient has no live connection. That is deliberately
+    /// <em>after</em> the action's own commit: the notification is a side effect, so a crash in between loses
+    /// one row rather than leaving a notification pointing at something that never happened.
     /// </para>
     /// </summary>
     public class NotificationService
     {
+        private const string FallbackCommunity = "a community";
+
         private readonly AppDbContext _db;
         private readonly IHubContext<ChatHub> _hub;
+        private readonly IConnectionTracker _connections;
+        private readonly ExpoPushService _push;
 
-        public NotificationService(AppDbContext db, IHubContext<ChatHub> hub)
+        public NotificationService(
+            AppDbContext db,
+            IHubContext<ChatHub> hub,
+            IConnectionTracker connections,
+            ExpoPushService push)
         {
             _db = db;
             _hub = hub;
+            _connections = connections;
+            _push = push;
         }
 
         public Task NotifyFollowAsync(Guid actorId, Guid recipientId) =>
@@ -163,7 +173,42 @@ namespace CircleHub.Api.Services
                 // caller hanging up mid-flight must not swallow the nudge — same rule as the message fan-out.
                 await _hub.Clients.User(recipientId.ToString())
                     .SendAsync(ChatHub.NotificationCreatedMethod, dto);
+
+                if (!_connections.IsOnline(recipientId))
+                {
+                    await _push.SendToUserAsync(
+                        recipientId,
+                        dto.Actor.Name,
+                        $"{dto.Actor.Name} {BuildSentence(type, dto.CommunityName)}",
+                        new
+                        {
+                            type = "notification",
+                            notificationId = dto.Id.ToString(),
+                            notificationType = dto.Type,
+                            postId = dto.PostId?.ToString(),
+                            communitySlug = dto.CommunitySlug,
+                            actorUsername = dto.Actor.Username
+                        });
+                }
             }
+        }
+
+        private static string BuildSentence(NotificationType type, string? communityName)
+        {
+            var community = string.IsNullOrWhiteSpace(communityName) ? FallbackCommunity : communityName;
+            return type switch
+            {
+                NotificationType.Follow => "started following you.",
+                NotificationType.PostLike => "liked your post.",
+                NotificationType.PostComment => "commented on your post.",
+                NotificationType.CommunityJoinRequested => $"asked to join {community}.",
+                NotificationType.CommunityJoinRequestApproved => $"approved your request to join {community}.",
+                NotificationType.CommunityJoinRequestRejected => $"declined your request to join {community}.",
+                NotificationType.CommunityMemberRemoved => $"removed you from {community}.",
+                NotificationType.CommunityRoleChanged => $"changed your role in {community}.",
+                NotificationType.CommunityPostRemoved => $"removed your post in {community}.",
+                _ => "sent you a notification."
+            };
         }
     }
 }
