@@ -26,6 +26,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 13 | In-app notification feed (`/notifications`): follows, likes, comments, community membership and moderation events | done, verified |
 | 14 | Notification feed follow-up: live count badge, per-row mark-as-read/delete, notification chime (owner's wav), message-style toast | done, verified |
 | 15 | Notification polish: join-request rows open the manage page on Requests; sidebar count pills sit on the icons | done, verified |
+| 16 | Messaging fan-out gaps: post-only messages delivered live, sender's other tabs hear their own echo, typing rate limit on the hub | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -670,6 +671,63 @@ owner's click-test), the two pending join requests they produced (`frank_fit` �
 Developers United), bob's labelled `pill-check comment`, and the two follows created in the same seconds as
 the deleted Follow notifications. The two pre-existing join requests and bob→alice's harness follow were
 deliberately left alone.
+
+### Step 16 — Messaging fan-out gaps: post-only live delivery, sender echo, typing rate limit (done, verified)
+
+Three gaps the owner picked from the messaging phase (the background-tab toast timer was reviewed and
+explicitly excluded as minor — it stays a known limit):
+
+**Post-only messages now fan out.** `MessagesController.SendMessage` skipped the hub fan-out whenever
+`Content` was empty, so a message that only carries a shared post arrived silently: badge and preview only on
+the next refetch, never a chime or a toast. The content guard is gone — every send fans out — and the
+envelope carries `EncryptedPayload = message.Content ?? string.Empty`, so the receiving client gets a defined
+`""` and the post-only fallback preview (`"Shared a post"`, the same wording `ConversationList` shows).
+
+**The sender hears their own message.** `MessageDeliveryService.DeliverAsync` now routes with
+`_hub.Clients.Users(recipient, sender)`: the sender's *other* tabs/devices get the same envelope as the
+recipient, which is what keeps a second tab in sync instead of waiting for the next refetch. The sending tab
+receives its own echo too and treats it as a plain invalidation — `ChatConnectionContext` skips the chime and
+the toast when `senderId === myUserIdRef.current` but still invalidates `conversations()`. The guard lives in
+the single `RECEIVE_MESSAGE_EVENT` handler rather than in `messageChime.js`/`messageToast.jsx`, so the policy
+libraries keep their one job (they are also shared with the notification chime/toast). `myUserIdRef` is
+written in a `useEffect` because eslint's `react-hooks/refs` rule rejects ref writes during render. The
+hub-relay path (`SendEncryptedMessage`) stays recipient-only: a relay is not a persisted message and the
+sender's own cache update is still theirs to make.
+
+**Typing is rate limited per connection.** New `Services/TypingRateLimiter` singleton: a token bucket keyed
+by connection id (capacity 10, refill 0.5/s, wall-clock refill under a per-bucket lock, entry removed on
+disconnect), registered in `Program.cs` and injected into `ChatHub`, whose `SendTyping` now checks it as its
+**first** line — before any policy or DB work — and drops over-budget signals at `Debug`. Keying by
+connection (not user) means a user with two tabs gets two budgets, while a hostile client only ever exhausts
+its own; the drop is silent for the same reason every other typing rejection is (the signal is automatic
+noise, it must never surface an error).
+
+Verification: `dotnet build -o <temp>` 0 warnings / 0 errors, `npx eslint .` exits 0, `npm run build`
+succeeds. Harness (`%TEMP%\opencode\step16-e2e.ps1` + `sigtest\step16-test.mjs`, temp build on port 5299)
+ran **20/20 checks passed** twice — post-only fan-out reaches all 3 of the recipient's connections with
+`encryptedPayload === ""` and ids matching the REST response; the sender's two connections both receive the
+echo; a 40-signal typing burst is capped at exactly 10 with ~2 tokens refilled after 4.2s, a second
+connection of the same user still gets through (per-connection keying), refusals are silent (no caller
+errors) and the sender never hears their own typing.
+
+Browser checks against the live dev server (tab A: `gina_travel` on the alice thread; tab B: `gina_travel` on
+`/feed` as the background canary, with a page-world spy injected via a `<script>` element mirroring
+`{p,f,t}` — chime plays, message fetches, toast texts — onto `document.documentElement[data-s16]`, because
+`browser.evaluate` runs in an isolated world and cannot see page-world patches):
+
+| Check | Result |
+| --- | --- |
+| Own echo, no noise | message sent from tab A → tab B refetched `/api/messages/conversations` **+135 ms** after the POST (CDP), while the spy read `p:0 t:[]` — invalidation fired, no chime, no toast |
+| Post-only live | REST `carla_dev → gina_travel` with `content:""` → 200; tab B chimed (`p:1`) and toasted `"Shared a post"` |
+| Toast click | card navigated to `/messages/<new conversation>` where the shared post card rendered with Carla's post. The card had to be clicked *after* its entrance animation (its centre sits below the 700px viewport while sliding in, `elementFromPoint` → null) — a timing artefact of the check, not a product bug |
+| Chime positive control | the same spy that stayed at `p:0` for the own-echo read `p:1` on the post-only arrival, so the zero is a real zero |
+
+Cost / cleanup: the dev database was restored as found — the 4 harness rows (`step16-fanout-check` ×2 + the
+2 post-only rows in `cdf5b507`), the 3 `step16-echo-check*` rows in gina's thread with alice, and the whole
+carla↔gina conversation `04e65af2` the toast check created (6 messages + participants) deleted; 0 rows from
+today remain. `LastMessageAt` repaired to `MAX(CreatedAt)` on both surviving conversations (`cdf5b507` →
+2026-10-13 10:37:58, `1d98b7cd` → 2026-10-19 17:55:53), undoing the staleness this kind of deletion caused
+before. Pre-existing rows untouched (7 + 2 messages respectively).
 
 ## Open questions
 

@@ -43,10 +43,10 @@ project owner before implementation; see `TASKS.md` for status.
 
 | Topic | Decision |
 | --- | --- |
-| Send path | `POST /api/messages` remains the single write path (persists + unread counts). The server then fans out to the recipient's live connections. |
+| Send path | `POST /api/messages` remains the single write path (persists + unread counts). The server then fans out to the recipient's live connections and to the sender's other connections, so every tab that should know about the message learns of it from one event. |
 | Ciphertext storage | The server stores the encrypted string as an opaque blob in `Message.Content` and never inspects it. |
 | Push tokens | A dedicated `DeviceToken` table (multi-device), pruned when Expo reports `DeviceNotRegistered`. |
-| Typing signals | Hub-only and ephemeral: relayed to whatever is live, never stored, never pushed, refused silently, and believed by the recipient for a few seconds at a time. |
+| Typing signals | Hub-only and ephemeral: relayed to whatever is live, never stored, never pushed, refused silently, rate limited per connection, and believed by the recipient for a few seconds at a time. |
 | Message sound | Plays for a message the reader cannot see landing — silent only when that conversation's thread is open in a tab that is both visible and focused. A short committed sound file (the owner's own), no mute control yet. |
 | Encryption scope | The server is a dumb pipe; the actual crypto (WebCrypto ECDH + AES-GCM) is a later phase. |
 | Rollout order | Web app first, then the Expo mobile app. |
@@ -64,6 +64,11 @@ project owner before implementation; see `TASKS.md` for status.
   automatically on each keystroke burst: it must neither raise an error the user never asked for nor let a
   refused client write to the log at will. Nothing is stored, nothing is pushed, and an offline recipient is
   simply not told; a stale "typing…" would be worse than a missing one.
+- Typing is rate limited by `Services/TypingRateLimiter` (singleton, registered in `Program.cs`): a token
+  bucket per **connection id** — capacity 10, refill 0.5/s, wall-clock refill taken under a per-bucket lock,
+  entry removed on disconnect. Keyed by connection rather than by user, so two tabs each get their own budget
+  while one hostile client can only ever exhaust its own. `SendTyping` consults it as its *first* line, before
+  any policy or database work, and drops an over-budget signal at `Debug` — same silence as a policy refusal.
 - Routing uses `Clients.User(recipientId)`, resolved by `Services/CircleHubUserIdProvider`, which maps the
   SignalR user id to the `sub` claim and normalises it to the canonical Guid form. SignalR's default
   `ClaimTypes.NameIdentifier` is never emitted by this API, so without that provider `Clients.User(id)`
@@ -73,8 +78,14 @@ project owner before implementation; see `TASKS.md` for status.
   cannot be bypassed by calling the hub directly instead of REST.
 - Live connections are registered in `Services/IConnectionTracker` (`Add`/`Remove`/`IsOnline`), which is what
   will decide between real-time delivery and a push notification in the fallback step.
-- `Services/MessageDeliveryService` mirrors a stored message to the recipient's live connections through
-  `IHubContext<ChatHub>`. It is called after the DB commit, so a client that reacts by fetching always finds
+- `Services/MessageDeliveryService` mirrors a stored message to the recipient's live connections **and the
+  sender's** (`Clients.Users(recipient, sender)`) through `IHubContext<ChatHub>`. The sender's other tabs are
+  told about the send at the same moment as the recipient instead of waiting for their next refetch; the
+  sending tab receives its own echo too, which the client deliberately downgrades to a bare invalidation (see
+  the client contract). The hub-relay path (`SendEncryptedMessage`) still targets the recipient only: a relay
+  is not a persisted message and has nothing for the sender's cache to learn. Every REST send fans out —
+  a post-only message included, its envelope carrying `EncryptedPayload = ""` — so the payload is a defined
+  value rather than an absence. It is called after the DB commit, so a client that reacts by fetching always finds
   the row, and it is deliberately *not* tied to `RequestAborted`: the message is stored either way, so a
   caller hanging up must not swallow the notification. A recipient with no live connection is logged there,
   which is exactly where the Expo push fallback goes.
@@ -192,6 +203,13 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
 - Typing never touches the query cache: nothing is invalidated or patched, so a claim costs no request. The
   cache keeps its identity because typing is not app data — it is true for a couple of seconds and then it is
   simply gone, like the 60s tick in `PresenceLabel`.
+- `ReceiveEncryptedMessage` first asks *whose* message it is: the fan-out now echoes back to the sender, so
+  when `senderId === myUserIdRef.current` the handler skips the chime and the toast and still invalidates —
+  the sender's own send must refresh their other tabs without announcing itself. The guard lives in the single
+  event handler rather than inside `messageChime.js` / `messageToast.jsx`, which stay single-purpose policy
+  libraries shared with the notification chime and toast. `myUserIdRef` is written in a `useEffect` because
+  eslint's `react-hooks/refs` rule rejects ref writes during render. A post-only message (empty payload)
+  toasts `"Shared a post"`, the wording the conversation list already shows for it.
 - `ReceiveEncryptedMessage` also rings `src/lib/messageChime.js` before the cache is invalidated. The chime is
   silent exactly when the bubble is landing in front of the reader — that conversation's thread open, in a tab
   that is both visible and the focused window — and plays for every other case: another conversation, another
@@ -233,23 +251,19 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
   ciphertext runs larger than the plaintext (plus a tag/nonce), so the column and the cap need revisiting
   before client-side encryption lands — a decision the owner explicitly deferred ("migration only if the
   limit needs extending").
-- The fan-out targets the recipient only. The sender's other tabs are not notified; the web client updates
-  its own cache from the `POST /api/messages` response.
+- The fan-out targets the recipient and the sender's other connections; a pure hub relay still targets the
+  recipient only, so a mobile client that talks to the hub directly will not echo its own send back to the
+  sender's other tabs.
 - Presence is process-local, so with more than one API instance a user connected to instance B reads as
   offline on instance A and only receives events raised by the instance they are connected to. Same
   backplane + sticky-session caveat as the connection registry.
-- Typing signals are relayed as they arrive and are not rate limited server-side, so a hostile client can
-  re-render one recipient's UI as fast as it can call `SendTyping`. The blast radius is small — the id on a
-  claim always comes from the JWT, so a client can only ever pollute its own entry, and nothing is stored —
-  but a public deployment should cap hub calls per connection.
+- The typing rate limiter is in-process too: buckets are keyed by connection id and dropped on disconnect, so
+  an instance meters only the connections it owns. Same multi-instance caveat as presence.
 - A pure hub relay carries no `conversationId`, so the chime cannot tell whether it belongs to the open
   thread and errs towards a sound too many rather than silence on an unseen message. The web client always
   sends over REST, so this only becomes visible once the mobile client calls the hub directly.
 - The chime rings for anyone with the app open: there is no mute control and no per-conversation preference
   yet (the owner asked for the sound only, with the door left open for a toggle later).
-- A message that carries only a shared post is not delivered live at all (`MessagesController` skips the fan-out
-  when `Content` is empty), so it can neither chime nor toast; its badge and preview appear on the next refetch.
-  Pre-existing and untouched by the toast, but it is the one message that arrives silently.
 - A toast's expiry timer does not run while its tab is in the background, so cards accumulate unseen there and
   dismiss the moment the tab is looked at again. For a hidden tab the chime and the `(n)` title prefix are still
   the channels that carry it.
@@ -405,6 +419,11 @@ database by the throwaway harness in `%TEMP%\opencode` (started so it does not d
   recipient whose `MessagesFrom` refuses the sender) and assert the whole hub contract: routing to every live
   connection of the recipient, the sender id coming from the JWT, the sender hearing nothing of their own
   signal, and a silent drop for a self-send, a malformed id, an unknown id or a refused recipient.
+- `step16-e2e.ps1` + `sigtest\step16-test.mjs` — the Step 16 contract on a temp build of its own (spare
+  port): a post-only message fans out to every connection of the recipient with `encryptedPayload === ""` and
+  ids matching the REST response, the sender's own two connections receive the echo of their send, and a
+  40-signal typing burst is cut down by the per-connection token bucket (10 through, refill observed after a
+  pause, a second connection of the same user unaffected, every drop silent).
 - `sigtest\typing-client.mjs` — one authenticated client that either prints every `TypingChanged` it receives
   (listen mode) or drums typing signals out on a schedule, so a signed-in browser on the other end can be
   watched gaining and losing its "typing…" line.
