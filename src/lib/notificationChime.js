@@ -15,6 +15,7 @@ const chime = typeof Audio === "undefined" ? null : new Audio(CHIME_URL);
  * provider that sits above the router, and there is nothing to subscribe to.
  */
 export function shouldChimeNotification() {
+    if (localStorage.getItem("circlehub-mute-notification-sound") === "true") return false;
     if (document.visibilityState !== "visible" || !document.hasFocus()) return true;
 
     return !window.location.pathname.startsWith("/notifications");

@@ -21,33 +21,64 @@ export default function Messages() {
         loadOlder,
     } = useConversation(id);
 
+    // Same shell as Explore / Communities (`content-stack`, responsive headline + subtitle), centred in the
+    // main column. AppLayout drops the right rail on this route, so the cap is wider (96rem) to let the
+    // conversation use that space. The section is pinned to the viewport so the two panes scroll on their
+    // own instead of the page: the height subtracts the 5rem navbar, and below lg also the 5rem bottom
+    // margin `content-stack` reserves for the fixed MobileBottomNav; the panes then take whatever the
+    // header leaves via `flex-1 min-h-0`.
     return (
-        <div className="mx-auto flex w-full max-w-6xl flex-col p-4 sm:p-6">
-            <div className="mb-4 flex items-center justify-between gap-3">
-                <h1 className="type-headline-md text-primary">Messages</h1>
+        <section className="content-stack max-w-[96rem] h-[calc(100dvh-10rem)] min-h-[32rem] lg:h-[calc(100dvh-5rem)]">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <h1 className="type-headline-responsive text-primary">
+                        Messages
+                    </h1>
+                    <p className="type-body-md mt-2 hidden text-secondary sm:block">
+                        Catch up on your private conversations and keep chatting.
+                    </p>
+                </div>
+
                 <ChatConnectionStatus />
             </div>
 
-            <div className="grid h-[calc(100vh-14.625rem)] grid-cols-1 gap-4 sm:h-[calc(100vh-15.125rem)] lg:h-[calc(100vh-13rem)] lg:min-h-96 lg:grid-cols-[20rem_minmax(0,1fr)]">
+            <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
                 <div
-                    className={`content-card overflow-y-auto ${
-                        id ? "hidden lg:block" : "block"
+                    className={`content-card min-h-0 flex-col overflow-hidden ${
+                        id ? "hidden lg:flex" : "flex"
                     }`}
                 >
-                    {isLoadingConversations ? (
-                        <p className="type-body-sm p-4 text-secondary">
-                            Loading conversations…
-                        </p>
-                    ) : (
-                        <ConversationList
-                            conversations={conversations}
-                            activeId={id}
-                        />
-                    )}
+                    <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-3">
+                        <div>
+                            <h2 className="type-title-lg text-primary">
+                                Conversations
+                            </h2>
+                            <p className="type-body-sm mt-1 text-secondary">
+                                Your recent chats.
+                            </p>
+                        </div>
+
+                        <span className="type-label-sm rounded-full bg-(--active) px-3 py-1 text-(--primary)">
+                            {conversations.length}
+                        </span>
+                    </div>
+
+                    <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+                        {isLoadingConversations ? (
+                            <p className="type-body-sm p-3 text-secondary">
+                                Loading conversations…
+                            </p>
+                        ) : (
+                            <ConversationList
+                                conversations={conversations}
+                                activeId={id}
+                            />
+                        )}
+                    </div>
                 </div>
 
                 <div
-                    className={`content-card overflow-hidden ${
+                    className={`content-card min-h-0 overflow-hidden ${
                         id ? "block" : "hidden lg:block"
                     }`}
                 >
@@ -61,21 +92,22 @@ export default function Messages() {
                             onLoadOlder={loadOlder}
                         />
                     ) : (
-                        <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
-                            <MessageCircle
-                                size={28}
-                                className="text-secondary"
-                            />
-                            <p className="type-label-md text-primary">
+                        <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">
+                                <MessageCircle size={24} />
+                            </div>
+
+                            <h3 className="type-title-lg text-primary">
                                 Select a conversation
-                            </p>
-                            <p className="type-body-sm text-secondary">
+                            </h3>
+
+                            <p className="type-body-sm-readable mt-2 max-w-sm text-secondary">
                                 Choose someone on the left to read or reply.
                             </p>
                         </div>
                     )}
                 </div>
             </div>
-        </div>
+        </section>
     );
 }

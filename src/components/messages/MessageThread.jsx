@@ -6,7 +6,7 @@ import {
     useState,
 } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { toast } from "sonner";
 
@@ -19,7 +19,7 @@ import { formatMessageDate, formatMessageTime } from "@/lib/formatDate";
 import { useDecryptedContent } from "@/hooks/useDecryptedContent";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 
-function MessageBubble({ message, otherUser }) {
+function MessageBubble({ message, otherUser, onRetry }) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     const hasContent = Boolean(message.content);
@@ -80,7 +80,9 @@ function MessageBubble({ message, otherUser }) {
                         <div
                             className={`type-body-sm min-w-0 max-w-full whitespace-pre-wrap break-words rounded-2xl px-4 py-2 [overflow-wrap:anywhere] ${
                                 message.isMine
-                                    ? "bg-(--primary) text-(--on-primary)"
+                                    ? message.failed
+                                        ? "border border-rose-500/50 bg-rose-500/10 text-rose-300"
+                                        : "bg-(--primary) text-(--on-primary)"
                                     : "bg-(--surface-container) text-primary"
                             }${message.pending ? " opacity-70" : ""}`}
                         >
@@ -89,6 +91,25 @@ function MessageBubble({ message, otherUser }) {
                     )}
 
                     {message.postId && <SharedPostCard post={message.post} />}
+
+                    {message.failed && (
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-rose-500">
+                            <AlertCircle size={13} />
+                            <span>Failed to send</span>
+                            {onRetry && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRetry(message);
+                                    }}
+                                    className="ml-1 font-semibold underline hover:text-rose-600"
+                                >
+                                    Retry
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -147,6 +168,7 @@ export default function MessageThread({
     const previousConversationRef = useRef(conversationId);
 
     const [isAtBottom, setIsAtBottom] = useState(true);
+    const [retryText, setRetryText] = useState(null);
     const [seen, setSeen] = useState({ conversationId: null, messageId: null });
     const [pendingMessage, setPendingMessage] = useState(null);
 
@@ -245,7 +267,7 @@ export default function MessageThread({
 
     return (
         <div className="flex h-full flex-col">
-            <div className="flex items-center gap-3 border-b border-(--border) px-4 py-3">
+            <div className="flex items-center gap-3 border-b border-(--border) px-5 py-4">
                 <Link
                     to="/messages"
                     aria-label="Back to conversations"
@@ -322,6 +344,7 @@ export default function MessageThread({
                         <MessageBubble
                             message={pendingMessage}
                             otherUser={otherUser}
+                            onRetry={(msg) => setRetryText(msg.content)}
                         />
                     )}
 
@@ -344,6 +367,8 @@ export default function MessageThread({
                     recipientId={otherUser.id}
                     recipientUsername={otherUser.username}
                     onOptimisticMessage={handleOptimisticMessage}
+                    retryText={retryText}
+                    onRetryHandled={() => setRetryText(null)}
                 />
             )}
         </div>

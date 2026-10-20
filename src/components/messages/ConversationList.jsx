@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
 
 import Avatar from "@/components/profileimages/Avatar";
 import PresenceDot from "@/components/messages/PresenceDot";
@@ -41,9 +42,12 @@ export default function ConversationList({ conversations, activeId }) {
 
     if (conversations.length === 0) {
         return (
-            <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
-                <p className="type-label-md text-primary">No messages yet</p>
-                <p className="type-body-sm text-secondary">
+            <div className="flex flex-col items-center justify-center rounded-xl bg-(--surface-low) px-4 py-12 text-center">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">
+                    <MessageCircle size={24} />
+                </div>
+                <h3 className="type-title-lg text-primary">No messages yet</h3>
+                <p className="type-body-sm-readable mt-2 max-w-sm text-secondary">
                     Share a post with a friend to start the conversation.
                 </p>
             </div>
@@ -51,7 +55,7 @@ export default function ConversationList({ conversations, activeId }) {
     }
 
     return (
-        <ul className="flex flex-col">
+        <ul className="flex flex-col gap-1">
             {conversations.map((conversation) => {
                 const isActive = conversation.id === activeId;
                 const unread = conversation.unreadCount > 0;
@@ -64,7 +68,7 @@ export default function ConversationList({ conversations, activeId }) {
                     <li key={conversation.id}>
                         <Link
                             to={`/messages/${conversation.id}`}
-                            className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                            className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${
                                 isActive
                                     ? "bg-(--active)"
                                     : "hover:bg-(--hover)"

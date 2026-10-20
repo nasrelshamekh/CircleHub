@@ -1,4 +1,4 @@
-﻿import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -52,12 +52,29 @@ export default function ProfileSettingsForm() {
     const queryClient = useQueryClient();
     const [settings, setSettings] = useState(() => settingsFromUser(userData));
     const [isSaving, setIsSaving] = useState(false);
+    const [soundSettings, setSoundSettings] = useState(() => ({
+        messageSound: localStorage.getItem("circlehub-mute-message-sound") !== "true",
+        notificationSound: localStorage.getItem("circlehub-mute-notification-sound") !== "true",
+    }));
 
     function updateSetting(name, value) {
         setSettings((currentSettings) => ({
             ...currentSettings,
             [name]: value,
         }));
+    }
+
+    function updateSoundSetting(key, enabled) {
+        setSoundSettings((current) => ({ ...current, [key]: enabled }));
+        const storageKey =
+            key === "messageSound"
+                ? "circlehub-mute-message-sound"
+                : "circlehub-mute-notification-sound";
+        if (enabled) {
+            localStorage.removeItem(storageKey);
+        } else {
+            localStorage.setItem(storageKey, "true");
+        }
     }
 
     async function handleSave() {
@@ -89,7 +106,7 @@ export default function ProfileSettingsForm() {
                 <div>
                     <h2 className="type-title-lg text-primary">Profile Settings</h2>
                     <p className="type-body-sm mt-1 text-secondary">
-                        Manage privacy, messages, and notification preferences.
+                        Manage privacy, messages, sounds, and notification preferences.
                     </p>
                 </div>
 
@@ -150,6 +167,38 @@ export default function ProfileSettingsForm() {
                             type="checkbox"
                             checked={settings.communityUpdates}
                             onChange={(event) => updateSetting("communityUpdates", event.target.checked)}
+                            className="h-5 w-5 accent-(--primary)"
+                        />
+                    </label>
+
+                    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl bg-(--surface-low) p-4">
+                        <div>
+                            <h3 className="type-label-md text-primary">Message Alert Sounds</h3>
+                            <p className="type-body-sm mt-1 text-secondary">
+                                Play an alert chime when a direct message arrives while CircleHub is not the active window.
+                            </p>
+                        </div>
+
+                        <input
+                            type="checkbox"
+                            checked={soundSettings.messageSound}
+                            onChange={(event) => updateSoundSetting("messageSound", event.target.checked)}
+                            className="h-5 w-5 accent-(--primary)"
+                        />
+                    </label>
+
+                    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl bg-(--surface-low) p-4">
+                        <div>
+                            <h3 className="type-label-md text-primary">Notification Alert Sounds</h3>
+                            <p className="type-body-sm mt-1 text-secondary">
+                                Play an alert sound for social notifications like follows, likes, and comments.
+                            </p>
+                        </div>
+
+                        <input
+                            type="checkbox"
+                            checked={soundSettings.notificationSound}
+                            onChange={(event) => updateSoundSetting("notificationSound", event.target.checked)}
                             className="h-5 w-5 accent-(--primary)"
                         />
                     </label>

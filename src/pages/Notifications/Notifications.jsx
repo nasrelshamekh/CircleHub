@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -111,7 +111,7 @@ export default function Notifications() {
     }, [hasMore, isLoadingMore, loadMore]);
 
     return (
-        <section className="content-stack max-w-5xl">
+        <section className="content-stack max-w-7xl">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h1 className="type-headline-responsive text-primary">

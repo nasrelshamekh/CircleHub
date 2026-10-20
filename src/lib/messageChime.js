@@ -15,6 +15,7 @@ const chime = typeof Audio === "undefined" ? null : new Audio(CHIME_URL);
  * focus to another app) leaves the message unseen, and unseen messages get a sound.
  */
 export function shouldChime(envelope) {
+    if (localStorage.getItem("circlehub-mute-message-sound") === "true") return false;
     if (document.visibilityState !== "visible" || !document.hasFocus()) return true;
 
     // A pure hub relay carries no conversationId. There is no way to tell whether it belongs to the open
