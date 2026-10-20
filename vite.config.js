@@ -24,4 +24,26 @@ export default defineConfig({
       ignored: ["**/circlehub-dotnet/**", "**/.vs/**"],
     },
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: "vendor-react",
+              test: /node_modules[\\/](react|react-dom|react-router|@tanstack)[\\/]/,
+            },
+            {
+              name: "vendor-ui",
+              test: /node_modules[\\/](lucide-react|motion|radix-ui|@base-ui|sonner|date-fns)[\\/]/,
+            },
+            {
+              name: "vendor-signalr",
+              test: /node_modules[\\/]@microsoft[\\/]signalr[\\/]/,
+            },
+          ],
+        },
+      },
+    },
+  },
 })

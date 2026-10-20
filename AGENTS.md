@@ -195,8 +195,11 @@ component (`ChatConnectionStatus` renders the pill in the Messages header).
   chat workspace can use the horizontal space; `Messages.jsx` uses `content-stack max-w-[96rem]` (centered,
   pinned to viewport height `h-[calc(100dvh-10rem)] lg:h-[calc(100dvh-5rem)]` so the conversation list and
   thread scroll independently) with the shared `type-headline-responsive` heading, subtitle, and `Conversations`
-  card header + count badge. `Notifications.jsx` uses `content-stack max-w-7xl` to match `Explore`,
-  `Communities`, `Followers`, and `EditProfile`.
+  card header + count badge, and a **New Message** button + `NewMessageDialog` (`src/components/messages/NewMessageDialog.jsx`)
+  that searches connections (`useMessageRecipients`), opens an existing thread directly if one exists, or sends
+  the opening encrypted message and navigates to the new thread. `Notifications.jsx` uses `content-stack max-w-7xl`
+  to match `Explore`, `Communities`, `Followers`, and `EditProfile`, and exposes a **Mark all as read** button
+  (`markNotificationsSeen` + cache invalidation) whenever `visitUnreadCount > 0`.
 - The thread only follows new messages when the reader is already at the bottom (within 80px). Otherwise it
   holds the scroll position and shows a floating "New message" chip that jumps to the latest; opening a
   conversation always starts at the latest message.

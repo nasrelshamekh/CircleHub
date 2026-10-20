@@ -55,6 +55,12 @@ In **Step 17**, end-to-end encryption (WebCrypto ECDH P-256 + AES-GCM) was imple
 5. **Messages & Notifications Width and Layout Consistency:** `src/pages/Messages/Messages.jsx`, `src/components/messages/ConversationList.jsx`, `src/pages/Notifications/Notifications.jsx`
    - Aligned `Messages.jsx` with the shared `content-stack` page header (`type-headline-responsive` title + subtitle, `Conversations` card header with count pill, rounded list rows, unified empty states) while keeping `RightSidebar` omitted on `/messages` (`src/layouts/AppLayout.jsx`) and centering the two-pane workspace at `max-w-[96rem]` (`h-[calc(100dvh-10rem)] lg:h-[calc(100dvh-5rem)]`).
    - Widened `Notifications.jsx` from `max-w-5xl` to `max-w-7xl` to match `Explore`, `Communities`, `Followers`, and `EditProfile`.
+6. **New Message Dialog:** `src/components/messages/NewMessageDialog.jsx`, `src/pages/Messages/Messages.jsx`
+   - Added a **New Message** button in the Messages header to search connections (`useMessageRecipients`), jump straight to an existing conversation, or compose and send an opening encrypted message to start a new thread.
+7. **Mark All as Read on Notifications:** `src/pages/Notifications/Notifications.jsx`
+   - Added a **Mark all as read** button in the `Recent Activity` header when `visitUnreadCount > 0` (`markNotificationsSeen` + `notifications()` query invalidation).
+8. **Route-Level & Vendor Code Splitting:** `src/routes/lazyPages.jsx`, `src/routes/router.jsx`, `vite.config.js`
+   - Converted all 18 route pages to `React.lazy` chunks inside `<Suspense>` and configured Rolldown vendor chunk splitting (`vendor-react`, `vendor-ui`, `vendor-signalr`), dropping the entry bundle from ~1,117 kB to 259 kB (84 kB gzip) with zero chunk warnings.
 
 ---
 

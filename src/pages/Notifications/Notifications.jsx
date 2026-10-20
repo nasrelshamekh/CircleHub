@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Bell, Check, Trash2 } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -85,6 +85,12 @@ export default function Notifications() {
         onError: () => toast.error("Couldn't delete that notification."),
     });
 
+    const markAllReadMutation = useMutation({
+        mutationFn: markNotificationsSeen,
+        onSuccess: invalidateFeed,
+        onError: () => toast.error("Couldn't mark all notifications as read."),
+    });
+
     // Opening a row counts as reading it: the reader is being taken to the thing it points at, so the dot
     // must not still be there when they come back. The same mutation as the check button — one path, one
     // invalidation moves pill, dot, check button and both badges together — and a row that is already read
@@ -142,6 +148,18 @@ export default function Notifications() {
                             Updates for @{userData.username}
                         </p>
                     </div>
+
+                    {visitUnreadCount > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => markAllReadMutation.mutate()}
+                            disabled={markAllReadMutation.isPending}
+                            className="type-label-sm flex cursor-pointer items-center gap-1.5 rounded-full bg-(--surface-low) px-3.5 py-2 text-(--primary) transition hover:bg-(--hover) disabled:opacity-50"
+                        >
+                            <CheckCheck size={16} />
+                            <span>Mark all as read</span>
+                        </button>
+                    )}
                 </div>
 
                 {isLoading ? (

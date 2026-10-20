@@ -29,7 +29,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 16 | Messaging fan-out gaps: post-only messages delivered live, sender's other tabs hear their own echo, typing rate limit on the hub | done, verified |
 | 17 | End-to-end encryption on the web client: per-device key directory, WebCrypto ECDH + AES-GCM envelope, plaintext fallback for a recipient with no published key | done, verified |
 | 18 | Key recovery: random account key wrapped by a 12-word phrase, so history follows the account to any device without giving up E2EE | done, verified |
-| 19 | Web quality of life & layout alignment: native emoji picker, auto-resizing multiline composer + character counter, failed-send retry, sound mute toggles, Messages/Notifications width & header alignment | done, verified |
+| 19 | Web quality of life & layout alignment: native emoji picker, auto-resizing multiline composer + character counter, failed-send retry, sound mute toggles, New Message dialog, Mark all as read, route/vendor code splitting, Messages/Notifications width & header alignment | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -963,9 +963,19 @@ Added & updated:
   centering the two-pane workspace at `max-w-[96rem]` (`h-[calc(100dvh-10rem)] lg:h-[calc(100dvh-5rem)]`).
   Widened `Notifications.jsx` from `max-w-5xl` to `max-w-7xl` to match `Explore`, `Communities`, `Followers`,
   and `EditProfile`.
+- `src/components/messages/NewMessageDialog.jsx` + `src/pages/Messages/Messages.jsx` — added a **New Message**
+  button in the Messages header that opens a recipient search dialog (`useMessageRecipients`). Selecting a
+  connection with an existing conversation opens that thread directly; selecting a new connection prompts for the
+  first message, sends it via `useSendMessage`, and navigates to the newly created thread.
+- `src/pages/Notifications/Notifications.jsx` — added a **Mark all as read** button in the `Recent Activity`
+  card header (visible when `visitUnreadCount > 0`) that calls `markNotificationsSeen()` and invalidates
+  `queryKeys.notifications()`, clearing all unread row dots and badges at once.
+- `src/routes/lazyPages.jsx`, `src/routes/router.jsx`, `vite.config.js` — added `React.lazy` + `Suspense`
+  route-level code splitting and Rolldown vendor chunk groups (`vendor-react`, `vendor-ui`, `vendor-signalr`),
+  reducing the entry bundle from ~1,117 kB to 259 kB (84 kB gzip) and eliminating the 500 kB chunk warning.
 
-Verification: `npm run lint` 0 warnings / 0 errors, `npm run build` succeeded in ~640ms, `dotnet build -o <temp>`
-0 warnings / 0 errors.
+Verification: `npm run lint` 0 warnings / 0 errors, `npm run build` succeeded in ~600ms (0 chunk size warnings),
+`dotnet build -o <temp>` 0 warnings / 0 errors.
 
 ## Open questions
 

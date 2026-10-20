@@ -1,4 +1,5 @@
-﻿import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import { Suspense } from "react";
+import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 
 import ScrollToTop from "@/components/scrolltotop/ScrollToTop";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
@@ -7,31 +8,35 @@ import PublicOnlyRoute from "@/components/auth/PublicOnlyRoute";
 import AuthLayout from "@/layouts/AuthLayout";
 import AppLayout from "@/layouts/AppLayout";
 import FocusLayout from "@/layouts/FocusLayout";
-import Register from "@/pages/Auth/Register/Register";
-import Signin from "@/pages/Auth/Signin/Signin";
-import Communities from "@/pages/Communities/Communities";
-import CommunitiesDetails from "@/pages/CommunitiesDetails/CommunitiesDetails";
-import EditProfile from "@/pages/EditProfile/EditProfile";
-import Explore from "@/pages/Explore/Explore";
-import Feed from "@/pages/Feed/Feed";
-import Followers from "@/pages/Followers/Followers";
-import ForgotPassword from "@/pages/ForgotPassword/ForgotPassword";
-import Landing from "@/pages/Landing/Landing";
-import ManageCommunity from "@/pages/ManageCommunity/ManageCommunity";
-import Messages from "@/pages/Messages/Messages";
-import Notifications from "@/pages/Notifications/Notifications";
-import NotFound from "@/pages/NotFound/NotFound";
-import PostDetails from "@/pages/PostDetails/PostDetails";
-import Profile from "@/pages/Profile/Profile";
-import ResetPassword from "@/pages/ResetPassword/ResetPassword";
-import VerifyEmail from "@/pages/VerifyEmail/VerifyEmail";
+import {
+  Communities,
+  CommunitiesDetails,
+  EditProfile,
+  Explore,
+  Feed,
+  Followers,
+  ForgotPassword,
+  Landing,
+  ManageCommunity,
+  Messages,
+  Notifications,
+  NotFound,
+  PostDetails,
+  Profile,
+  Register,
+  ResetPassword,
+  Signin,
+  VerifyEmail,
+} from "./lazyPages";
 
 const router = createBrowserRouter([
   {
     element: (
       <>
         <ScrollToTop />
-        <Outlet />
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
         <ScrollToTopButton />
       </>
     ),

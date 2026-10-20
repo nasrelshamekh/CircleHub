@@ -95,3 +95,9 @@ flowchart TD
 5. **Messages & Notifications Width and Layout Consistency (`src/pages/Messages/Messages.jsx`, `src/components/messages/ConversationList.jsx`, `src/pages/Notifications/Notifications.jsx`)**
    - Updated `Messages.jsx` to use `content-stack max-w-[96rem]` (centered, filling the space left by omitting the right sidebar on `/messages`) with the shared `type-headline-responsive` header, subtitle, and `Conversations` card header + count badge.
    - Widened `Notifications.jsx` from `max-w-5xl` to `max-w-7xl` so its content area matches `Explore`, `Communities`, `Followers`, and `EditProfile`.
+6. **New Message Dialog (`src/components/messages/NewMessageDialog.jsx`, `src/pages/Messages/Messages.jsx`)**
+   - Added a **New Message** button in the Messages header to search connections (`useMessageRecipients`), jump straight to an existing conversation, or compose and send an opening encrypted message to start a new thread.
+7. **Mark All as Read on Notifications (`src/pages/Notifications/Notifications.jsx`)**
+   - Added a **Mark all as read** button in the `Recent Activity` header when `visitUnreadCount > 0` (`markNotificationsSeen` + `notifications()` query invalidation).
+8. **Route-Level & Vendor Code Splitting (`src/routes/lazyPages.jsx`, `src/routes/router.jsx`, `vite.config.js`)**
+   - Converted all 18 route pages to `React.lazy` chunks inside `<Suspense>` and configured Rolldown vendor chunk splitting (`vendor-react`, `vendor-ui`, `vendor-signalr`), dropping the entry bundle from ~1,117 kB to 259 kB (84 kB gzip) with zero chunk warnings.

@@ -1,14 +1,17 @@
-import { MessageCircle } from "lucide-react";
+import { useState } from "react";
+import { MessageCircle, MessageSquarePlus } from "lucide-react";
 import { useParams } from "react-router-dom";
 
 import ChatConnectionStatus from "@/components/messages/ChatConnectionStatus";
 import ConversationList from "@/components/messages/ConversationList";
 import MessageThread from "@/components/messages/MessageThread";
+import NewMessageDialog from "@/components/messages/NewMessageDialog";
 import { useConversations } from "@/hooks/useConversations";
 import { useConversation } from "@/hooks/useConversation";
 
 export default function Messages() {
     const { id } = useParams();
+    const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
 
     const { conversations, isLoading: isLoadingConversations } =
         useConversations();
@@ -39,7 +42,18 @@ export default function Messages() {
                     </p>
                 </div>
 
-                <ChatConnectionStatus />
+                <div className="flex items-center gap-3">
+                    <ChatConnectionStatus />
+
+                    <button
+                        type="button"
+                        onClick={() => setIsNewMessageOpen(true)}
+                        className="button-primary flex items-center gap-2 rounded-full px-4 py-2"
+                    >
+                        <MessageSquarePlus size={18} />
+                        New Message
+                    </button>
+                </div>
             </div>
 
             <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
@@ -108,6 +122,12 @@ export default function Messages() {
                     )}
                 </div>
             </div>
+
+            <NewMessageDialog
+                open={isNewMessageOpen}
+                onOpenChange={setIsNewMessageOpen}
+                conversations={conversations}
+            />
         </section>
     );
 }
