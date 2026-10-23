@@ -35,7 +35,18 @@ namespace CircleHub.Api.Filters
                 {
                     var text = (string)propertyValue;
                     if (text.StartsWith("/uploads/", StringComparison.Ordinal) && property.CanWrite)
+                    {
                         property.SetValue(value, baseUrl + text);
+                        continue;
+                    }
+
+                    if ((text.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                         text.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) &&
+                        property.CanWrite)
+                    {
+                        continue;
+                    }
+
                     continue;
                 }
 

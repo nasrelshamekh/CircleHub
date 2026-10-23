@@ -127,7 +127,7 @@ namespace CircleHub.Api.Controllers
             catch
             {
                 if (imageUrl is not null)
-                    _uploadService.DeletePostImage(imageUrl);
+                    await _uploadService.DeleteImageAsync(imageUrl);
                 throw;
             }
 
@@ -176,7 +176,7 @@ namespace CircleHub.Api.Controllers
             if (newImageRelative is not null)
             {
                 if (!string.IsNullOrEmpty(post.ImageUrl))
-                    _uploadService.DeletePostImage(post.ImageUrl);
+                    await _uploadService.DeleteImageAsync(post.ImageUrl);
 
                 post.ImageUrl = newImageRelative;
             }
@@ -191,7 +191,7 @@ namespace CircleHub.Api.Controllers
             catch
             {
                 if (newImageRelative is not null)
-                    _uploadService.DeletePostImage(newImageRelative);
+                    await _uploadService.DeleteImageAsync(newImageRelative);
                 throw;
             }
 

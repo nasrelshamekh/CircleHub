@@ -161,13 +161,17 @@ export default function ChatConnectionContextProvider({ children }) {
             }
 
             // A message from someone else — or an echo of one's own — affects the conversation list, the
-            // open thread and the unread badge. conversations() is a prefix of conversation(id), so one
-            // invalidation refreshes all three and the server stays the source of truth for their
-            // contents. The echo's invalidation is also how the sender's other tabs learn about the
-            // message: this handler is the only write path they have.
+            // open thread and the unread badge. Exact invalidation targets the list without refetching
+            // unrelated threads, and invalidating the specific conversation updates the open thread.
             queryClient.invalidateQueries({
                 queryKey: queryKeys.conversations(),
+                exact: true,
             });
+            if (message?.conversationId) {
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.conversation(message.conversationId),
+                });
+            }
         });
 
         connection.on(PRESENCE_CHANGED_EVENT, (presence) => {

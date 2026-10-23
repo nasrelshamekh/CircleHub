@@ -1085,6 +1085,25 @@ Verification:
   - `npm run lint`: 0 errors, 0 warnings.
   - `npm test -- --watchAll=false`: 16/16 test suites passed (104/104 tests).
 
+### Security Hardening, Rate Limiting & Mobile URL Normalization (verified)
+
+1. **Security & Privacy Hardening (.NET Backend):**
+   - Fixed private community discovery & membership leakage in `CommunitiesController.cs`, `SearchController.cs`, and `UsersController.cs`.
+   - Fixed private-post interaction bypass in `PostsController.cs` via `.WhereVisibleTo(userId)`.
+   - Hardened forwarded header spoofing in `Program.cs` and `appsettings.json` (`ForwardLimit = 1`, loopback trust, configurable proxy lists).
+   - Configured application-wide ASP.NET Core rate limiting with partitioned `GlobalLimiter`, `"auth"`, `"upload"`, `"messages"` policies, and `MessageRelayRateLimiter.cs` on `ChatHub.cs`.
+   - Corrected middleware order in `Program.cs`: `app.UseCors()` and `app.UseHttpsRedirection()` now precede `app.UseStaticFiles()`.
+
+2. **Mobile API Normalization & 404 Prevention:**
+   - In `circlehub-mobile/src/config/env.ts`, sanitized `API_URL` to automatically strip trailing slashes and trailing `/api`.
+   - In `circlehub-mobile/eas.json`, updated `preview` and `production` to `https://circlehub.runasp.net`.
+   - In `CircleHub/src/context/ChatConnectionContext.jsx`, added `{ exact: true }` on conversations invalidation and targeted `queryKeys.conversation(message.conversationId)`.
+
+Verification:
+- Backend: `dotnet build` passed (0 warnings, 0 errors).
+- Web: `npm run build` passed (0 errors, 6.24s).
+- Mobile: `npm test` 16/16 test suites passed (104/104 tests), `npx tsc --noEmit` passed (0 errors), `npm run lint` passed (0 errors).
+
 ## Open questions
 
 - None — all backend, web, and mobile steps (Steps 1–19) are complete and verified.

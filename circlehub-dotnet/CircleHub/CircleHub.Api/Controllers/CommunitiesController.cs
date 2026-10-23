@@ -40,24 +40,15 @@ namespace CircleHub.Api.Controllers
         private IActionResult Fail(int status, string message) =>
             StatusCode(status, new ApiErrorResponse { Success = false, Message = message });
 
-        private static bool IsAllowedImageUrl(string url)
+        private bool IsAllowedImageUrl(string url) =>
+            _uploadService.IsOwnedImageUrl(url);
+
+        private async Task CleanupUploadsAsync(params string?[] urls)
         {
-            if (string.IsNullOrWhiteSpace(url))
-                return true;
-
-            var extension = Path.GetExtension(url).ToLowerInvariant();
-
-            return url.StartsWith("/uploads/", StringComparison.Ordinal)
-                && !url.Contains("..")
-                && extension is ".jpg" or ".jpeg" or ".png" or ".webp";
-        }
-
-        private void CleanupUploads(params string?[] relatives)
-        {
-            foreach (var relative in relatives)
+            foreach (var url in urls)
             {
-                if (relative is not null)
-                    _uploadService.DeletePostImage(relative);
+                if (url is not null)
+                    await _uploadService.DeleteImageAsync(url);
             }
         }
 
@@ -225,7 +216,7 @@ namespace CircleHub.Api.Controllers
             if (dto.ImageUrl is not null && !IsAllowedImageUrl(dto.ImageUrl))
                 return Fail(
                     StatusCodes.Status400BadRequest,
-                    "Image URL must be a relative /uploads/... path"
+                    "Image URL must be an image uploaded through CircleHub"
                 );
 
             string? imageUrl = string.IsNullOrWhiteSpace(dto.ImageUrl) ? null : dto.ImageUrl;
@@ -243,13 +234,13 @@ namespace CircleHub.Api.Controllers
 
                 if (dto.CoverImage is not null && dto.CoverImage.Length > 0)
                 {
-                    uploadedCover = await _uploadService.SaveCommunityImageAsync(dto.CoverImage);
+                    uploadedCover = await _uploadService.SaveCommunityImageAsync(dto.CoverImage, cover: true);
                     coverImageUrl = uploadedCover;
                 }
             }
             catch (ArgumentException ex)
             {
-                CleanupUploads(uploadedImage, uploadedCover);
+                await CleanupUploadsAsync(uploadedImage, uploadedCover);
 
                 return Fail(StatusCodes.Status400BadRequest, ex.Message);
             }
@@ -307,7 +298,7 @@ namespace CircleHub.Api.Controllers
             }
             catch (DbUpdateException)
             {
-                CleanupUploads(uploadedImage, uploadedCover);
+                await CleanupUploadsAsync(uploadedImage, uploadedCover);
 
                 return Fail(
                     StatusCodes.Status409Conflict,
@@ -424,7 +415,7 @@ namespace CircleHub.Api.Controllers
                 if (!IsAllowedImageUrl(dto.ImageUrl))
                     return Fail(
                         StatusCodes.Status400BadRequest,
-                        "Image URL must be a relative /uploads/... path"
+                        "Image URL must be an image uploaded through CircleHub"
                     );
 
                 var imageUrl = dto.ImageUrl.Trim();
@@ -435,7 +426,7 @@ namespace CircleHub.Api.Controllers
                 if (!IsAllowedImageUrl(dto.CoverImageUrl))
                     return Fail(
                         StatusCodes.Status400BadRequest,
-                        "Cover image URL must be a relative /uploads/... path"
+                        "Cover image URL must be an image uploaded through CircleHub"
                     );
 
                 var coverImageUrl = dto.CoverImageUrl.Trim();
@@ -451,11 +442,11 @@ namespace CircleHub.Api.Controllers
                     uploadedImage = await _uploadService.SaveCommunityImageAsync(dto.Image);
 
                 if (hasCoverImageFile)
-                    uploadedCover = await _uploadService.SaveCommunityImageAsync(dto.CoverImage);
+                    uploadedCover = await _uploadService.SaveCommunityImageAsync(dto.CoverImage, cover: true);
             }
             catch (ArgumentException ex)
             {
-                CleanupUploads(uploadedImage, uploadedCover);
+                await CleanupUploadsAsync(uploadedImage, uploadedCover);
 
                 return Fail(StatusCodes.Status400BadRequest, ex.Message);
             }
@@ -472,7 +463,7 @@ namespace CircleHub.Api.Controllers
 
                 if (visibility != "public" && visibility != "private")
                 {
-                    CleanupUploads(uploadedImage, uploadedCover);
+                    await CleanupUploadsAsync(uploadedImage, uploadedCover);
 
                     return Fail(
                         StatusCodes.Status400BadRequest,
@@ -493,7 +484,7 @@ namespace CircleHub.Api.Controllers
             }
             catch
             {
-                CleanupUploads(uploadedImage, uploadedCover);
+                await CleanupUploadsAsync(uploadedImage, uploadedCover);
                 throw;
             }
 
@@ -1269,7 +1260,7 @@ namespace CircleHub.Api.Controllers
             catch
             {
                 if (imageUrl is not null)
-                    _uploadService.DeletePostImage(imageUrl);
+                    await _uploadService.DeleteImageAsync(imageUrl);
                 throw;
             }
 

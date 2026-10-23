@@ -41,24 +41,15 @@ namespace CircleHub.Api.Controllers
         private IActionResult Fail(int status, string message) =>
             StatusCode(status, new ApiErrorResponse { Success = false, Message = message });
 
-        private static bool IsAllowedImageUrl(string url)
+        private bool IsAllowedImageUrl(string url) =>
+            _uploadService.IsOwnedImageUrl(url);
+
+        private async Task CleanupUploadsAsync(params string?[] urls)
         {
-            if (string.IsNullOrWhiteSpace(url))
-                return true;
-
-            var extension = Path.GetExtension(url).ToLowerInvariant();
-
-            return url.StartsWith("/uploads/", StringComparison.Ordinal)
-                && !url.Contains("..")
-                && extension is ".jpg" or ".jpeg" or ".png" or ".webp";
-        }
-
-        private void CleanupUploads(params string?[] relatives)
-        {
-            foreach (var relative in relatives)
+            foreach (var url in urls)
             {
-                if (relative is not null)
-                    _uploadService.DeletePostImage(relative);
+                if (url is not null)
+                    await _uploadService.DeleteImageAsync(url);
             }
         }
 
@@ -403,7 +394,7 @@ namespace CircleHub.Api.Controllers
                 if (!IsAllowedImageUrl(dto.AvatarUrl))
                     return Fail(
                         StatusCodes.Status400BadRequest,
-                        "Avatar URL must be a relative /uploads/... path"
+                        "Avatar URL must be an image uploaded through CircleHub"
                     );
 
                 user.AvatarUrl = dto.AvatarUrl;
@@ -413,7 +404,7 @@ namespace CircleHub.Api.Controllers
                 if (!IsAllowedImageUrl(dto.CoverImageUrl))
                     return Fail(
                         StatusCodes.Status400BadRequest,
-                        "Cover image URL must be a relative /uploads/... path"
+                        "Cover image URL must be an image uploaded through CircleHub"
                     );
 
                 user.CoverImageUrl = dto.CoverImageUrl;
@@ -433,11 +424,11 @@ namespace CircleHub.Api.Controllers
                 if (dto.AvatarImage is not null)
                     avatarRelative = await _uploadService.SaveUserImageAsync(dto.AvatarImage);
                 if (dto.CoverImage is not null)
-                    coverRelative = await _uploadService.SaveUserImageAsync(dto.CoverImage);
+                    coverRelative = await _uploadService.SaveUserImageAsync(dto.CoverImage, cover: true);
             }
             catch (ArgumentException ex)
             {
-                CleanupUploads(avatarRelative, coverRelative);
+                await CleanupUploadsAsync(avatarRelative, coverRelative);
 
                 return Fail(StatusCodes.Status400BadRequest, ex.Message);
             }
@@ -455,7 +446,7 @@ namespace CircleHub.Api.Controllers
             }
             catch
             {
-                CleanupUploads(avatarRelative, coverRelative);
+                await CleanupUploadsAsync(avatarRelative, coverRelative);
                 throw;
             }
 

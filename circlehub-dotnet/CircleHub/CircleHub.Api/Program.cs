@@ -8,6 +8,7 @@ using CircleHub.Api.Entities;
 using CircleHub.Api.Filters;
 using CircleHub.Api.Hubs;
 using CircleHub.Api.Services;
+using CircleHub.Api.Services.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -100,6 +101,10 @@ static ServerVersion BuildServerVersion(string? configured)
 
     return new MySqlServerVersion(Version.Parse(value));
 }
+builder.Services.Configure<R2Options>(
+    builder.Configuration.GetSection(R2Options.SectionName));
+builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
+
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<UploadService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
@@ -351,6 +356,14 @@ if (!builder.Environment.IsDevelopment())
 }
 
 var app = builder.Build();
+
+var objectStorage = app.Services.GetRequiredService<IObjectStorage>();
+if (!objectStorage.IsConfigured)
+{
+    app.Logger.LogWarning(
+        "Cloudflare R2 is not configured. Uploads will fall back to wwwroot/uploads, " +
+        "which is not durable on shared hosting.");
+}
 
 app.UseForwardedHeaders();
 
