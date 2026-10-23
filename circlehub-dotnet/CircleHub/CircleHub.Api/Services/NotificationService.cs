@@ -174,22 +174,20 @@ namespace CircleHub.Api.Services
                 await _hub.Clients.User(recipientId.ToString())
                     .SendAsync(ChatHub.NotificationCreatedMethod, dto);
 
-                if (!_connections.IsOnline(recipientId))
-                {
-                    await _push.SendToUserAsync(
-                        recipientId,
-                        dto.Actor.Name,
-                        $"{dto.Actor.Name} {BuildSentence(type, dto.CommunityName)}",
-                        new
-                        {
-                            type = "notification",
-                            notificationId = dto.Id.ToString(),
-                            notificationType = dto.Type,
-                            postId = dto.PostId?.ToString(),
-                            communitySlug = dto.CommunitySlug,
-                            actorUsername = dto.Actor.Username
-                        });
-                }
+                // Send push notification to any registered mobile devices
+                await _push.SendToUserAsync(
+                    recipientId,
+                    dto.Actor.Name,
+                    $"{dto.Actor.Name} {BuildSentence(type, dto.CommunityName)}",
+                    new
+                    {
+                        type = "notification",
+                        notificationId = dto.Id.ToString(),
+                        notificationType = dto.Type,
+                        postId = dto.PostId?.ToString(),
+                        communitySlug = dto.CommunitySlug,
+                        actorUsername = dto.Actor.Username
+                    });
             }
         }
 

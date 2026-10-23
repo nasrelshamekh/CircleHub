@@ -81,7 +81,9 @@ namespace CircleHub.Api.Services
                         Sound = "default",
                         Title = title,
                         Body = body,
-                        Data = data
+                        Data = data,
+                        ChannelId = "default",
+                        Priority = "high"
                     })
                     .ToArray();
 
@@ -168,6 +170,8 @@ namespace CircleHub.Api.Services
             public required string Title { get; init; }
             public required string Body { get; init; }
             public object? Data { get; init; }
+            public string ChannelId { get; init; } = "default";
+            public string Priority { get; init; } = "high";
         }
 
         private sealed class ExpoPushResponse

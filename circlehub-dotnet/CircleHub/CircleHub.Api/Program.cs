@@ -105,6 +105,11 @@ builder.Services.Configure<R2Options>(
     builder.Configuration.GetSection(R2Options.SectionName));
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
 
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 52428800; // 50 MB
+});
+
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<UploadService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
@@ -470,6 +475,20 @@ app.MapHub<ChatHub>("/hubs/chat", options =>
         options.CloseOnAuthenticationExpiration = true;
     })
     .RequireCors("SignalR");
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        await db.Database.MigrateAsync();
+        app.Logger.LogInformation("Database migration completed successfully.");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "An error occurred while migrating the database.");
+    }
+}
 
 app.Run();
 

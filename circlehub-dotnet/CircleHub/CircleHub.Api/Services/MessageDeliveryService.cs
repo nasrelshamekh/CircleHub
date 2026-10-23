@@ -51,33 +51,25 @@ namespace CircleHub.Api.Services
             await _hub.Clients.Users(recipientId.ToString(), senderId.ToString())
                 .SendAsync(ChatHub.ReceiveMessageMethod, envelope, cancellationToken);
 
-            if (!_connections.IsOnline(recipientId))
-            {
-                _logger.LogInformation(
-                    "Recipient {RecipientId} has no live connection; message {MessageId} is stored but was not delivered in real time",
-                    recipientId,
-                    envelope.MessageId);
+            // Message.Content is opaque (and usually an ENC:v1: E2EE envelope), so the push banner
+            // deliberately never includes or inspects the message text.
+            var title = string.IsNullOrWhiteSpace(senderName) ? "New message" : senderName;
+            var body = string.IsNullOrEmpty(envelope.EncryptedPayload)
+                ? "Shared a post"
+                : "Sent you a message";
 
-                // Message.Content is opaque (and usually an ENC:v1: E2EE envelope), so the push banner
-                // deliberately never includes or inspects the message text.
-                var title = string.IsNullOrWhiteSpace(senderName) ? "New message" : senderName;
-                var body = string.IsNullOrEmpty(envelope.EncryptedPayload)
-                    ? "Shared a post"
-                    : "Sent you a message";
-
-                await _push.SendToUserAsync(
-                    recipientId,
-                    title,
-                    body,
-                    new
-                    {
-                        type = "message",
-                        conversationId = envelope.ConversationId,
-                        messageId = envelope.MessageId,
-                        senderId = envelope.SenderId
-                    },
-                    cancellationToken);
-            }
+            await _push.SendToUserAsync(
+                recipientId,
+                title,
+                body,
+                new
+                {
+                    type = "message",
+                    conversationId = envelope.ConversationId,
+                    messageId = envelope.MessageId,
+                    senderId = envelope.SenderId
+                },
+                cancellationToken);
         }
     }
 }
