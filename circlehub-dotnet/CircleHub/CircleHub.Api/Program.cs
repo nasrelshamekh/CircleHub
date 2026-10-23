@@ -476,19 +476,23 @@ app.MapHub<ChatHub>("/hubs/chat", options =>
     })
     .RequireCors("SignalR");
 
-using (var scope = app.Services.CreateScope())
+app.Lifetime.ApplicationStarted.Register(() =>
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try
+    Task.Run(async () =>
     {
-        await db.Database.MigrateAsync();
-        app.Logger.LogInformation("Database migration completed successfully.");
-    }
-    catch (Exception ex)
-    {
-        app.Logger.LogError(ex, "An error occurred while migrating the database.");
-    }
-}
+        try
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Database.MigrateAsync();
+            app.Logger.LogInformation("Database migration completed successfully.");
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogError(ex, "An error occurred while migrating the database.");
+        }
+    });
+});
 
 app.Run();
 
