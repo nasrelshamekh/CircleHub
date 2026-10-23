@@ -1045,11 +1045,45 @@ Added & updated:
   - **Mobile Typing Bubble & Categorized Emoji Picker (`src/components/messages/emojipicker.tsx`, `src/components/messages/messagethread.tsx`):** Added an inline animated 3-dot `TypingBubble` at the bottom of the thread (`ListHeaderComponent` on the inverted `FlatList`), normalized `userId` to lowercase in `ChatConnectionContext` / `useTypingIndicator`, and added a 4-category emoji picker with keyword search to the composer bar.
   - **Mobile Optimistic Send Handoff (`src/components/messages/messagethread.tsx`, `src/services/messageCrypto.ts`, `src/api/messages.ts`):** Pre-seeded `settledCache` on encrypt and kept sent messages in `pendingMessages` (re-keyed to `response.data.message.id`, `pending: false`) until the `conversation(id)` query cache includes that message ID, eliminating send disappearance/flicker.
   - **Mobile UI & Launch Polish:** Wrapped `"Encrypted Message\nRecovery"` in `MessageRecoveryCard` onto two lines to avoid overlapping `"Backup active"`; replaced transparent icon with a 1024×1024 opaque `#FFFFFF` `circlehub-app-icon.png` in `app.json` for Expo Go; updated `compose` (`src/app/_layout.tsx` & `src/app/compose.tsx`) to use `presentation: "transparentModal"`, `animation: "slide_from_bottom"`, `bg-background`, and the circular `X` close button matching `SharePostModal` with a smooth slide-down exit animation.
+  - **E2EE Decryption Fast Path, Pre-Decryption & Server-Side Key Pruning + Wrap Cap (`#1`–`#4`):**
+    1. **Device-ID fast path + memoized ECDH (`src/services/messageCrypto.js`, `src/services/messageCrypto.ts`):** Derived `wrapKey` once per local key (`wrapKeyFor`) and tried wraps whose `w[].d` matches a local `deviceId` before falling back to the full AEAD sweep, eliminating quadratic $O(\text{keys} \times \text{wraps})$ ECDH work.
+    2. **Pre-decryption on `ReceiveEncryptedMessage` (`ChatConnectionContext.jsx`, `chatconnectioncontext.tsx`):** Called `decryptMessageContent(message.encryptedPayload)` as soon as the SignalR event arrives so the plaintext is already settled in cache before the React Query thread refetch mounts the bubble.
+    3. **Pending decrypt state (`src/hooks/useDecryptedContent.ts`, `src/components/messages/messagethread.tsx`, `src/components/messages/conversationlist.tsx`):** Returned `{ text, isPending }` so bubbles render a skeleton while decrypting rather than flashing empty.
+    4. **Server-side key pruning + wrap cap (`UserDeviceKey.LastSeenAt`, migration `20261021104523_AddUserDeviceKeyLastSeenAt`, `KeysController.cs`, `selectWrapTargets`, `isLivenessStale`):** Added `LastSeenAt` (indexed with `(UserId, LastSeenAt)`), pruned keys unseen for 30 days (`DeviceKeyLifetime = TimeSpan.FromDays(30)`) on both `GET /api/keys/{username}` and `POST /api/keys`, ordered directory reads by `LastSeenAt DESC, CreatedAt DESC` capped at `MaxDeviceKeysPerUser = 8`, capped client message wraps at `MAX_WRAPS = 8` (`MAX_OWN_WRAPS = 2`, current device first via `selectWrapTargets`), and refreshed active device liveness (`isLivenessStale`, 24h threshold) inside `ensureDeviceKey`.
+  - **Mobile Left-to-Right Swipe Sidebar Drawer Modal Navigation (`SidebarDrawer.tsx`, `SidebarDrawerContext.tsx`):**
+    - Full-height drawer modal supporting swipe-to-open from left edge (`x0 <= 80`), backdrop tap or swipe-to-close, brand logo toggle in header, profile info, 8 navigation links matching web sidebar, and safe area constraints excluding both system status bar and Android OS bottom nav.
+  - **Notification Feed "Seen" Stamp & Badge Fix (`notifications.tsx`, `chatconnectioncontext.tsx`):**
+    - Decoupled `useFocusEffect` from `unreadCount` so arrival of new notifications never triggers premature `markSeen` mutations.
+    - Handled `NOTIFICATION_CREATED_EVENT` in SignalR pipeline by optimistically prepending the new item to the feed and incrementing `unreadCount`.
+  - **Private Community Data Exposure & Membership Leaks (`CommunitiesController.cs`, `SearchController.cs`, `UsersController.cs`):**
+    - Hidden member roster from non-members on `GET /api/Communities/{slug}`.
+    - Filtered directory (`GET /api/Communities`) and search (`GET /api/Search`) so private communities are only returned to their creators and active members.
+    - Restricted empty-query suggestions strictly to public communities.
+    - Filtered profile community lists (`GET /api/Users/{username}/communities`) so other users' private community memberships are not leaked to viewers who are not also members of those communities.
+  - **Static Files Middleware Ordering Fix (`Program.cs`):**
+    - Moved `UseCors` and `UseHttpsRedirection` before `UseStaticFiles` to guarantee static assets and uploads are redirected to HTTPS before being served.
+  - **Application-Wide and Policy-Based Request Rate Limiting (`Program.cs`, `MessageRelayRateLimiter.cs`, `ChatHub.cs`, Controllers):**
+    - Configured ASP.NET Core `AddRateLimiter` with custom 429 JSON response and `Retry-After`.
+    - Added partitioned `GlobalLimiter` (120 req/min sliding window by user ID or IP).
+    - Added `"auth"` policy (10 attempts/min by IP) on `AuthController` to protect BCrypt CPU usage and block credential stuffing.
+    - Added `"upload"` policy (15 uploads/min) on image upload endpoints across posts, communities, and user profiles.
+    - Added `"messages"` policy (20 burst, 1 token/2s refill) on REST messaging.
+    - Added `MessageRelayRateLimiter` token bucket limiter (capacity 15, refill 1/s) to `SendEncryptedMessage` on `ChatHub`.
+  - **Forwarded-Header Spoofing & HTTPS Redirection Bypass Hardening (`Program.cs`, `appsettings.json`):**
+    - Removed unsafe `ForwardLimit = null` and empty `KnownProxies`/`KnownIPNetworks`. Configured `ForwardLimit = 1`, retained default loopback trust, and bound `KnownProxies`/`KnownNetworks` to configuration under `"ForwardedHeaders"` in line with Microsoft guidance.
+  - **Private-Post Interaction Bypass Fix (`PostsController.cs`):**
+    - Added `.WhereVisibleTo(userId)` to `ToggleLike` (`PATCH /api/posts/{id}/like`) so users cannot like/unlike private or follower-restricted posts they do not have permission to view.
+  - **Conversation Background Read-Stamp & Premature Header Badge Disappearance Fix (`messages/[id].tsx`, `useConversation.ts`, `chatconnectioncontext.tsx`):**
+    - In `chatconnectioncontext.tsx`, added `exact: true` to `queryKeys.conversations()` invalidation on `ReceiveMessage` and reconnection to prevent prefix-matching open threads. Extracted `conversationId` and invalidated `queryKeys.conversation(conversationId)` only with `refetchType: "active"`.
+    - Added `isFocused` tracking via `useFocusEffect` in `messages/[id].tsx` and passed `{ enabled: isFocused }` to `useConversation`, preventing unviewed background tab instances from fetching `GET /api/messages/{id}` and automatically updating `mine.LastReadAt` on the backend.
 
-Verification in `c:\Projects\circlehub-mobile`:
-- `npx tsc --noEmit`: 0 errors.
-- `npm run lint`: 0 errors, 0 warnings.
-- `npm test -- --watchAll=false`: 10/10 test suites passed (74/74 tests, including `__tests__/lib/messageCryptoAndRecovery.test.ts`).
+Verification:
+- `c:\Projects\CircleHub\circlehub-dotnet`:
+  - `dotnet build`: 0 warnings, 0 errors.
+- `c:\Projects\circlehub-mobile`:
+  - `npx tsc --noEmit`: 0 errors.
+  - `npm run lint`: 0 errors, 0 warnings.
+  - `npm test -- --watchAll=false`: 16/16 test suites passed (104/104 tests).
 
 ## Open questions
 
