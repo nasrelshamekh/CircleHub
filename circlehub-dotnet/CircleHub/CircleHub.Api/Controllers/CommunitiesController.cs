@@ -1,4 +1,5 @@
-﻿using CircleHub.Api.Data;
+using Microsoft.AspNetCore.RateLimiting;
+using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
 using CircleHub.Api.Enums;
@@ -70,9 +71,14 @@ namespace CircleHub.Api.Controllers
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
 
-            var total = await _db.Communities.CountAsync();
+            var query = _db.Communities
+                .Where(c => c.Visibility == CommunityVisibility.Public ||
+                            c.AdminId == currentUserId ||
+                            c.Members.Any(m => m.UserId == currentUserId));
 
-            var communities = await _db.Communities
+            var total = await query.CountAsync();
+
+            var communities = await query
                 .OrderByDescending(c => c.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -114,72 +120,90 @@ namespace CircleHub.Api.Controllers
 
             var community = await _db.Communities
                 .Where(c => c.Slug == slug)
-                .Select(c => new CommunityDetailsDto
+                .Select(c => new
                 {
-                    Id = c.Id,
-                    Name = c.Name,
-                    Slug = c.Slug,
-                    Category = c.Category,
-                    Description = c.Description,
-                    ImageUrl = c.ImageUrl,
-                    CoverImageUrl = c.CoverImageUrl,
-                    Visibility = c.Visibility.ToString().ToLower(),
-                    Admin = new CommunityAdminDto
+                    Dto = new CommunityDetailsDto
                     {
-                        Id = c.Admin.Id,
-                        Name = c.Admin.Name,
-                        Username = c.Admin.Username,
-                        JobTitle = c.Admin.JobTitle,
-                        AvatarUrl = c.Admin.AvatarUrl
-                    },
-                    Members = c.Members
-                        .OrderBy(m => m.JoinedAt)
-                        .Select(m => new CommunityMemberDto
+                        Id = c.Id,
+                        Name = c.Name,
+                        Slug = c.Slug,
+                        Category = c.Category,
+                        Description = c.Description,
+                        ImageUrl = c.ImageUrl,
+                        CoverImageUrl = c.CoverImageUrl,
+                        Visibility = c.Visibility.ToString().ToLower(),
+                        Admin = new CommunityAdminDto
                         {
-                            MembershipId = m.Id,
-                            Id = m.User.Id,
-                            Name = m.User.Name,
-                            Username = m.User.Username,
-                            JobTitle = m.User.JobTitle,
-                            AvatarUrl = m.User.AvatarUrl,
-                            Location = m.User.Location,
-                            CommunityRole = m.Role.ToString().ToLower(),
-                            JoinedAt = m.JoinedAt
-                        })
-                        .ToList(),
-                    MembershipStatus =
-                        c.AdminId == currentUserId ||
-                        c.Members.Any(m => m.UserId == currentUserId)
-                            ? "joined"
-                            : c.Requests.Any(r =>
-                                r.UserId == currentUserId &&
-                                r.Status == CommunityJoinRequestStatus.Pending)
-                                ? "requested"
-                                : "not_joined",
-                    CommunityRole =
-                        c.AdminId == currentUserId
-                            ? "admin"
-                            : c.Members
-                                .Where(m => m.UserId == currentUserId)
-                                .Select(m => m.Role.ToString().ToLower())
-                                .FirstOrDefault(),
-                    MembersCount = c.Members.Count,
-                    PostsCount = c.Posts.Count,
-                    CreatedAt = c.CreatedAt,
-                    UpdatedAt = c.UpdatedAt
+                            Id = c.Admin.Id,
+                            Name = c.Admin.Name,
+                            Username = c.Admin.Username,
+                            JobTitle = c.Admin.JobTitle,
+                            AvatarUrl = c.Admin.AvatarUrl
+                        },
+                        MembershipStatus =
+                            c.AdminId == currentUserId ||
+                            c.Members.Any(m => m.UserId == currentUserId)
+                                ? "joined"
+                                : c.Requests.Any(r =>
+                                    r.UserId == currentUserId &&
+                                    r.Status == CommunityJoinRequestStatus.Pending)
+                                    ? "requested"
+                                    : "not_joined",
+                        CommunityRole =
+                            c.AdminId == currentUserId
+                                ? "admin"
+                                : c.Members
+                                    .Where(m => m.UserId == currentUserId)
+                                    .Select(m => m.Role.ToString().ToLower())
+                                    .FirstOrDefault(),
+                        MembersCount = c.Members.Count,
+                        PostsCount = c.Posts.Count,
+                        CreatedAt = c.CreatedAt,
+                        UpdatedAt = c.UpdatedAt
+                    },
+                    c.Visibility,
+                    IsMember = c.AdminId == currentUserId || c.Members.Any(m => m.UserId == currentUserId)
                 })
                 .FirstOrDefaultAsync();
 
             if (community is null)
                 return Fail(StatusCodes.Status404NotFound, "Community not found");
 
+            var result = community.Dto;
+
+            // Private communities only expose their member roster to members and administrators
+            if (community.Visibility == CommunityVisibility.Public || community.IsMember)
+            {
+                result.Members = await _db.CommunityMembers
+                    .Where(m => m.CommunityId == result.Id)
+                    .OrderBy(m => m.JoinedAt)
+                    .Select(m => new CommunityMemberDto
+                    {
+                        MembershipId = m.Id,
+                        Id = m.User.Id,
+                        Name = m.User.Name,
+                        Username = m.User.Username,
+                        JobTitle = m.User.JobTitle,
+                        AvatarUrl = m.User.AvatarUrl,
+                        Location = m.User.Location,
+                        CommunityRole = m.Role.ToString().ToLower(),
+                        JoinedAt = m.JoinedAt
+                    })
+                    .ToListAsync();
+            }
+            else
+            {
+                result.Members = new List<CommunityMemberDto>();
+            }
+
             return Ok(new ApiResponse<CommunityDetailsDto>
             {
-                Data = community
+                Data = result
             });
         }
 
         [HttpPost]
+        [EnableRateLimiting("upload")]
         public async Task<IActionResult> CreateCommunity([FromForm] CreateCommunityDto dto)
         {
             var currentUserId = CurrentUserId!.Value;
@@ -1191,6 +1215,7 @@ namespace CircleHub.Api.Controllers
         }
 
         [HttpPost("{communityId:guid}/posts")]
+        [EnableRateLimiting("upload")]
         public async Task<IActionResult> CreateCommunityPost(Guid communityId, [FromForm] CreatePostDto dto)
         {
             var currentUserId = CurrentUserId!.Value;

@@ -58,6 +58,9 @@ namespace CircleHub.Api.Controllers
                     currentUserId);
 
                 communities = await _db.Communities
+                    .Where(c => c.Visibility == CommunityVisibility.Public ||
+                                c.AdminId == currentUserId ||
+                                c.Members.Any(m => m.UserId == currentUserId))
                     .Where(c =>
                         EF.Functions.Like(c.Name, $"%{query}%") ||
                         EF.Functions.Like(c.Category, $"%{query}%") ||
@@ -90,6 +93,7 @@ namespace CircleHub.Api.Controllers
                     currentUserId);
 
                 communities = await _db.Communities
+                    .Where(c => c.Visibility == CommunityVisibility.Public)
                     .Where(c =>
                         c.AdminId != currentUserId &&
                         !c.Members.Any(m => m.UserId == currentUserId))

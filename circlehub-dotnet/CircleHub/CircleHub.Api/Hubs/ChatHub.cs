@@ -51,6 +51,7 @@ namespace CircleHub.Api.Hubs
         private readonly IConnectionTracker _connections;
         private readonly PresenceService _presence;
         private readonly TypingRateLimiter _typingLimiter;
+        private readonly MessageRelayRateLimiter _messageLimiter;
         private readonly ILogger<ChatHub> _logger;
 
         public ChatHub(
@@ -59,6 +60,7 @@ namespace CircleHub.Api.Hubs
             IConnectionTracker connections,
             PresenceService presence,
             TypingRateLimiter typingLimiter,
+            MessageRelayRateLimiter messageLimiter,
             ILogger<ChatHub> logger)
         {
             _db = db;
@@ -66,6 +68,7 @@ namespace CircleHub.Api.Hubs
             _connections = connections;
             _presence = presence;
             _typingLimiter = typingLimiter;
+            _messageLimiter = messageLimiter;
             _logger = logger;
         }
 
@@ -130,6 +133,9 @@ namespace CircleHub.Api.Hubs
                     await _presence.UserWentOfflineAsync(userId, CancellationToken.None);
             }
 
+            _typingLimiter.Remove(Context.ConnectionId);
+            _messageLimiter.Remove(Context.ConnectionId);
+
             await base.OnDisconnectedAsync(exception);
         }
 
@@ -150,6 +156,16 @@ namespace CircleHub.Api.Hubs
 
             if (recipientGuid == senderId)
                 throw new HubException("You can't message yourself.");
+
+            if (!_messageLimiter.TryPass(Context.ConnectionId))
+            {
+                _logger.LogWarning(
+                    "Encrypted message relay rate limit exceeded for caller {UserId} on connection {ConnectionId}",
+                    Context.UserIdentifier,
+                    Context.ConnectionId);
+
+                throw new HubException("You are sending messages too quickly. Please slow down.");
+            }
 
             if (string.IsNullOrWhiteSpace(encryptedPayload))
                 throw new HubException("encryptedPayload is required.");

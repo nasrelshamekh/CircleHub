@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 ﻿using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
@@ -11,6 +12,7 @@ namespace CircleHub.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [EnableRateLimiting("auth")]
     public class AuthController : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -180,6 +182,7 @@ namespace CircleHub.Api.Controllers
 
         [Authorize]
         [HttpGet("me")]
+        [DisableRateLimiting]
         public async Task<IActionResult> GetCurrentUser()
         {
             var userId = User.FindFirstValue("sub");

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 ﻿using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
@@ -93,6 +94,7 @@ namespace CircleHub.Api.Controllers
 
         [Authorize]
         [HttpPost]
+        [EnableRateLimiting("upload")]
         public async Task<IActionResult> CreatePost([FromForm] CreatePostDto dto)
         {
             var userId = CurrentUserId!.Value;
@@ -241,6 +243,7 @@ namespace CircleHub.Api.Controllers
 
             var postAuthorId = await _db.Posts
                 .Where(p => p.Id == id)
+                .WhereVisibleTo(userId)
                 .Select(p => (Guid?)p.AuthorId)
                 .FirstOrDefaultAsync();
             if (postAuthorId is null)

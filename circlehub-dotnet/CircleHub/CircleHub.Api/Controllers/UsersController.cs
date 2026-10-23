@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 ﻿using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
@@ -249,6 +250,10 @@ namespace CircleHub.Api.Controllers
 
             var memberships = await _db.CommunityMembers
                 .Where(m => m.UserId == user.Id)
+                .Where(m => m.Community.Visibility == CommunityVisibility.Public ||
+                            user.Id == currentUserId ||
+                            m.Community.AdminId == currentUserId ||
+                            m.Community.Members.Any(mem => mem.UserId == currentUserId))
                 .OrderBy(m => m.JoinedAt)
                 .Select(m => new UserCommunityDto
                 {
