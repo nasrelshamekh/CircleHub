@@ -19,6 +19,15 @@ namespace CircleHub.Api.Entities
         /// <summary>Base64 of the uncompressed P-256 point (65 bytes, 88 base64 chars).</summary>
         public string PublicKey { get; set; } = null!;
 
+        /// <summary>When this device id was first published for this user.</summary>
         public DateTime CreatedAt { get; set; }
+
+        /// <summary>
+        /// When this device id last published a key. A device that has not come back in a while is
+        /// gone — a reinstall, a cleared browser profile — and its row only makes every message
+        /// wider: a sender wraps a copy of the key for every device in the directory, and the
+        /// recipient has to try every wrap its own keyring cannot match by device id.
+        /// </summary>
+        public DateTime LastSeenAt { get; set; }
     }
 }

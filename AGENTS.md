@@ -91,16 +91,20 @@ project owner before implementation; see `TASKS.md` for status.
   caller hanging up must not swallow the notification. A recipient with no live connection is logged there,
   which is exactly where the Expo push fallback goes.
 - Key directory: `POST /api/keys` registers **this device's** public key, `GET /api/keys/{username}` returns
-  the devices of the person you are writing to. Storage is `Entities/UserDeviceKey` (unique `(UserId, DeviceId)`,
-  so a re-publish is an upsert via `INSERT ... ON DUPLICATE KEY UPDATE`, never a duplicate row; migration
-  `AddUserDeviceKeys`). `KeysController.Register` validates the key as a base64 uncompressed P-256 point — 65
-  bytes, leading `0x04` — before storing it, to keep the table from becoming a place where any blob can be
-  parked. The read is gated by the **same** `MessagePolicyService` rule as sending a message and answers with
-  the **same** generic 403 wording ("This user isn't accepting messages right now"), so the directory cannot be
-  used to enumerate users or to read around a `MessagesFrom=Followers` setting; your own keys are always
-  readable, and an unknown username is a plain 404. The response exposes only `deviceId`, `publicKey` and
-  `createdAt` — never a user id, and there is nothing secret to leak because a public key is public by
-  definition.
+  the devices of the person you are writing to. Storage is `Entities/UserDeviceKey` (unique `(UserId, DeviceId)`
+  and indexed `(UserId, LastSeenAt)`, so a re-publish is an upsert via `INSERT ... ON DUPLICATE KEY UPDATE`
+  that refreshes `LastSeenAt` while leaving `CreatedAt` untouched; migrations `AddUserDeviceKeys` and
+  `AddUserDeviceKeyLastSeenAt`). Both `GET` and `POST` prune rows for that user with
+  `LastSeenAt < DateTime.UtcNow - TimeSpan.FromDays(30)` (`PruneStaleKeysAsync`), and `GET` returns at most
+  `MaxDeviceKeysPerUser = 8` rows ordered by `LastSeenAt DESC, CreatedAt DESC` so abandoned installs cannot
+  make the directory grow without bound. `KeysController.Register` validates the key as a base64 uncompressed
+  P-256 point — 65 bytes, leading `0x04` — before storing it, to keep the table from becoming a place where any
+  blob can be parked. The read is gated by the **same** `MessagePolicyService` rule as sending a message and
+  answers with the **same** generic 403 wording ("This user isn't accepting messages right now"), so the
+  directory cannot be used to enumerate users or to read around a `MessagesFrom=Followers` setting; your own
+  keys are always readable, and an unknown username is a plain 404. The response exposes only `deviceId`,
+  `publicKey`, `createdAt`, and `lastSeenAt` — never a user id, and there is nothing secret to leak because a
+  public key is public by definition.
 - Key backup vault: `GET /api/keys/backup`, `PUT /api/keys/backup` and `DELETE /api/keys/backup` in
   `Controllers/KeyBackupController.cs` (owner-scoped via the JWT `sub` claim). Storage is
   `Entities/UserKeyBackup` (unique `UserId`, migration `AddUserKeyBackups`), holding `WrappedAccountKey`
@@ -297,10 +301,16 @@ relays one opaque `Message.Content` string, so this is a client contract plus th
   public key, `iv` the 12-byte AES-GCM nonce, `ct` the ciphertext, `w` one wrapped CEK per device (`d` = device
   id, `k` = the KEK-wrapped key). One **ephemeral keypair per message**, so two messages from the same sender
   share nothing that would let them be linked.
-- **Recipients of a wrap.** The CEK is wrapped for every device of *both* participants, the sender's own
-  included. That is deliberate and load-bearing: the Step 16 fan-out echoes a send back to the sender's other
-  tabs, and those tabs must be able to render it. A wrap list keyed to the recipient only would turn every one
-  of the sender's own messages into a placeholder in their second tab.
+- **Recipients of a wrap (`selectWrapTargets`).** The CEK is wrapped for up to `MAX_WRAPS = 8` devices across
+  *both* participants (`MAX_OWN_WRAPS = 2` for the sender's own devices — with the current device placed first
+  so it can always read its own message after a reload — and the remainder for the recipient's most recently
+  seen devices). Including the sender's own devices is deliberate and load-bearing: the Step 16 fan-out echoes a
+  send back to the sender's other tabs, and those tabs must be able to render it. On the receive side,
+  `decryptEnvelope` memoizes `deriveWrapKey` per local private key and tries wraps matching a known local
+  `deviceId` first before falling back to the full AEAD sweep.
+- **Liveness refresh (`isLivenessStale`).** Because the server prunes device keys unseen for 30 days, a device
+  whose key is already in the directory re-publishes via `publishKey` inside `ensureDeviceKey` whenever its
+  directory entry's `lastSeenAt` (or `createdAt`) is more than 24 hours old (`LIVENESS_REFRESH_MS`).
 - **Private keys and IndexedDB.** The keys are generated with WebCrypto and kept in IndexedDB
   (`circlehub-keyvault`) as **non-extractable** `CryptoKey`s, so ordinary script cannot `exportKey` them.
   But each record also carries the raw key bytes as `pkcs8B64` — without them the 12-word backup could

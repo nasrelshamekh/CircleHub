@@ -23,6 +23,18 @@ namespace CircleHub.Api.Controllers
         /// <summary>An uncompressed P-256 point is 0x04 || X || Y — 65 bytes, 88 base64 chars.</summary>
         private const int PublicKeyByteLength = 65;
 
+        /// <summary>
+        /// How long a device key survives without the device publishing again. A device that has not
+        /// come back in a month is not coming back, and its row only makes every message wider.
+        /// </summary>
+        private static readonly TimeSpan DeviceKeyLifetime = TimeSpan.FromDays(30);
+
+        /// <summary>
+        /// The most devices one user's directory can hold. A client keeps the last eight keys it has
+        /// published, so a wider directory can only add fan-out that no device can use.
+        /// </summary>
+        private const int MaxDeviceKeysPerUser = 8;
+
         private readonly AppDbContext _db;
         private readonly MessagePolicyService _policy;
 
@@ -66,14 +78,22 @@ namespace CircleHub.Api.Controllers
                 return Fail(StatusCodes.Status403Forbidden, "This user isn't accepting messages right now");
             }
 
+            // The read that pays the fan-out cost is the read that shrinks the directory: a device
+            // that stopped publishing long ago is gone, and keeping its row only makes every
+            // message wrap a key that nobody holds.
+            await PruneStaleKeysAsync(recipient.Id, cancellationToken);
+
             var keys = await _db.UserDeviceKeys
                 .Where(k => k.UserId == recipient.Id)
-                .OrderBy(k => k.CreatedAt)
+                .OrderByDescending(k => k.LastSeenAt)
+                .ThenByDescending(k => k.CreatedAt)
+                .Take(MaxDeviceKeysPerUser)
                 .Select(k => new DeviceKeyDto
                 {
                     DeviceId = k.DeviceId,
                     PublicKey = k.PublicKey,
-                    CreatedAt = k.CreatedAt
+                    CreatedAt = k.CreatedAt,
+                    LastSeenAt = k.LastSeenAt
                 })
                 .ToListAsync(cancellationToken);
 
@@ -115,11 +135,16 @@ namespace CircleHub.Api.Controllers
             // (React StrictMode alone makes one tab do it twice), and a find-then-insert pair lets both
             // discover "no row" and race to insert, where the unique index turns the loser into a 500.
             // `ON DUPLICATE KEY UPDATE` makes the second write an update and the request always succeeds.
+            // `CreatedAt` is deliberately left alone: it is when this device id was first seen, and
+            // `LastSeenAt` is what says whether it is still around.
             await _db.Database.ExecuteSqlInterpolatedAsync($"""
-                INSERT INTO UserDeviceKeys (Id, UserId, DeviceId, PublicKey, CreatedAt)
-                VALUES ({Guid.NewGuid()}, {currentUserId}, {request.DeviceId}, {request.PublicKey}, {now})
-                ON DUPLICATE KEY UPDATE PublicKey = VALUES(PublicKey), CreatedAt = VALUES(CreatedAt);
+                INSERT INTO UserDeviceKeys (Id, UserId, DeviceId, PublicKey, CreatedAt, LastSeenAt)
+                VALUES ({Guid.NewGuid()}, {currentUserId}, {request.DeviceId}, {request.PublicKey}, {now}, {now})
+                ON DUPLICATE KEY UPDATE PublicKey = VALUES(PublicKey), LastSeenAt = VALUES(LastSeenAt);
                 """, cancellationToken);
+
+            // The publisher has just proved it is alive, so its directory is the one worth tidying.
+            await PruneStaleKeysAsync(currentUserId, cancellationToken);
 
             return Ok(new ApiResponse<DeviceKeyDto>
             {
@@ -127,9 +152,24 @@ namespace CircleHub.Api.Controllers
                 {
                     DeviceId = request.DeviceId,
                     PublicKey = request.PublicKey,
-                    CreatedAt = now
+                    CreatedAt = now,
+                    LastSeenAt = now
                 }
             });
+        }
+
+        /// <summary>
+        /// Deletes the device keys of one user that have not been published for a while. Without
+        /// this the directory only ever grows: every reinstall mints a new device id, and every one
+        /// of them stays in the list a sender wraps a message for.
+        /// </summary>
+        private async Task PruneStaleKeysAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            var cutoff = DateTime.UtcNow - DeviceKeyLifetime;
+
+            await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM UserDeviceKeys WHERE UserId = {userId} AND LastSeenAt < {cutoff}",
+                cancellationToken);
         }
     }
 }

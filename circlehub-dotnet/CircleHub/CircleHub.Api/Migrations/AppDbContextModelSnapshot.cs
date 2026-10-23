@@ -572,6 +572,9 @@ namespace CircleHub.Api.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("PublicKey")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -584,6 +587,8 @@ namespace CircleHub.Api.Migrations
 
                     b.HasIndex("UserId", "DeviceId")
                         .IsUnique();
+
+                    b.HasIndex("UserId", "LastSeenAt");
 
                     b.ToTable("UserDeviceKeys");
                 });

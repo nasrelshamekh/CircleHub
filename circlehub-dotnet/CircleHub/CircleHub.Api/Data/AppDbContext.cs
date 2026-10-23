@@ -153,6 +153,8 @@ namespace CircleHub.Api.Data
             modelBuilder.Entity<Message>().HasIndex(m => new { m.ConversationId, m.CreatedAt });
             // One row per device per user: the register call is an upsert on this pair.
             modelBuilder.Entity<UserDeviceKey>().HasIndex(k => new { k.UserId, k.DeviceId }).IsUnique();
+            // The directory is read ordered by recency and pruned by it, both scoped to one user.
+            modelBuilder.Entity<UserDeviceKey>().HasIndex(k => new { k.UserId, k.LastSeenAt });
             // One backup per user: saving again replaces it, so this is also the upsert key.
             modelBuilder.Entity<UserKeyBackup>().HasIndex(b => b.UserId).IsUnique();
             // One row per physical push token: re-registering (even after switching accounts on the same phone)
