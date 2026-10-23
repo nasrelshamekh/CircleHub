@@ -11,6 +11,7 @@ import {
     sendTyping,
     TYPING_CHANGED_EVENT,
 } from "@/services/chatHub";
+import { decryptMessageContent } from "@/services/messageCrypto";
 import { chimeForIncomingMessage } from "@/lib/messageChime";
 import { shouldToast, showMessageToast } from "@/lib/messageToast";
 import { chimeForIncomingNotification } from "@/lib/notificationChime";
@@ -150,6 +151,13 @@ export default function ChatConnectionContextProvider({ children }) {
                         preview: message?.encryptedPayload || "Shared a post",
                     });
                 }
+            }
+
+            // The event carries the ciphertext, so it can be opened while the refetch below is still in
+            // flight. The bubble then mounts with its text already settled and never shows the decrypt
+            // skeleton, which is what a burst of messages used to flash on the receiving end.
+            if (message?.encryptedPayload) {
+                decryptMessageContent(message.encryptedPayload).catch(() => undefined);
             }
 
             // A message from someone else — or an echo of one's own — affects the conversation list, the

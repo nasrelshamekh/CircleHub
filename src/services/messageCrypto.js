@@ -28,6 +28,16 @@ export const ENC_PREFIX = "ENC:v1:";
 // it clears 12000 with room for a few more devices per side.
 export const MAX_PLAINTEXT_LENGTH = 4000;
 
+// The most devices one message is wrapped for. A wrap costs the sender one ECDH and makes the
+// envelope bigger for everyone, and the device directory only grows — every reinstall mints a new
+// device id — so the list is capped even though the server caps its side of it too.
+const MAX_WRAPS = 8;
+
+// How much of that budget the sender's own devices may take. The sender's current device has to be
+// in it — it must be able to read its own message after a reload — but a user with eight signed-in
+// devices should not squeeze the recipient's copy out of the envelope.
+const MAX_OWN_WRAPS = 2;
+
 const UNREADABLE = "[Can't decrypt this message]";
 
 const HKDF_INFO = utf8("CircleHub v1 message key wrap");
@@ -352,6 +362,15 @@ export async function publishKey(deviceId, publicKey) {
     await apiClient.post("/keys", { deviceId, publicKey });
 }
 
+// How old a device's `lastSeenAt` may get before this device re-publishes to refresh it. Far
+// inside the server's 30-day pruning window, so a device that opens the app at all stays listed.
+const LIVENESS_REFRESH_MS = 24 * 60 * 60 * 1000;
+
+function isLivenessStale(key) {
+    const seenAt = Date.parse(key.lastSeenAt ?? key.createdAt ?? "");
+    return !Number.isFinite(seenAt) || Date.now() - seenAt > LIVENESS_REFRESH_MS;
+}
+
 /**
  * Makes sure this browser has a keypair, its private half is available, and the public half is the
  * one the server has published. Returns the local record plus the full published list for this user
@@ -383,7 +402,16 @@ async function runEnsureDeviceKey() {
 
     if (mine) {
         const record = stored.find((entry) => entry.publicKeyB64 === mine.publicKey);
-        if (record) return { record, published };
+        if (record) {
+            // The server prunes a device key that has not been published for 30 days, and a device
+            // that already has its key in the directory would otherwise never publish again — so a
+            // phone used every day would still be pruned a month after it first signed in. Re-publish
+            // once the stamp is a day old: one cheap upsert a day keeps an active device alive.
+            if (isLivenessStale(mine)) {
+                publishKey(deviceId, record.publicKeyB64).catch(() => undefined);
+            }
+            return { record, published };
+        }
 
         // The public key is on the server but its private half is gone (storage cleared since): rotate
         // by publishing a fresh key here. Old messages wrapped to the lost key stay unreadable; new
@@ -457,6 +485,29 @@ export function isEncryptedContent(content) {
 }
 
 /**
+ * Picks the devices a message is wrapped for: the sender's own devices first — the current one ahead
+ * of the rest, because it must be able to read its own message after a reload — and then the
+ * recipient's, most recently seen first. The order is not a hint about recency alone: it is what
+ * decides which wrap the recipient's fast path finds first.
+ */
+export function selectWrapTargets(ownKeys, recipientKeys, currentDeviceId) {
+    const seenAt = (key) => Date.parse(key.lastSeenAt ?? key.createdAt ?? "") || 0;
+    const byRecency = (a, b) => seenAt(b) - seenAt(a);
+
+    const own = [...ownKeys].sort(byRecency);
+    const ownSelected = [
+        ...own.filter((key) => key.deviceId === currentDeviceId),
+        ...own.filter((key) => key.deviceId !== currentDeviceId),
+    ].slice(0, MAX_OWN_WRAPS);
+
+    const recipient = [...recipientKeys]
+        .sort(byRecency)
+        .slice(0, MAX_WRAPS - ownSelected.length);
+
+    return [...ownSelected, ...recipient];
+}
+
+/**
  * Turns message text into the string that goes on the wire. Returns the plaintext untouched when the
  * recipient has published no keys (owner-approved: messaging must never block during rollout) — that
  * is also what every message looked like before this landed.
@@ -475,7 +526,7 @@ export async function encryptMessageContent({ recipientUsername, plaintext }) {
 
     // Dedupe: a user messaging themselves (or the same key listed twice) must not get two wraps.
     const targets = new Map();
-    for (const key of [...ownKeys, ...recipientKeys]) {
+    for (const key of selectWrapTargets(ownKeys, recipientKeys, getDeviceId())) {
         targets.set(`${key.deviceId}|${key.publicKey}`, key);
     }
 
@@ -522,6 +573,30 @@ export async function encryptMessageContent({ recipientUsername, plaintext }) {
 
 /* ------------------------------------------------------------------ receive path */
 
+/**
+ * Opens one wrap with a derived wrap key. Returns the plaintext, or null when the pair does not
+ * authenticate. The AEAD tag is the only thing that proves a key is the right one, so a failure
+ * here is a "keep trying", never a hard error.
+ */
+async function openWrap(wrapKey, wrap, contentIv, ciphertext) {
+    try {
+        const packed = fromBase64(wrap.k);
+        const contentKey = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: packed.slice(0, 12) },
+            wrapKey,
+            packed.slice(12),
+        );
+        const plaintext = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: contentIv },
+            await importAesKey(new Uint8Array(contentKey)),
+            ciphertext,
+        );
+        return new TextDecoder().decode(plaintext);
+    } catch {
+        return null;
+    }
+}
+
 async function decryptEnvelope(envelope) {
     if (!envelope || envelope.v !== 1 || !envelope.e || !Array.isArray(envelope.w)) {
         return UNREADABLE;
@@ -532,28 +607,53 @@ async function decryptEnvelope(envelope) {
     const contentIv = fromBase64(envelope.iv);
     const ciphertext = fromBase64(envelope.ct);
 
-    // Try every local private key against every wrap until the AEAD tag accepts one: the wrap names a
-    // device id, but matching on the id alone would break if a device rotated its key, and the tag is
-    // the only check that actually proves the key is right.
-    for (const record of keys) {
+    // The wrap key depends only on our private key and the sender's ephemeral public key — never on
+    // which wrap is being opened — so it is derived once per local key and reused for every wrap.
+    // Deriving it per (key, wrap) pair made the fallback sweep quadratic: a seven-wrap envelope
+    // against a three-key ring paid twenty-one ECDHs where three were needed.
+    const wrapKeys = new Map();
+    function wrapKeyFor(index) {
+        let pending = wrapKeys.get(index);
+        if (!pending) {
+            pending = deriveWrapKey(keys[index].privateKey, ephemeralPublicKey);
+            wrapKeys.set(index, pending);
+        }
+        return pending;
+    }
+
+    // Fast path: every wrap names the device it belongs to (`w[].d`), so try the wraps whose device
+    // id this browser actually holds a key for before the sweep below. The sweep costs one ECDH per
+    // local key, and the key directory grows with every reinstall a device makes — the mobile
+    // client pays that price in pure JavaScript, where it is a visible freeze.
+    const byDeviceId = new Map();
+    for (let index = 0; index < keys.length; index += 1) {
+        const bucket = byDeviceId.get(keys[index].deviceId);
+        if (bucket) {
+            bucket.push(index);
+        } else {
+            byDeviceId.set(keys[index].deviceId, [index]);
+        }
+    }
+
+    for (const wrap of envelope.w) {
+        const bucket = byDeviceId.get(wrap.d);
+        if (!bucket) continue;
+
+        for (const index of bucket) {
+            const plaintext = await openWrap(await wrapKeyFor(index), wrap, contentIv, ciphertext);
+            if (plaintext !== null) return plaintext;
+        }
+    }
+
+    // Fallback: the device id is a hint, not a proof. A key restored from the recovery phrase lives
+    // under the *current* device id while the message was wrapped for the id the old profile used,
+    // and a device that rotated its key keeps its id with a different key — neither is reachable by
+    // the id alone, so the sweep still runs and the tag stays the only real check.
+    for (let index = 0; index < keys.length; index += 1) {
+        const wrapKey = await wrapKeyFor(index);
         for (const wrap of envelope.w) {
-            try {
-                const wrapKey = await deriveWrapKey(record.privateKey, ephemeralPublicKey);
-                const packed = fromBase64(wrap.k);
-                const contentKey = await crypto.subtle.decrypt(
-                    { name: "AES-GCM", iv: packed.slice(0, 12) },
-                    wrapKey,
-                    packed.slice(12),
-                );
-                const plaintext = await crypto.subtle.decrypt(
-                    { name: "AES-GCM", iv: contentIv },
-                    await importAesKey(new Uint8Array(contentKey)),
-                    ciphertext,
-                );
-                return new TextDecoder().decode(plaintext);
-            } catch {
-                // Wrong key for this wrap — keep trying.
-            }
+            const plaintext = await openWrap(wrapKey, wrap, contentIv, ciphertext);
+            if (plaintext !== null) return plaintext;
         }
     }
 
