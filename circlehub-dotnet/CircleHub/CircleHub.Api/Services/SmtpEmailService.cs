@@ -24,20 +24,31 @@ namespace CircleHub.Api.Services
                 return;
             }
 
+            var appPassword = _configuration["Email:SmtpAppPassword"];
+            if (string.IsNullOrWhiteSpace(appPassword))
+            {
+                _logger.LogWarning("Email:SmtpAppPassword is not configured; skipping send to {To}.", to);
+                return;
+            }
+
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(_configuration["Email:SenderName"] ?? "CircleHub", senderEmail));
             message.To.Add(MailboxAddress.Parse(to));
             message.Subject = subject;
             message.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();
 
+            var port = int.TryParse(_configuration["Email:SmtpPort"], out var configuredPort) ? configuredPort : 587;
+
             using var client = new SmtpClient();
+            // Never fall back to plaintext: 465 is implicit TLS, 587 must STARTTLS.
+            // StartTlsWhenAvailable would allow a downgrade/stripping attack.
             await client.ConnectAsync(
                 _configuration["Email:SmtpHost"] ?? "smtp.gmail.com",
-                int.TryParse(_configuration["Email:SmtpPort"], out var port) ? port : 587,
-                SecureSocketOptions.StartTlsWhenAvailable,
+                port,
+                port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls,
                 cancellationToken);
 
-            await client.AuthenticateAsync(senderEmail, _configuration["Email:SmtpAppPassword"] ?? "", cancellationToken);
+            await client.AuthenticateAsync(senderEmail, appPassword, cancellationToken);
             await client.SendAsync(message, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
         }

@@ -131,8 +131,9 @@ All protected endpoints require a `Bearer` token. Auth is username-or-email + pa
 ## Deployment
 
 - **Frontend** — deployed to Vercel (GitHub integration). The `VITE_BASE_URL` used in production builds is read from the committed `.env.production`.
-- **Backend** — any publicly reachable host (or a tunnel such as Cloudflare Tunnel). Set `FrontendUrl` in `appsettings.json`/environment to the deployed frontend URL so email verification links point to the right place.
-- The API trusts `X-Forwarded-For` / `X-Forwarded-Proto` headers, so behind a TLS-terminating proxy (e.g. Cloudflare) it correctly emits `https` URLs for uploaded images and links.
+- **Backend** — see [`DEPLOYMENT.md`](DEPLOYMENT.md) for the MonsterASP.NET checklist: environment variables, MariaDB 10.10 server version, `deploy/migrate.sql`, `/health`, and proxy/HTTPS notes.
+- Set `FrontendUrl` in `appsettings.json`/environment to the deployed frontend URL so email verification links point to the right place.
+- The API trusts `X-Forwarded-For` / `X-Forwarded-Proto` headers, so behind a TLS-terminating proxy (e.g. Cloudflare) it correctly emits `https` URLs for uploaded images and links. When the proxy is not loopback, its addresses must be listed under `ForwardedHeaders:KnownProxies`.
 
 ## Security Notes
 
