@@ -60,6 +60,7 @@ export default function PostDetails() {
                         </button>
                         <PostCard
                             post={post}
+                            isDetailsPage={true}
                             onDelete={canDelete ? handleDeletePost : undefined}
                             canDelete={canDelete}
                             onToggleLike={(id) => toggleLike.mutate(id)}

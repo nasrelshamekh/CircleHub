@@ -1131,3 +1131,26 @@ Verification:
 - An earlier cleanup deleted the newest message of Alice's thread with `testuser` without repairing
   `LastMessageAt`, which is why that column was stale. Any future row deletion needs the same repair — the
   cleanup script in the section above shows the shape.
+
+### Step 20 — WhatsApp-Style Notification Grouping, Avatars, R2 Uploads & Post Detail Navigation (verified)
+
+1. **WhatsApp-Style Push Notification Stacking & Sender Avatars:**
+   - **Notification Stacking (`MessageDeliveryService.cs`, `ExpoPushService.cs`):** Assigned conversation tags (`tag = $"chat_{conversationId}"`) to Expo pushes. Android uses the tag to coalesce incoming messages from the same conversation into a single notification slot instead of flooding the notification shade.
+   - **Unread Message Counter (`MessagesController.cs`):** Computed recipient unread count in EF Core and reflected it in the push title (`{SenderName} ({Count} messages)`).
+   - **Rich Media Avatars (`ExpoPushService.cs`, `NotificationService.cs`):** Added `richContent: { image: avatarUrl }` to push payloads so Android displays the sender's avatar directly inside the notification card for messages, and actor avatars for social events (likes, comments, follows).
+   - **Chat Thread Outgoing Avatar (`circlehub-mobile/src/components/messages/messagethread.tsx`):** Displayed the sender avatar next to outgoing message bubbles on the right, matching incoming messages on the left, with aligned timestamp and retry padding.
+
+2. **MonsterASP & Cloudflare R2 Upload Resiliency:**
+   - **32-bit/64-bit Native SkiaSharp Architecture:** MonsterASP runs IIS Application Pools in 32-bit (x86) mode by default. Bundled native `libSkiaSharp.dll` for both `win-x86` and `win-x64` in `circlehub-api-publish.zip` (16.9 MB) while pruning non-Windows runtimes and PDBs.
+   - **Graceful Raw Image Storage Fallback (`UploadService.cs`):** If native SkiaSharp re-encoding encounters an environmental issue (such as missing MSVC C++ runtime on shared hosting), the service automatically validates magic header bytes (JPEG, PNG, WebP) and stores the raw image directly rather than failing the request.
+   - **Cloudflare R2 Non-Streaming SigV4 Compatibility (`R2ObjectStorage.cs`):** Resolved `STREAMING-AWS4-HMAC-SHA256-PAYLOAD not implemented` by configuring `DisablePayloadSigning = true` and `DisableDefaultChecksumValidation = true` on `PutObjectRequest`.
+   - **Descriptive Exception Logging (`Program.cs`):** Updated the global exception handler to log stack traces with `ILogger` and return descriptive exception messages rather than opaque generic strings.
+
+3. **Post Details Navigation & Full Image View (Web & Mobile):**
+   - **Interactive Feed Cards:** Clicking on post text or image in feed, community, or profile post cards now navigates directly to the post details page (`/post/:id`).
+   - **Full Image Height Display:** On the post details page, images now display at their full natural aspect ratio without height restrictions or cropping (using dynamic aspect ratio on mobile and `w-full rounded-2xl h-auto object-contain max-h-none` on web).
+
+Verification:
+- Backend: `dotnet build` passed (0 warnings, 0 errors).
+- Web: `npm run build` passed (0 errors, 5.29s).
+- Mobile: `npm test` 16/16 test suites passed (105/105 tests), `npx tsc --noEmit` passed (0 errors), `npm run lint` passed (0 errors).
