@@ -30,6 +30,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 17 | End-to-end encryption on the web client: per-device key directory, WebCrypto ECDH + AES-GCM envelope, plaintext fallback for a recipient with no published key | done, verified |
 | 18 | Key recovery: random account key wrapped by a 12-word phrase, so history follows the account to any device without giving up E2EE | done, verified |
 | 19 | Web quality of life & layout alignment: native emoji picker, auto-resizing multiline composer + character counter, failed-send retry, sound mute toggles, New Message dialog, Mark all as read, route/vendor code splitting, Messages/Notifications width & header alignment | done, verified |
+| 27 | Web conversation loading polish: replaced plain "Loading…" text with CircleHub circular spinner indicator | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -1285,5 +1286,23 @@ Verification:
 - Mobile TypeScript: `npx tsc --noEmit` passed (0 errors).
 - Mobile Linter: `npm run lint` passed (0 errors, 0 warnings).
 - Backend Build: `dotnet build` passed (0 errors, 0 warnings).
+
+### Step 27 — Web Conversation Loading Polish (verified)
+
+1. **Message Thread Loading State (`MessageThread.jsx`):**
+   - Replaced plain text `"Loading…"` with CircleHub's native loading indicator pattern: a centered circular container (`rounded-(--radius-full) bg-(--active) text-(--primary)`) with Lucide's `LoaderCircle` spinning smoothly.
+   - Enforced `min-h-full` on the content container and flex auto-centering (`m-auto py-12 text-center`), perfectly placing the spinner in the vertical and horizontal center of the message pane while loading.
+   - Added subtle avatar/name skeleton placeholder in the thread header if initial user metadata is still resolving, preventing header jump.
+   - Polished `isLoadingOlder` to use `<LoaderCircle size={16} className="animate-spin text-(--primary)" />` alongside `"Loading earlier messages…"`.
+   - Added dedicated error state with `AlertCircle` if initial query fails.
+
+2. **Messages Shell & Conversations List (`Messages.jsx`):**
+   - Polished `isLoadingConversations` in the sidebar conversation list to also render `<LoaderCircle size={18} className="animate-spin text-(--primary)" />`.
+   - Wired `isError` from `useConversation(id)` into `MessageThread` to gracefully handle failed thread fetches.
+
+Verification:
+- Web Build: `npm run build` passed (0 errors).
+- Web Linter: `npm run lint` passed (0 errors, 0 warnings).
+
 
 

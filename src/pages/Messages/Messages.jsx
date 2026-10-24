@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageCircle, MessageSquarePlus } from "lucide-react";
+import { LoaderCircle, MessageCircle, MessageSquarePlus } from "lucide-react";
 import { useParams } from "react-router-dom";
 
 import ChatConnectionStatus from "@/components/messages/ChatConnectionStatus";
@@ -22,6 +22,7 @@ export default function Messages() {
         isLoading: isLoadingThread,
         isLoadingOlder,
         loadOlder,
+        isError: isThreadError,
     } = useConversation(id);
 
     const activeConversation = conversations.find(
@@ -84,9 +85,12 @@ export default function Messages() {
 
                     <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
                         {isLoadingConversations ? (
-                            <p className="type-body-sm p-3 text-secondary">
-                                Loading conversations…
-                            </p>
+                            <div className="flex items-center justify-center gap-2 p-6 text-secondary">
+                                <LoaderCircle size={18} className="animate-spin text-(--primary)" />
+                                <span className="type-body-sm">
+                                    Loading conversations…
+                                </span>
+                            </div>
                         ) : (
                             <ConversationList
                                 conversations={conversations}
@@ -109,6 +113,7 @@ export default function Messages() {
                             isLoading={isLoadingThread}
                             isLoadingOlder={isLoadingOlder}
                             onLoadOlder={loadOlder}
+                            isError={isThreadError}
                         />
                     ) : (
                         <div className="flex h-full flex-col items-center justify-center p-8 text-center">

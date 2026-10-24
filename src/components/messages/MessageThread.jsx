@@ -7,7 +7,7 @@ import {
     useState,
 } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, LoaderCircle } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { toast } from "sonner";
 
@@ -164,6 +164,7 @@ export default function MessageThread({
     isLoading,
     isLoadingOlder,
     onLoadOlder,
+    isError = false,
 }) {
     const bottomRef = useRef(null);
     const scrollRef = useRef(null);
@@ -340,7 +341,7 @@ export default function MessageThread({
                     <ArrowLeft size={20} />
                 </Link>
 
-                {otherUser && (
+                {otherUser ? (
                     <Link
                         to={`/profile/${otherUser.username}`}
                         className="flex min-w-0 items-center gap-3"
@@ -365,6 +366,16 @@ export default function MessageThread({
                             )}
                         </div>
                     </Link>
+                ) : (
+                    isLoading && (
+                        <div className="flex min-w-0 items-center gap-3">
+                            <div className="avatar-md shrink-0 animate-pulse rounded-full bg-(--surface-low)" />
+                            <div className="min-w-0 space-y-1.5">
+                                <div className="h-4 w-28 animate-pulse rounded bg-(--surface-low)" />
+                                <div className="h-3 w-16 animate-pulse rounded bg-(--surface-low)" />
+                            </div>
+                        </div>
+                    )
                 )}
             </div>
 
@@ -374,20 +385,44 @@ export default function MessageThread({
                     onScroll={handleScroll}
                     className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 [overflow-anchor:none]"
                 >
-                    <div ref={contentRef} className="flex flex-col gap-4">
+                    <div ref={contentRef} className="flex min-h-full flex-col gap-4">
                         {isLoading && (
-                            <p className="type-body-sm text-secondary">
-                                Loading…
-                            </p>
+                            <div
+                                role="status"
+                                aria-label="Loading messages"
+                                className="m-auto flex flex-col items-center justify-center py-12 text-center"
+                            >
+                                <div className="flex h-12 w-12 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">
+                                    <LoaderCircle size={24} className="animate-spin" />
+                                </div>
+                            </div>
                         )}
 
                         {isLoadingOlder && (
-                            <p className="type-body-sm text-center text-secondary">
-                                Loading earlier messages…
-                            </p>
+                            <div
+                                role="status"
+                                aria-label="Loading earlier messages"
+                                className="flex items-center justify-center gap-2 py-2 text-secondary"
+                            >
+                                <LoaderCircle size={16} className="animate-spin text-(--primary)" />
+                                <span className="type-body-sm">
+                                    Loading earlier messages…
+                                </span>
+                            </div>
                         )}
 
-                        {!isLoading && messages.length === 0 && (
+                        {isError && !isLoading && messages.length === 0 && (
+                            <div className="m-auto flex flex-col items-center justify-center gap-3 py-12 text-center">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-(--radius-full) bg-(--surface-low) text-(--error)">
+                                    <AlertCircle size={24} />
+                                </div>
+                                <p className="type-body-sm text-secondary">
+                                    Failed to load messages. Please try again.
+                                </p>
+                            </div>
+                        )}
+
+                        {!isLoading && !isError && messages.length === 0 && (
                             <p className="type-body-sm m-auto py-12 text-secondary">
                                 No messages yet. Say hello.
                             </p>
