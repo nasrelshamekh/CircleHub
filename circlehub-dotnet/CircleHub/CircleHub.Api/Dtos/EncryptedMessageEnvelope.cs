@@ -26,5 +26,9 @@ namespace CircleHub.Api.Dtos
         /// that thread instead of refetching every conversation.
         /// </summary>
         public string? ConversationId { get; init; }
+
+        public string? SenderName { get; set; }
+
+        public string? SenderAvatarUrl { get; set; }
     }
 }

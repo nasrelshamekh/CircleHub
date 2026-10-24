@@ -56,6 +56,29 @@ namespace CircleHub.Api.Services
             int unreadCount = 1,
             CancellationToken cancellationToken = default)
         {
+            var baseTitle = string.IsNullOrWhiteSpace(senderName) ? "New message" : senderName;
+            var title = unreadCount > 1 ? $"{baseTitle} ({unreadCount} messages)" : baseTitle;
+
+
+
+            string? resolvedAvatarUrl = null;
+            if (!string.IsNullOrWhiteSpace(senderAvatarUrl))
+            {
+                if (senderAvatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                    senderAvatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    resolvedAvatarUrl = senderAvatarUrl;
+                }
+                else
+                {
+                    var baseUrl = _config["App:BaseUrl"] ?? "https://circlehub.runasp.net";
+                    resolvedAvatarUrl = $"{baseUrl.TrimEnd('/')}/{senderAvatarUrl.TrimStart('/')}";
+                }
+            }
+
+            envelope.SenderName = baseTitle;
+            envelope.SenderAvatarUrl = resolvedAvatarUrl;
+
             // Two audiences, one call: the recipient's live connections get the message, and the
             // sender's own other connections get their echo (a message sent from tab A must show up in
             // tab B without a refetch). SignalR's Users(...) takes every id, so the sending connection
@@ -65,9 +88,6 @@ namespace CircleHub.Api.Services
             // already stored, so the worst case is that they see it a little later.
             await _hub.Clients.Users(recipientId.ToString(), senderId.ToString())
                 .SendAsync(ChatHub.ReceiveMessageMethod, envelope, cancellationToken);
-
-            var baseTitle = string.IsNullOrWhiteSpace(senderName) ? "New message" : senderName;
-            var title = unreadCount > 1 ? $"{baseTitle} ({unreadCount} messages)" : baseTitle;
 
             var singleBody = !string.IsNullOrWhiteSpace(previewText)
                 ? (previewText.Length > 150 ? previewText[..150] + "…" : previewText)
@@ -100,20 +120,7 @@ namespace CircleHub.Api.Services
                 expandedBody = string.Join("\n", previews);
             }
 
-            string? resolvedAvatarUrl = null;
-            if (!string.IsNullOrWhiteSpace(senderAvatarUrl))
-            {
-                if (senderAvatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                    senderAvatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                {
-                    resolvedAvatarUrl = senderAvatarUrl;
-                }
-                else
-                {
-                    var baseUrl = _config["App:BaseUrl"] ?? "https://circlehub.runasp.net";
-                    resolvedAvatarUrl = $"{baseUrl.TrimEnd('/')}/{senderAvatarUrl.TrimStart('/')}";
-                }
-            }
+
 
             var conversationTag = $"chat_{envelope.ConversationId}";
 

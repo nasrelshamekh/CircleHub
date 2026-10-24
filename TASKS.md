@@ -1258,3 +1258,32 @@ Verification:
 - Mobile: `npx tsc --noEmit` passed (0 errors).
 - Mobile: `npm run lint` passed (0 warnings, 0 errors).
 
+### Step 26 — Discord-Inspired Expanded Notification Layout (Android MessagingStyle & In-App Component) (verified)
+
+1. **Android System Notification Shade (`ExpoNotificationBuilder.kt`, `patches/expo-notifications+57.0.24.patch`):**
+   - **`NotificationCompat.MessagingStyle` Integration:** Replaced generic `BigTextStyle` for message channels with Android's genuine `NotificationCompat.MessagingStyle(userPerson)`. Sets `setConversationTitle(null)` to produce the native 1:1 conversation layout modeled after Discord.
+   - **Sender Avatar & Name Alignment:** Binds `Person.Builder().setName(senderName).setIcon(IconCompat.createWithBitmap(finalAvatarBitmap))` to the sender. In collapsed state, Android renders the circular avatar on the left, sender name prominently, and the latest message preview.
+   - **Expanded Grouped Messages:** In expanded state (drag down in the notification shade), renders grouped messages in vertical sequence underneath the sender's identity without repeating the sender avatar or name for each message.
+   - **Graceful Missing Avatar Fallback:** If `senderAvatarUrl` is missing or fails to download, generates a crisp 128x128 circular avatar bitmap with the sender's initial in CircleHub brand primary color (`#4648D4`) and pure white text, ensuring consistent circular avatar presentation across all Android versions.
+
+2. **React Native In-App Notification Component (`InAppMessageNotification.tsx`):**
+   - **Visual Structure:** Created `src/components/messages/inappmessagenotification.tsx` inspired by Discord's notification design language (`rounded-2xl`, `bg-surface-lowest`, `border border-border`, `shadow-lg`).
+   - **Left Column:** Circular sender avatar with `Avatar.tsx`, with automatic fallback to initial circle on missing or failed avatar.
+   - **Center / Body:** Prominent sender name (`text-label-md font-semibold text-text-primary`) and message count badge (`{count} messages`).
+   - **Collapsed State:** Displays a single compact preview line of the latest message (`numberOfLines={1}`).
+   - **Expanded State:** Arranges grouped messages vertically, clearly separated with subtle borders, wrapping long messages naturally without breaking card layout. Identity is never repeated per message.
+   - **Controls & Navigation:** Interactive chevron toggle button (`ChevronDown` / `ChevronUp`), dismiss button (`X`), and body press callback to open `/messages/[id]`.
+
+3. **In-App Message Listener Integration (`ChatConnectionContext.tsx`):**
+   - **SignalR Fanout:** When an incoming message arrives via SignalR while the user is outside that active thread, triggers the Discord-style notification banner. Consecutive incoming messages from the same sender automatically group into the active notification. Auto-dismisses after 6 seconds of inactivity, but remains visible if expanded by the user.
+
+4. **Backend SignalR Envelope Payload (`EncryptedMessageEnvelope.cs`, `MessageDeliveryService.cs`):**
+   - Added `SenderName` and `SenderAvatarUrl` to `EncryptedMessageEnvelope` so real-time SignalR message relays immediately deliver sender identity metadata without extra network queries. Bumped `/health` version to `2.6.0-discord-notif` and updated `circlehub-api-publish.zip`.
+
+Verification:
+- Mobile Unit Tests: `npm test` 18/18 test suites passed (114/114 tests, including full coverage in `InAppMessageNotification.test.tsx`).
+- Mobile TypeScript: `npx tsc --noEmit` passed (0 errors).
+- Mobile Linter: `npm run lint` passed (0 errors, 0 warnings).
+- Backend Build: `dotnet build` passed (0 errors, 0 warnings).
+
+
