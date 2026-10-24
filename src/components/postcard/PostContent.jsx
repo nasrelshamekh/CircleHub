@@ -24,18 +24,22 @@ export default function PostContent({ post, isDetailsPage = false }) {
 
       {post.imageUrl && (
         isDetailsPage ? (
-          <img
-            src={post.imageUrl}
-            alt="Post full view"
-            className="w-full rounded-2xl h-auto object-contain max-h-none"
-          />
-        ) : (
-          <Link to={`/post/${post.id}`} className="block overflow-hidden rounded-2xl">
+          <div className="flex justify-center w-full overflow-hidden rounded-2xl bg-black/[0.02] dark:bg-white/[0.02]">
             <img
               src={post.imageUrl}
-              alt="Post preview"
-              className="w-full rounded-2xl object-cover max-h-125 transition-transform duration-200 hover:scale-[1.01]"
+              alt="Post full view"
+              className="max-h-[72vh] max-w-full w-auto h-auto object-contain rounded-2xl"
             />
+          </div>
+        ) : (
+          <Link to={`/post/${post.id}`} className="block overflow-hidden rounded-2xl bg-black/[0.02] dark:bg-white/[0.02]">
+            <div className="flex justify-center w-full">
+              <img
+                src={post.imageUrl}
+                alt="Post preview"
+                className="max-h-[520px] max-w-full w-auto h-auto object-contain rounded-2xl transition-transform duration-200 hover:scale-[1.01]"
+              />
+            </div>
           </Link>
         )
       )}

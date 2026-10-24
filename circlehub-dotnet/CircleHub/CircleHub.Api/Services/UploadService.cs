@@ -16,7 +16,7 @@ namespace CircleHub.Api.Services
     {
         private const long DefaultMaxImageBytes = 5 * 1024 * 1024; // 5 MB
         private const long MaxImagePixels = 40_000_000;
-        private const int WebpQuality = 82;
+        private const int WebpQuality = 90;
 
         private readonly IWebHostEnvironment _env;
         private readonly IObjectStorage _storage;
@@ -233,7 +233,8 @@ namespace CircleHub.Api.Services
             var height = Math.Max(1, (int)Math.Round(source.Height * ratio));
 
             var info = new SKImageInfo(width, height, source.ColorType, source.AlphaType);
-            var scaled = source.Resize(info, SKSamplingOptions.Default);
+            var sampling = new SKSamplingOptions(SKCubicResampler.CatmullRom);
+            var scaled = source.Resize(info, sampling);
             if (scaled is null)
                 throw new ArgumentException("Image file is invalid or corrupted");
 

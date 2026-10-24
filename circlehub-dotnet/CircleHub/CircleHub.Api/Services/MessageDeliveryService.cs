@@ -94,10 +94,10 @@ namespace CircleHub.Api.Services
                     }
                 });
 
-            string body;
+            string expandedBody;
             lock (previews)
             {
-                body = string.Join("\n", previews);
+                expandedBody = string.Join("\n", previews);
             }
 
             string? resolvedAvatarUrl = null;
@@ -120,7 +120,7 @@ namespace CircleHub.Api.Services
             await _push.SendToUserAsync(
                 recipientId,
                 title,
-                body,
+                singleBody, // Collapsed view shows ONLY the latest message so Android never collapses multiline text into a horizontal string
                 new
                 {
                     type = "message",
@@ -128,11 +128,12 @@ namespace CircleHub.Api.Services
                     messageId = envelope.MessageId,
                     senderId = envelope.SenderId,
                     senderAvatarUrl = resolvedAvatarUrl,
-                    tag = conversationTag
+                    tag = conversationTag,
+                    bigText = expandedBody // Expanded view (hold and drag down) displays up to 3 messages
                 },
                 channelId: "messages",
                 tag: conversationTag,
-                imageUrl: null, // Avoid BigPictureStyle so Android expands message text rather than enlarging the avatar
+                imageUrl: null, // Avoid BigPictureStyle so Android keeps the avatar as a thumbnail instead of enlarging it into a giant photo
                 cancellationToken: cancellationToken);
         }
     }

@@ -1193,3 +1193,25 @@ Verification:
 - Mobile: `npm test` 17/17 test suites passed (108/108 tests).
 - Mobile: `tsc -p tsconfig.json --noEmit` passed (0 errors).
 - Mobile: `npm run lint` passed (0 warnings, 0 errors).
+
+### Step 23 — Notification Avatar & Multi-Line Expansion, Status Bar Silhouette Scale, and Web High-Fidelity Image Rendering (verified)
+
+1. **Mobile Notification Avatar & Multi-Line Expand Mechanics (`MessageDeliveryService.cs`, `ExpoNotificationBuilder.kt`):**
+   - **Collapsed Single-Line Preview:** Updated `MessageDeliveryService.cs` to pass `singleBody` (the single latest message) as the push `body` payload so Android's collapsed notification preview never joins multiple lines into a horizontal string with spaces.
+   - **Expanded Multi-Line History:** Passed `expandedBody` (up to 3 recent messages joined with newlines) in `data.bigText`. Patched `ExpoNotificationBuilder.kt` to bind `NotificationCompat.BigTextStyle().bigText(bigText)` so holding and dragging down the notification expands to show all 3 messages vertically.
+   - **Non-Enlarging Sender Avatar:** Passed `resolvedAvatarUrl` in `data.senderAvatarUrl` and kept `imageUrl: null` on the push envelope. `ExpoNotificationBuilder.kt` downloads the avatar and applies `builder.setLargeIcon(avatarBitmap)` with `BigTextStyle`. Because Android FCM receives `imageUrl: null`, FCM never applies `BigPictureStyle`, ensuring the avatar remains a circular thumbnail next to the sender's name and never expands into a giant photo banner. Configured `largeIcon: "./assets/images/circlehub-app-icon.png"` in `app.json` for fallback branding.
+
+2. **Android Status Bar Logo Silhouette Scaling (`assets/images/notification-icon.png`):**
+   - Re-generated the monochrome 512x512 transparent notification icon from the master vector asset. Increased the two-circles silhouette bounding box from 419x270 to 479x309 (+15% linear, +32% visual surface area) with pure `#FFFFFF` fill, exact 16px lateral safety margins, and smooth alpha antialiasing. Produces a bolder, larger mark in the Android status bar and shade.
+
+3. **Web Image High-Fidelity Rendering & Responsive Constrained Layout (`UploadService.cs`, `PostContent.jsx`, `imageUpload.ts`):**
+   - **SkiaSharp Bicubic Downsampling:** Replaced `SKSamplingOptions.Default` (which defaulted to nearest-neighbor filtering and caused jagged pixelation when downsampling phone photos) in `UploadService.cs` with `new SKSamplingOptions(SKCubicResampler.CatmullRom)`. Raised WebP output quality from 82 to 90.
+   - **Mobile Upload Quality & Resolution:** In `imageUpload.ts`, increased `MAX_UPLOAD_WIDTH` to 2048 (from 1600) and `UPLOAD_JPEG_QUALITY` to 0.90 (from 0.8), with matching unit test assertion.
+   - **Web Viewport Constraint:** In `PostContent.jsx`, updated post details image to `max-h-[72vh] max-w-full w-auto h-auto object-contain` centered in a neutral container (preventing vertical phone photos from stretching to 1024px width and 1300-1800px height). Feed previews now use `max-h-[520px] max-w-full w-auto h-auto object-contain` to preserve natural proportions without stretching.
+   - **Deployment Package:** Re-published and packaged `circlehub-api-publish.zip` (16.9 MB) with health version `2.3.0-bicubic-notif-fix` for MonsterASP deployment.
+
+Verification:
+- Web: `npm run build` passed (0 errors, 5.89s).
+- Backend: `dotnet build` passed (0 warnings, 0 errors).
+- Mobile: `npm test` 17/17 test suites passed (108/108 tests).
+- Mobile: `npx tsc --noEmit` and `npm run lint` passed (0 errors).
