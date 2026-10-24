@@ -1146,6 +1146,9 @@ Verification:
    - **Cloudflare R2 Non-Streaming SigV4 Compatibility (`R2ObjectStorage.cs`):** Resolved `STREAMING-AWS4-HMAC-SHA256-PAYLOAD not implemented` by configuring `DisablePayloadSigning = true` and `DisableDefaultChecksumValidation = true` on `PutObjectRequest`.
    - **Descriptive Exception Logging (`Program.cs`):** Updated the global exception handler to log stack traces with `ILogger` and return descriptive exception messages rather than opaque generic strings.
 
+4. **Android Transparent Notification Icon (Mobile):**
+   - **Status Bar & Shade Icon (`assets/images/notification-icon.png`, `app.json`):** Generated a dedicated 512x512 transparent notification icon featuring pure white CircleHub two-circles silhouette with proper safe-area padding. Configured `expo-notifications` plugin icon to use it, replacing the opaque app icon so Android status bar and dropdown notification sheet render the clean two-circles shape with brand tint (#6366F1) rather than a solid white square box.
+
 3. **Post Details Navigation & Full Image View (Web & Mobile):**
    - **Interactive Feed Cards:** Clicking on post text or image in feed, community, or profile post cards now navigates directly to the post details page (`/post/:id`).
    - **Full Image Height Display:** On the post details page, images now display at their full natural aspect ratio without height restrictions or cropping (using dynamic aspect ratio on mobile and `w-full rounded-2xl h-auto object-contain max-h-none` on web).
