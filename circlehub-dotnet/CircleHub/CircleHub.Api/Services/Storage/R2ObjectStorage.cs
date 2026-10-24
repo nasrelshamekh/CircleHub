@@ -63,6 +63,8 @@ namespace CircleHub.Api.Services.Storage
                 Key = key,
                 InputStream = content,
                 ContentType = contentType,
+                DisablePayloadSigning = true,
+                DisableDefaultChecksumValidation = true,
                 // Keys contain a GUID and never change, so the browser may cache them forever.
                 Headers =
                 {
