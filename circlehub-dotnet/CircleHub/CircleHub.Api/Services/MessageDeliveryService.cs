@@ -127,13 +127,14 @@ namespace CircleHub.Api.Services
                     conversationId = envelope.ConversationId,
                     messageId = envelope.MessageId,
                     senderId = envelope.SenderId,
+                    senderName = baseTitle,
                     senderAvatarUrl = resolvedAvatarUrl,
                     tag = conversationTag,
                     bigText = expandedBody // Expanded view (hold and drag down) displays up to 3 messages
                 },
                 channelId: "messages",
                 tag: conversationTag,
-                imageUrl: null, // Avoid BigPictureStyle so Android keeps the avatar as a thumbnail instead of enlarging it into a giant photo
+                imageUrl: resolvedAvatarUrl,
                 cancellationToken: cancellationToken);
         }
     }

@@ -78,40 +78,17 @@ namespace CircleHub.Api.Services
             foreach (var batch in devices.Chunk(MaxBatchSize))
             {
                 var payload = batch
-                    .Select(device =>
+                    .Select(device => new ExpoPushMessage
                     {
-                        var isAndroid = string.Equals(device.Platform, "android", StringComparison.OrdinalIgnoreCase);
-
-                        // On Android: sending an Expo push with root Title/Body makes Expo deliver an FCM
-                        // "notification" payload, which Google Play Services intercepts in background and
-                        // renders directly without invoking the app's FirebaseMessagingService or ExpoNotificationBuilder.kt.
-                        // By sending a data-only payload for Android, Google Play Services delivers the message
-                        // to the app's background service. The service executes our patched ExpoNotificationBuilder.kt
-                        // which downloads senderAvatarUrl and applies setLargeIcon() (circular avatar that NEVER
-                        // expands to a giant banner) and BigTextStyle().bigText(bigText) (which shows up to 3 messages
-                        // on separate lines when held and dragged down, and only the single latest message when collapsed).
-                        // On iOS: Apple APNs strictly requires root Title & Body to display an alert banner.
-                        return new ExpoPushMessage
-                        {
-                            To = device.Token,
-                            Sound = "default",
-                            Title = isAndroid ? null : title,
-                            Body = isAndroid ? null : body,
-                            Data = isAndroid
-                                ? new
-                                {
-                                    title,
-                                    message = body,
-                                    body = data,
-                                    channelId,
-                                    tag
-                                }
-                                : data,
-                            ChannelId = channelId,
-                            Priority = "high",
-                            Tag = tag,
-                            RichContent = !string.IsNullOrEmpty(imageUrl) ? new ExpoRichContent { Image = imageUrl } : null
-                        };
+                        To = device.Token,
+                        Sound = "default",
+                        Title = title,
+                        Body = body,
+                        Data = data,
+                        ChannelId = channelId,
+                        Priority = "high",
+                        Tag = tag,
+                        RichContent = !string.IsNullOrEmpty(imageUrl) ? new ExpoRichContent { Image = imageUrl } : null
                     })
                     .ToArray();
 

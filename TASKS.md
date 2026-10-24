@@ -1217,7 +1217,7 @@ Verification:
 - Mobile: `npx tsc --noEmit` and `npm run lint` passed (0 errors).
 
 
-### Step 24 ?" Seamless Web Messaging Lifecycle, Instant Conversation Header Mount, and Android Data-Driven Notification Architecture (verified)
+### Step 24 — Seamless Web Messaging Lifecycle, Instant Conversation Header Mount, and Android Data-Driven Notification Architecture (verified)
 
 1. **Webapp Messaging Smoothness & Zero-Flicker Optimistic Transition (`messageCrypto.js`, `MessageComposer.jsx`, `MessageThread.jsx`, `useSendMessage.jsx`):**
    - **Pre-Cached Decryption Cache:** In `messageCrypto.js`, updated `encryptMessageContent` to synchronously store `settledCache.set(serialized, plaintext)` and `decryptCache.set(serialized, Promise.resolve(plaintext))` immediately upon encryption. When the server echoes or returns the message, `peekDecrypted(content)` immediately returns the plaintext synchronously with zero async wait, zero blank bubble, and zero visual flicker.
@@ -1239,3 +1239,22 @@ Verification:
 - Backend: `dotnet build` passed (0 warnings, 0 errors).
 - Mobile: `npm test` 17/17 test suites passed (108/108 tests).
 - Mobile: `npx tsc --noEmit` and `npm run lint` passed (0 errors).
+
+### Step 25 — Mobile Instant Conversation Header & Presence Mount and Push Notification Delivery Restoration (verified)
+
+1. **Mobile Instant Header Mount & Presence/Typing Activity (`[id].tsx`, `useConversation.ts`, `presencelabel.tsx`, `conversationlist.tsx`):**
+   - **Zero Blank Flash on Thread Open:** When navigating to a conversation (`src/app/(tabs)/messages/[id].tsx`), the header synchronously resolves `resolvedOtherUser` from route navigation params (`name`, `username`, `avatarUrl`, `isOnline`, `lastSeenAt`), falling back to React Query's `queryKeys.conversations()` cache and the thread query. The avatar, name, and status mount on frame 0 even while message pages are loading (`isLoading: true`), with zero blank header void and zero layout shifts.
+   - **Live Presence & Typing Status:** Updated `presencelabel.tsx` to support `isTyping?: boolean`. Connected `useTypingIndicator(resolvedOtherUser?.id)` in the thread header to render `"Typing…"` in primary theme color when active, `"Online"` in success green when online, and relative `"Last seen X ago"` / `"Offline"` otherwise.
+   - **Thread Props Passing:** Passed `recipientId`, `recipientUsername`, `recipientName`, and `recipientAvatarUrl` directly into `<MessageThread />`.
+
+2. **Push Notification Delivery Restoration (`ExpoPushService.cs`, `MessageDeliveryService.cs`, `Program.cs`):**
+   - **Restored Standard Notification Payload:** Reverted root `Title = title` and `Body = body` in `ExpoPushService.cs` across all devices. Delivering data-only notifications on Android caused Google Play Services and Expo Push Service to drop background alerts when the app was not in foreground. Restoring the root alert payload guarantees that push notifications always reliably appear in the Android notification drawer and status bar.
+   - **Payload Richness:** Carried `senderName`, `senderAvatarUrl`, `imageUrl: resolvedAvatarUrl`, and `bigText: expandedBody` in `data` to support custom background notification builders.
+   - **Health Version & Deployment Package:** Bumped `/health` version to `2.5.0-notif-fix` and generated `circlehub-api-publish.zip` (clean Windows IIS package with dual 32/64-bit SkiaSharp native libraries).
+
+Verification:
+- Backend: `dotnet build` passed (0 warnings, 0 errors).
+- Mobile: `npm test` 17/17 test suites passed (108/108 tests).
+- Mobile: `npx tsc --noEmit` passed (0 errors).
+- Mobile: `npm run lint` passed (0 warnings, 0 errors).
+
