@@ -1158,3 +1158,21 @@ Verification:
 - Backend: `dotnet build` passed (0 warnings, 0 errors).
 - Web: `npm run build` passed (0 errors, 5.29s).
 - Mobile: `npm test` 16/16 test suites passed (105/105 tests), `npx tsc --noEmit` passed (0 errors), `npm run lint` passed (0 errors).
+
+### Step 21 — Themed Animated Loading Screen & Consistent In-App Options/Confirm Modals (verified)
+
+1. **Animated Brand Loading Screen (`src/components/ui/apploadingscreen.tsx`, `src/app/_layout.tsx`):**
+   - **Webapp Loading Parity:** Modeled after the web app's `AuthContext` loading state. Features the official CircleHub logo with a smooth 1.6s looping pulse animation (scale from 0.98 to 1.03, opacity from 0.6 to 1.0) paired with an `ActivityIndicator` colored with the active theme's primary color (`#4648d4` in light mode, `#bdc2ff` in dark mode).
+   - **Themed Container & Status Bar:** Renders on `bg-surface-low` with theme variables and matching translucent status bar (`barStyle="light-content"` in dark mode, `"dark-content"` in light mode). Replaced the plain unstyled `ActivityIndicator` in `RootNavigator`.
+
+2. **Consistent In-App Options & Confirm Modals (`ActionModal`, `ConfirmModal`, `PostCard`, `CommentItem`):**
+   - **Eliminated Native OS Alert Dialogs:** Replaced OS native `Alert.alert` action sheets on 3-dot menus with custom themed modal components matching the mobile app's card design language (`rounded-2xl bg-surface-lowest`, `border border-border`, `bg-black/50` backdrop with tap-to-dismiss, fade animation).
+   - **`ActionModal` (`src/components/ui/actionmodal.tsx`):** Reusable options sheet displaying action items with Lucide icons (`Pencil` for edit, `Trash2` with `text-error` for delete), active highlight feedback (`active:bg-surface-low`), and an integrated "Cancel" button.
+   - **`ConfirmModal` (`src/components/ui/confirmmodal.tsx`):** Themed confirmation dialog with title, message, cancel button, and confirm button (with loading spinner state and destructive `bg-error` styling). Used for post and comment deletion confirmation.
+   - **`PostCard` (`src/components/postcard.tsx`):** Tapping the 3 horizontal dots opens `ActionModal` ("Post options" -> Edit Post / Delete Post / Cancel). Tapping "Delete post" prompts `ConfirmModal` ("Delete post? Are you sure you want to delete this post? This action cannot be undone.") and cleanly executes deletion with loading state.
+   - **`CommentItem` (`src/components/comment/commentitem.tsx`):** Tapping 3 dots on a comment opens `ActionModal` and confirms deletion with `ConfirmModal`.
+
+Verification:
+- Mobile: `npm test` 17/17 test suites passed (108/108 tests including new `__tests__/components/modals.test.tsx`).
+- Mobile: TypeScript check `tsc -p tsconfig.json --noEmit` passed (0 errors).
+- Mobile: `npm run lint` passed (0 warnings, 0 errors).
