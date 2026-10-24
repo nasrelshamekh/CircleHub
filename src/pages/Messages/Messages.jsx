@@ -24,6 +24,11 @@ export default function Messages() {
         loadOlder,
     } = useConversation(id);
 
+    const activeConversation = conversations.find(
+        (c) => String(c.id).toLowerCase() === String(id).toLowerCase()
+    );
+    const resolvedOtherUser = otherUser || activeConversation?.otherUser;
+
     // Same shell as Explore / Communities (`content-stack`, responsive headline + subtitle), centred in the
     // main column. AppLayout drops the right rail on this route, so the cap is wider (96rem) to let the
     // conversation use that space. The section is pinned to the viewport so the two panes scroll on their
@@ -99,7 +104,7 @@ export default function Messages() {
                     {id ? (
                         <MessageThread
                             conversationId={id}
-                            otherUser={otherUser}
+                            otherUser={resolvedOtherUser}
                             messages={messages}
                             isLoading={isLoadingThread}
                             isLoadingOlder={isLoadingOlder}

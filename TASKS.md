@@ -1215,3 +1215,27 @@ Verification:
 - Backend: `dotnet build` passed (0 warnings, 0 errors).
 - Mobile: `npm test` 17/17 test suites passed (108/108 tests).
 - Mobile: `npx tsc --noEmit` and `npm run lint` passed (0 errors).
+
+
+### Step 24 ?" Seamless Web Messaging Lifecycle, Instant Conversation Header Mount, and Android Data-Driven Notification Architecture (verified)
+
+1. **Webapp Messaging Smoothness & Zero-Flicker Optimistic Transition (`messageCrypto.js`, `MessageComposer.jsx`, `MessageThread.jsx`, `useSendMessage.jsx`):**
+   - **Pre-Cached Decryption Cache:** In `messageCrypto.js`, updated `encryptMessageContent` to synchronously store `settledCache.set(serialized, plaintext)` and `decryptCache.set(serialized, Promise.resolve(plaintext))` immediately upon encryption. When the server echoes or returns the message, `peekDecrypted(content)` immediately returns the plaintext synchronously with zero async wait, zero blank bubble, and zero visual flicker.
+   - **Plaintext Bubble Pass-Through:** In `MessageThread.jsx` (`MessageBubble`), updated body resolution to `const decryptedText = useDecryptedContent(message.plaintext ? null : message.content); const text = message.plaintext ?? decryptedText;`.
+   - **Elimination of Floating Duplicate Bubble:** Replaced naive `!messages.some(m => m.id === pendingMessage.id)` in `MessageThread.jsx` with a smart deduplicator that matches direct IDs, `realId` returned from the API, and own messages with matching decrypted content within a 60-second window. The optimistic bubble seamlessly hands off to the permanent message without a single frame of duplicate or vanished bubble. Reset pending state on thread navigation.
+   - **Active Thread Invalidation:** In `useSendMessage.jsx`, added direct invalidation for `queryKeys.conversation(result.data.conversationId)`.
+
+2. **Instant Conversation Header Mount & Zero Layout Shift (`Messages.jsx`, `MessageThread.jsx`):**
+   - **Immediate In-Memory Resolution:** In `Messages.jsx`, resolved `const activeConversation = conversations.find(c => String(c.id).toLowerCase() === String(id).toLowerCase()); const resolvedOtherUser = otherUser || activeConversation?.otherUser;`. When switching threads from the conversation list, the header mounts with avatar, name, and live presence on frame 1 without waiting for message history to load.
+   - **Sleek Skeleton Header:** In `MessageThread.jsx`, when navigating directly to a deep URL where user data is not yet cached, replaced the empty header bar with an animated pulsing avatar and name/status skeleton matching exact dimensions to eliminate layout shifts.
+
+3. **Android Data-Driven Notification Presentation & Circular Large Icon (`ExpoPushService.cs`, `MessageDeliveryService.cs`, `ExpoNotificationBuilder.kt`):**
+   - **Data-Only Push Routing for Android:** In `ExpoPushService.cs`, differentiated Android from iOS devices. For Android, sends a high-priority data-only push (`Title = null`, `Body = null`, with payload in `data`), bypassing Google Play Services' restrictive background system interceptor and delivering directly to `ExpoFirebaseMessagingService`. For iOS, maintains root `Title` and `Body` as required by Apple APNs.
+   - **Circular Non-Enlarging Avatar & BigTextStyle:** In `ExpoNotificationBuilder.kt` and `patches/expo-notifications+57.0.24.patch`, downloaded `senderAvatarUrl`, centered and cropped into a circular avatar bitmap via `PorterDuffXfermode`, and applied `builder.setLargeIcon(avatarBitmap)` with `NotificationCompat.BigTextStyle().bigText(bigText)`. Because `imageUrl: null` is passed, Android never applies `BigPictureStyle`, keeping the avatar neatly bounded beside the name while allowing the shade to expand to show up to 3 messages on separate lines.
+   - **Health Version & Deployment Package:** Updated `/health` to `2.4.0-notif-avatar-bigtext` and re-packaged `circlehub-api-publish.zip` (16.9 MB) with dual 32/64-bit SkiaSharp native binaries.
+
+Verification:
+- Web: `npm run build` passed (0 errors, 578ms).
+- Backend: `dotnet build` passed (0 warnings, 0 errors).
+- Mobile: `npm test` 17/17 test suites passed (108/108 tests).
+- Mobile: `npx tsc --noEmit` and `npm run lint` passed (0 errors).

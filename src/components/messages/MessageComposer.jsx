@@ -89,6 +89,7 @@ export default function MessageComposer({
         onOptimisticMessage?.({
             id: optimisticId,
             content,
+            plaintext: content,
             createdAt: new Date().toISOString(),
             isMine: true,
             pending: true,
@@ -101,6 +102,8 @@ export default function MessageComposer({
                 onSuccess: (result) => {
                     onOptimisticMessage?.({
                         ...result.data.message,
+                        plaintext: content,
+                        realId: result.data?.message?.id,
                         pending: false,
                         failed: false,
                     });
@@ -109,6 +112,7 @@ export default function MessageComposer({
                     onOptimisticMessage?.({
                         id: optimisticId,
                         content,
+                        plaintext: content,
                         createdAt: new Date().toISOString(),
                         isMine: true,
                         pending: false,

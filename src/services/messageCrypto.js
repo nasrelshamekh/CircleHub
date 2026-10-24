@@ -568,7 +568,15 @@ export async function encryptMessageContent({ recipientUsername, plaintext }) {
         w: wraps,
     });
 
-    return ENC_PREFIX + toBase64(utf8(envelope));
+    const serialized = ENC_PREFIX + toBase64(utf8(envelope));
+    decryptCache.set(serialized, Promise.resolve(plaintext));
+    settledCache.set(serialized, plaintext);
+    if (decryptCache.size > DECRYPT_CACHE_LIMIT) {
+        const oldest = decryptCache.keys().next().value;
+        decryptCache.delete(oldest);
+        settledCache.delete(oldest);
+    }
+    return serialized;
 }
 
 /* ------------------------------------------------------------------ receive path */

@@ -55,12 +55,12 @@ namespace CircleHub.Api.Services
             string? imageUrl = null,
             CancellationToken cancellationToken = default)
         {
-            var tokens = await _db.DeviceTokens
+            var devices = await _db.DeviceTokens
                 .Where(d => d.UserId == recipientId)
-                .Select(d => d.Token)
+                .Select(d => new { d.Token, d.Platform })
                 .ToListAsync(cancellationToken);
 
-            if (tokens.Count == 0)
+            if (devices.Count == 0)
             {
                 _logger.LogDebug(
                     "Recipient {RecipientId} is offline with no registered device tokens; skipping Expo push",
@@ -75,20 +75,43 @@ namespace CircleHub.Api.Services
             var accessToken = _config["ExpoPush:AccessToken"];
             var staleTokens = new HashSet<string>(StringComparer.Ordinal);
 
-            foreach (var batch in tokens.Chunk(MaxBatchSize))
+            foreach (var batch in devices.Chunk(MaxBatchSize))
             {
                 var payload = batch
-                    .Select(token => new ExpoPushMessage
+                    .Select(device =>
                     {
-                        To = token,
-                        Sound = "default",
-                        Title = title,
-                        Body = body,
-                        Data = data,
-                        ChannelId = channelId,
-                        Priority = "high",
-                        Tag = tag,
-                        RichContent = !string.IsNullOrEmpty(imageUrl) ? new ExpoRichContent { Image = imageUrl } : null
+                        var isAndroid = string.Equals(device.Platform, "android", StringComparison.OrdinalIgnoreCase);
+
+                        // On Android: sending an Expo push with root Title/Body makes Expo deliver an FCM
+                        // "notification" payload, which Google Play Services intercepts in background and
+                        // renders directly without invoking the app's FirebaseMessagingService or ExpoNotificationBuilder.kt.
+                        // By sending a data-only payload for Android, Google Play Services delivers the message
+                        // to the app's background service. The service executes our patched ExpoNotificationBuilder.kt
+                        // which downloads senderAvatarUrl and applies setLargeIcon() (circular avatar that NEVER
+                        // expands to a giant banner) and BigTextStyle().bigText(bigText) (which shows up to 3 messages
+                        // on separate lines when held and dragged down, and only the single latest message when collapsed).
+                        // On iOS: Apple APNs strictly requires root Title & Body to display an alert banner.
+                        return new ExpoPushMessage
+                        {
+                            To = device.Token,
+                            Sound = "default",
+                            Title = isAndroid ? null : title,
+                            Body = isAndroid ? null : body,
+                            Data = isAndroid
+                                ? new
+                                {
+                                    title,
+                                    message = body,
+                                    body = data,
+                                    channelId,
+                                    tag
+                                }
+                                : data,
+                            ChannelId = channelId,
+                            Priority = "high",
+                            Tag = tag,
+                            RichContent = !string.IsNullOrEmpty(imageUrl) ? new ExpoRichContent { Image = imageUrl } : null
+                        };
                     })
                     .ToArray();
 
@@ -130,7 +153,7 @@ namespace CircleHub.Api.Services
                         var errorCode = ticket.Details?.Error;
                         var rejectedToken = !string.IsNullOrWhiteSpace(ticket.Details?.ExpoPushToken)
                             ? ticket.Details!.ExpoPushToken!
-                            : batch[i];
+                            : batch[i].Token;
 
                         if (string.Equals(errorCode, "DeviceNotRegistered", StringComparison.OrdinalIgnoreCase))
                         {
@@ -172,8 +195,8 @@ namespace CircleHub.Api.Services
         {
             public required string To { get; init; }
             public string Sound { get; init; } = "default";
-            public required string Title { get; init; }
-            public required string Body { get; init; }
+            public string? Title { get; init; }
+            public string? Body { get; init; }
             public object? Data { get; init; }
             public string ChannelId { get; init; } = "default";
             public string Priority { get; init; } = "high";

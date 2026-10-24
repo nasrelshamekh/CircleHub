@@ -2,6 +2,7 @@ import {
     Fragment,
     useEffect,
     useLayoutEffect,
+    useMemo,
     useRef,
     useState,
 } from "react";
@@ -17,15 +18,17 @@ import SharedPostCard from "./SharedPostCard";
 import TypingLabel from "./TypingLabel";
 import { formatMessageDate, formatMessageTime } from "@/lib/formatDate";
 import { useDecryptedContent } from "@/hooks/useDecryptedContent";
+import { peekDecrypted } from "@/services/messageCrypto";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 
 function MessageBubble({ message, otherUser, onRetry }) {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    const hasContent = Boolean(message.content);
+    const hasContent = Boolean(message.content || message.plaintext);
     // The stored row is ciphertext; the reader only ever sees the decrypted body (the optimistic
     // pending bubble never had it — that text came straight from the composer).
-    const text = useDecryptedContent(message.content);
+    const decryptedText = useDecryptedContent(message.plaintext ? null : message.content);
+    const text = message.plaintext ?? decryptedText;
 
     function toggleDetails() {
         setIsExpanded((expanded) => !expanded);
@@ -189,9 +192,28 @@ export default function MessageThread({
         seen.conversationId === conversationId &&
         lastMessageId !== seen.messageId;
 
-    const showPendingMessage =
-        Boolean(pendingMessage) &&
-        !messages.some((message) => message.id === pendingMessage.id);
+    const showPendingMessage = useMemo(() => {
+        if (!pendingMessage) return false;
+        if (pendingMessage.failed) return true;
+
+        const alreadyInThread = messages.some((message) => {
+            if (message.id === pendingMessage.id) return true;
+            if (pendingMessage.realId && message.id === pendingMessage.realId) return true;
+            if (message.isMine) {
+                const messageText = message.plaintext ?? peekDecrypted(message.content) ?? message.content;
+                const pendingText = pendingMessage.plaintext ?? pendingMessage.content;
+                if (messageText && pendingText && messageText === pendingText) {
+                    const timeDiff = Math.abs(
+                        new Date(message.createdAt).getTime() - new Date(pendingMessage.createdAt).getTime()
+                    );
+                    if (timeDiff < 60000) return true;
+                }
+            }
+            return false;
+        });
+
+        return !alreadyInThread;
+    }, [pendingMessage, messages]);
 
     useLayoutEffect(() => {
         const element = scrollRef.current;

@@ -25,6 +25,12 @@ export function useSendMessage() {
         onSuccess: (result, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
 
+            if (result?.data?.conversationId) {
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.conversation(result.data.conversationId),
+                });
+            }
+
             if (variables?.recipientUsername) {
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.messageRecipients(),

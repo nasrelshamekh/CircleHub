@@ -462,12 +462,12 @@ app.MapGet("/health", async (AppDbContext db, CancellationToken cancellationToke
     try
     {
         return await db.Database.CanConnectAsync(cancellationToken)
-            ? Results.Ok(new { status = "ok", version = "2.3.0-bicubic-notif-fix" })
-            : Results.Json(new { status = "degraded", version = "2.3.0-bicubic-notif-fix" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+            ? Results.Ok(new { status = "ok", version = "2.4.0-notif-avatar-bigtext" })
+            : Results.Json(new { status = "degraded", version = "2.4.0-notif-avatar-bigtext" }, statusCode: StatusCodes.Status503ServiceUnavailable);
     }
     catch
     {
-        return Results.Json(new { status = "degraded", version = "2.3.0-bicubic-notif-fix" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+        return Results.Json(new { status = "degraded", version = "2.4.0-notif-avatar-bigtext" }, statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 });
 
