@@ -383,9 +383,9 @@ export default function MessageThread({
                 <div
                     ref={scrollRef}
                     onScroll={handleScroll}
-                    className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4 [overflow-anchor:none]"
+                    className="min-h-0 flex-1 overflow-y-auto p-4 [overflow-anchor:none]"
                 >
-                    <div ref={contentRef} className="flex min-h-full flex-col gap-4 pb-4">
+                    <div ref={contentRef} className="flex min-h-full flex-col gap-4">
                         {isLoading && (
                             <div
                                 role="status"
@@ -451,7 +451,7 @@ export default function MessageThread({
                         )}
                     </div>
 
-                    <div ref={bottomRef} className="h-px shrink-0" aria-hidden="true" />
+                    <div ref={bottomRef} aria-hidden="true" />
                 </div>
 
                 {hasNewMessages && (
