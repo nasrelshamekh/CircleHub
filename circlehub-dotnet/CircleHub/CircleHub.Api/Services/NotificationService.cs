@@ -207,7 +207,7 @@ namespace CircleHub.Api.Services
                         actorUsername = dto.Actor.Username
                     },
                     channelId: "default",
-                    imageUrl: resolvedActorAvatar);
+                    imageUrl: null);
             }
         }
 

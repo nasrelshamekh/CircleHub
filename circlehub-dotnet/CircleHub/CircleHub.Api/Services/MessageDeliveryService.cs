@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
@@ -17,6 +18,8 @@ namespace CircleHub.Api.Services
     /// </summary>
     public class MessageDeliveryService
     {
+        private static readonly ConcurrentDictionary<string, List<string>> RecentPreviews = new();
+
         private readonly IHubContext<ChatHub> _hub;
         private readonly IConnectionTracker _connections;
         private readonly ExpoPushService _push;
@@ -35,6 +38,12 @@ namespace CircleHub.Api.Services
             _push = push;
             _config = config;
             _logger = logger;
+        }
+
+        public void ClearUnreadPreviews(Guid conversationId, Guid recipientId)
+        {
+            var key = $"{conversationId}_{recipientId}";
+            RecentPreviews.TryRemove(key, out _);
         }
 
         public async Task DeliverAsync(
@@ -60,9 +69,36 @@ namespace CircleHub.Api.Services
             var baseTitle = string.IsNullOrWhiteSpace(senderName) ? "New message" : senderName;
             var title = unreadCount > 1 ? $"{baseTitle} ({unreadCount} messages)" : baseTitle;
 
-            var body = !string.IsNullOrWhiteSpace(previewText)
+            var singleBody = !string.IsNullOrWhiteSpace(previewText)
                 ? (previewText.Length > 150 ? previewText[..150] + "…" : previewText)
                 : (string.IsNullOrEmpty(envelope.EncryptedPayload) ? "Shared a post" : "Sent you a message");
+
+            var previewKey = $"{envelope.ConversationId}_{recipientId}";
+            var previews = RecentPreviews.AddOrUpdate(
+                previewKey,
+                _ => new List<string> { singleBody },
+                (_, existing) =>
+                {
+                    lock (existing)
+                    {
+                        if (unreadCount <= 1)
+                        {
+                            existing.Clear();
+                        }
+                        existing.Add(singleBody);
+                        while (existing.Count > 3)
+                        {
+                            existing.RemoveAt(0);
+                        }
+                        return existing;
+                    }
+                });
+
+            string body;
+            lock (previews)
+            {
+                body = string.Join("\n", previews);
+            }
 
             string? resolvedAvatarUrl = null;
             if (!string.IsNullOrWhiteSpace(senderAvatarUrl))
@@ -96,7 +132,7 @@ namespace CircleHub.Api.Services
                 },
                 channelId: "messages",
                 tag: conversationTag,
-                imageUrl: resolvedAvatarUrl,
+                imageUrl: null, // Avoid BigPictureStyle so Android expands message text rather than enlarging the avatar
                 cancellationToken: cancellationToken);
         }
     }

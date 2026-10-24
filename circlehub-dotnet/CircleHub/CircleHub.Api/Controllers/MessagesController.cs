@@ -176,6 +176,7 @@ namespace CircleHub.Api.Controllers
             {
                 mine.LastReadAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
+                _delivery.ClearUnreadPreviews(id, currentUserId);
             }
 
             return Ok(new ApiResponse<ConversationThreadDto>

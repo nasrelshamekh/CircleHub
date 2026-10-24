@@ -1137,7 +1137,8 @@ Verification:
 1. **WhatsApp-Style Push Notification Stacking & Sender Avatars:**
    - **Notification Stacking (`MessageDeliveryService.cs`, `ExpoPushService.cs`):** Assigned conversation tags (`tag = $"chat_{conversationId}"`) to Expo pushes. Android uses the tag to coalesce incoming messages from the same conversation into a single notification slot instead of flooding the notification shade.
    - **Unread Message Counter (`MessagesController.cs`):** Computed recipient unread count in EF Core and reflected it in the push title (`{SenderName} ({Count} messages)`).
-   - **Rich Media Avatars (`ExpoPushService.cs`, `NotificationService.cs`):** Added `richContent: { image: avatarUrl }` to push payloads so Android displays the sender's avatar directly inside the notification card for messages, and actor avatars for social events (likes, comments, follows).
+   - **Multi-line Notification Previews on Expand (`MessageDeliveryService.cs`, `MessagesController.cs`):** When multiple messages arrive, the notification body formats up to 3 recent message previews separated by newlines, expanding cleanly with Android's native `BigTextStyle`. Removed `BigPictureStyle` (`imageUrl`) so dragging down expands the 3 messages rather than enlarging the avatar picture. When the conversation is opened, `ClearUnreadPreviews` resets the buffer.
+   - **Optimistic Composer Clearing on Web (`MessageComposer.jsx`):** Cleared input state and reset textarea height immediately upon send rather than waiting for the network round-trip.
    - **Chat Thread Outgoing Avatar (`circlehub-mobile/src/components/messages/messagethread.tsx`):** Displayed the sender avatar next to outgoing message bubbles on the right, matching incoming messages on the left, with aligned timestamp and retry padding.
 
 2. **MonsterASP & Cloudflare R2 Upload Resiliency:**

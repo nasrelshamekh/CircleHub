@@ -71,7 +71,13 @@ export default function MessageComposer({
     function sendContent(contentToSend) {
         const content = contentToSend.trim();
 
-        if (!content || sendMessage.isPending) return;
+        if (!content) return;
+
+        // Immediately clear the composer input and reset height optimistically
+        setText("");
+        if (textareaRef.current) {
+            textareaRef.current.style.height = "42px";
+        }
 
         // Sent before the request: the message arriving is the real "I'm done", so leaving the claim up
         // would keep the other end waiting for it to expire while the message sits in their thread.
@@ -93,10 +99,6 @@ export default function MessageComposer({
             { recipientUsername, content },
             {
                 onSuccess: (result) => {
-                    setText("");
-                    if (textareaRef.current) {
-                        textareaRef.current.style.height = "42px";
-                    }
                     onOptimisticMessage?.({
                         ...result.data.message,
                         pending: false,
@@ -202,7 +204,7 @@ export default function MessageComposer({
 
                 <button
                     type="submit"
-                    disabled={!text.trim() || sendMessage.isPending}
+                    disabled={!text.trim()}
                     aria-label="Send message"
                     className="flex size-10 shrink-0 mb-0.5 items-center justify-center rounded-full bg-(--primary) text-(--on-primary) transition-colors disabled:bg-(--surface-highest) disabled:text-(--text-secondary)"
                 >
