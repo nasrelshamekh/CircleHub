@@ -1176,3 +1176,20 @@ Verification:
 - Mobile: `npm test` 17/17 test suites passed (108/108 tests including new `__tests__/components/modals.test.tsx`).
 - Mobile: TypeScript check `tsc -p tsconfig.json --noEmit` passed (0 errors).
 - Mobile: `npm run lint` passed (0 warnings, 0 errors).
+
+### Step 22 — Post Details Natural Aspect Ratio Wiring & Deployment Verification Endpoint (verified)
+
+1. **Mobile Post Details Full Image Height (`src/app/(tabs)/post/[id].tsx`, `src/components/postcard.tsx`):**
+   - **Prop Wiring:** Passed `isDetailsPage={true}` to `<PostCard />` in `src/app/(tabs)/post/[id].tsx`, resolving an issue where the post details view fell back to the clamped feed thumbnail style (`h-[200px]` with `resizeMode="cover"`).
+   - **Dual Aspect Ratio Resolution:** Added native `onLoad` decode callback (`e.nativeEvent.source.width / height`) in addition to `Image.getSize`. If dimension lookups take time, it smoothly initializes with `minHeight: 250` and auto-expands to the full natural aspect ratio with `resizeMode="cover"` once loaded, eliminating height restrictions and letterboxing.
+   - **Click Prevention on Details:** Preserved `disabled={isDetailsPage}` on the image pressable wrapper when already viewing post details.
+
+2. **Deployment Verification Endpoint (`Program.cs`):**
+   - Added `version = "2.2.0-notif-fix"` to the `/health` endpoint to easily verify whether MonsterASP has loaded the updated backend build containing the multi-line notification expansion and `imageUrl: null` fixes.
+   - Re-packaged and verified `circlehub-api-publish.zip` (16.9 MB) preserving 32-bit and 64-bit SkiaSharp native libraries for MonsterASP.
+
+Verification:
+- Backend: `dotnet build` passed (0 warnings, 0 errors).
+- Mobile: `npm test` 17/17 test suites passed (108/108 tests).
+- Mobile: `tsc -p tsconfig.json --noEmit` passed (0 errors).
+- Mobile: `npm run lint` passed (0 warnings, 0 errors).
