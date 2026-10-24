@@ -20,17 +20,20 @@ namespace CircleHub.Api.Services
         private readonly IHubContext<ChatHub> _hub;
         private readonly IConnectionTracker _connections;
         private readonly ExpoPushService _push;
+        private readonly IConfiguration _config;
         private readonly ILogger<MessageDeliveryService> _logger;
 
         public MessageDeliveryService(
             IHubContext<ChatHub> hub,
             IConnectionTracker connections,
             ExpoPushService push,
+            IConfiguration config,
             ILogger<MessageDeliveryService> logger)
         {
             _hub = hub;
             _connections = connections;
             _push = push;
+            _config = config;
             _logger = logger;
         }
 
@@ -39,7 +42,9 @@ namespace CircleHub.Api.Services
             Guid senderId,
             EncryptedMessageEnvelope envelope,
             string? senderName = null,
+            string? senderAvatarUrl = null,
             string? previewText = null,
+            int unreadCount = 1,
             CancellationToken cancellationToken = default)
         {
             // Two audiences, one call: the recipient's live connections get the message, and the
@@ -52,10 +57,29 @@ namespace CircleHub.Api.Services
             await _hub.Clients.Users(recipientId.ToString(), senderId.ToString())
                 .SendAsync(ChatHub.ReceiveMessageMethod, envelope, cancellationToken);
 
-            var title = string.IsNullOrWhiteSpace(senderName) ? "New message" : senderName;
+            var baseTitle = string.IsNullOrWhiteSpace(senderName) ? "New message" : senderName;
+            var title = unreadCount > 1 ? $"{baseTitle} ({unreadCount} messages)" : baseTitle;
+
             var body = !string.IsNullOrWhiteSpace(previewText)
                 ? (previewText.Length > 150 ? previewText[..150] + "…" : previewText)
                 : (string.IsNullOrEmpty(envelope.EncryptedPayload) ? "Shared a post" : "Sent you a message");
+
+            string? resolvedAvatarUrl = null;
+            if (!string.IsNullOrWhiteSpace(senderAvatarUrl))
+            {
+                if (senderAvatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                    senderAvatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    resolvedAvatarUrl = senderAvatarUrl;
+                }
+                else
+                {
+                    var baseUrl = _config["App:BaseUrl"] ?? "https://circlehub.runasp.net";
+                    resolvedAvatarUrl = $"{baseUrl.TrimEnd('/')}/{senderAvatarUrl.TrimStart('/')}";
+                }
+            }
+
+            var conversationTag = $"chat_{envelope.ConversationId}";
 
             await _push.SendToUserAsync(
                 recipientId,
@@ -66,9 +90,13 @@ namespace CircleHub.Api.Services
                     type = "message",
                     conversationId = envelope.ConversationId,
                     messageId = envelope.MessageId,
-                    senderId = envelope.SenderId
+                    senderId = envelope.SenderId,
+                    senderAvatarUrl = resolvedAvatarUrl,
+                    tag = conversationTag
                 },
                 channelId: "messages",
+                tag: conversationTag,
+                imageUrl: resolvedAvatarUrl,
                 cancellationToken: cancellationToken);
         }
     }

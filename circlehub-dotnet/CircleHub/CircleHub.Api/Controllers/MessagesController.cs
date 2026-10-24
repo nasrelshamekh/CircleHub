@@ -325,6 +325,12 @@ namespace CircleHub.Api.Controllers
             // message carries no content and used to skip this entirely, which made it the one message
             // that arrived silently; it now fans out with an empty payload, and the client announces it
             // ("Shared a post") exactly like a text one.
+            var recipientParticipant = await _db.ConversationParticipants
+                .FirstOrDefaultAsync(p => p.ConversationId == conversation.Id && p.UserId == recipient.Id);
+
+            var unreadCount = await _db.Messages
+                .CountAsync(m => m.ConversationId == conversation.Id && m.SenderId == currentUserId && (recipientParticipant == null || recipientParticipant.LastReadAt == null || m.CreatedAt > recipientParticipant.LastReadAt));
+
             await _delivery.DeliverAsync(
                 recipient.Id,
                 currentUserId,
@@ -337,7 +343,9 @@ namespace CircleHub.Api.Controllers
                     ConversationId = conversation.Id.ToString()
                 },
                 senderName: sender.Name,
-                previewText: !string.IsNullOrWhiteSpace(dto.PreviewText) ? dto.PreviewText.Trim() : (!string.IsNullOrEmpty(content) && !content.StartsWith("ENC:") ? content : null));
+                senderAvatarUrl: sender.AvatarUrl,
+                previewText: !string.IsNullOrWhiteSpace(dto.PreviewText) ? dto.PreviewText.Trim() : (!string.IsNullOrEmpty(content) && !content.StartsWith("ENC:") ? content : null),
+                unreadCount: Math.Max(1, unreadCount));
 
             return Ok(new ApiResponse<SendMessageResultDto>
             {

@@ -26,17 +26,20 @@ namespace CircleHub.Api.Services
         private readonly IHubContext<ChatHub> _hub;
         private readonly IConnectionTracker _connections;
         private readonly ExpoPushService _push;
+        private readonly IConfiguration _config;
 
         public NotificationService(
             AppDbContext db,
             IHubContext<ChatHub> hub,
             IConnectionTracker connections,
-            ExpoPushService push)
+            ExpoPushService push,
+            IConfiguration config)
         {
             _db = db;
             _hub = hub;
             _connections = connections;
             _push = push;
+            _config = config;
         }
 
         public Task NotifyFollowAsync(Guid actorId, Guid recipientId) =>
@@ -174,6 +177,21 @@ namespace CircleHub.Api.Services
                 await _hub.Clients.User(recipientId.ToString())
                     .SendAsync(ChatHub.NotificationCreatedMethod, dto);
 
+                string? resolvedActorAvatar = null;
+                if (!string.IsNullOrWhiteSpace(dto.Actor.AvatarUrl))
+                {
+                    if (dto.Actor.AvatarUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                        dto.Actor.AvatarUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        resolvedActorAvatar = dto.Actor.AvatarUrl;
+                    }
+                    else
+                    {
+                        var baseUrl = _config["App:BaseUrl"] ?? "https://circlehub.runasp.net";
+                        resolvedActorAvatar = $"{baseUrl.TrimEnd('/')}/{dto.Actor.AvatarUrl.TrimStart('/')}";
+                    }
+                }
+
                 // Send push notification to any registered mobile devices
                 await _push.SendToUserAsync(
                     recipientId,
@@ -187,7 +205,9 @@ namespace CircleHub.Api.Services
                         postId = dto.PostId?.ToString(),
                         communitySlug = dto.CommunitySlug,
                         actorUsername = dto.Actor.Username
-                    });
+                    },
+                    channelId: "default",
+                    imageUrl: resolvedActorAvatar);
             }
         }
 

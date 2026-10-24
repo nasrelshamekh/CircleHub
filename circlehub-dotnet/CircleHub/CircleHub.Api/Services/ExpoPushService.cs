@@ -51,6 +51,8 @@ namespace CircleHub.Api.Services
             string body,
             object? data = null,
             string channelId = "default",
+            string? tag = null,
+            string? imageUrl = null,
             CancellationToken cancellationToken = default)
         {
             var tokens = await _db.DeviceTokens
@@ -84,7 +86,9 @@ namespace CircleHub.Api.Services
                         Body = body,
                         Data = data,
                         ChannelId = channelId,
-                        Priority = "high"
+                        Priority = "high",
+                        Tag = tag,
+                        RichContent = !string.IsNullOrEmpty(imageUrl) ? new ExpoRichContent { Image = imageUrl } : null
                     })
                     .ToArray();
 
@@ -173,6 +177,13 @@ namespace CircleHub.Api.Services
             public object? Data { get; init; }
             public string ChannelId { get; init; } = "default";
             public string Priority { get; init; } = "high";
+            public string? Tag { get; init; }
+            public ExpoRichContent? RichContent { get; init; }
+        }
+
+        private sealed class ExpoRichContent
+        {
+            public string? Image { get; init; }
         }
 
         private sealed class ExpoPushResponse
