@@ -385,12 +385,20 @@ app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
     {
+        var exceptionFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+        var ex = exceptionFeature?.Error;
+        if (ex != null)
+        {
+            var logger = context.RequestServices.GetService<ILogger<Program>>();
+            logger?.LogError(ex, "Unhandled exception on {Path}: {Message}", context.Request.Path, ex.Message);
+        }
+
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         context.Response.ContentType = "application/json";
         await context.Response.WriteAsJsonAsync(new ApiErrorResponse
         {
             Success = false,
-            Message = "Server Error"
+            Message = ex?.Message ?? "Server Error"
         });
     });
 });
