@@ -1300,6 +1300,11 @@ Verification:
    - Polished `isLoadingConversations` in the sidebar conversation list to also render `<LoaderCircle size={18} className="animate-spin text-(--primary)" />`.
    - Wired `isError` from `useConversation(id)` into `MessageThread` to gracefully handle failed thread fetches.
 
+3. **Message Thread Bottom Spacing Fix (`MessageThread.jsx`):**
+   - In flex scroll containers with `overflow-y: auto`, browsers ignore container `padding-bottom` at the scroll extent, which caused the last message bubble to touch the top border of `MessageComposer`.
+   - Transferred bottom padding to `contentRef` (`pb-4`) and adjusted the scroll container to `px-4 pt-4`, ensuring a clean 16px (1rem) breathing room between the last message bubble and the composer border across all browsers.
+   - Assigned `className="h-px shrink-0"` to `bottomRef` to ensure the scroll-into-view anchor maintains a concrete layout box.
+
 Verification:
 - Web Build: `npm run build` passed (0 errors).
 - Web Linter: `npm run lint` passed (0 errors, 0 warnings).
