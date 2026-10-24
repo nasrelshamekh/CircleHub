@@ -39,6 +39,7 @@ namespace CircleHub.Api.Services
             Guid senderId,
             EncryptedMessageEnvelope envelope,
             string? senderName = null,
+            string? previewText = null,
             CancellationToken cancellationToken = default)
         {
             // Two audiences, one call: the recipient's live connections get the message, and the
@@ -51,12 +52,10 @@ namespace CircleHub.Api.Services
             await _hub.Clients.Users(recipientId.ToString(), senderId.ToString())
                 .SendAsync(ChatHub.ReceiveMessageMethod, envelope, cancellationToken);
 
-            // Message.Content is opaque (and usually an ENC:v1: E2EE envelope), so the push banner
-            // deliberately never includes or inspects the message text.
             var title = string.IsNullOrWhiteSpace(senderName) ? "New message" : senderName;
-            var body = string.IsNullOrEmpty(envelope.EncryptedPayload)
-                ? "Shared a post"
-                : "Sent you a message";
+            var body = !string.IsNullOrWhiteSpace(previewText)
+                ? (previewText.Length > 150 ? previewText[..150] + "…" : previewText)
+                : (string.IsNullOrEmpty(envelope.EncryptedPayload) ? "Shared a post" : "Sent you a message");
 
             await _push.SendToUserAsync(
                 recipientId,
@@ -69,7 +68,8 @@ namespace CircleHub.Api.Services
                     messageId = envelope.MessageId,
                     senderId = envelope.SenderId
                 },
-                cancellationToken);
+                channelId: "messages",
+                cancellationToken: cancellationToken);
         }
     }
 }

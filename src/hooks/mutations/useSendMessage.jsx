@@ -18,6 +18,7 @@ export function useSendMessage() {
                     recipientUsername,
                     plaintext: content,
                 }),
+                previewText: content ? content.trim().slice(0, 150) : undefined,
                 postId,
             }),
 

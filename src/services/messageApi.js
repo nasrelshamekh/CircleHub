@@ -20,10 +20,11 @@ export async function getMessageRecipients() {
   return response.data;
 }
 
-export async function sendMessage({ recipientUsername, content, postId }) {
+export async function sendMessage({ recipientUsername, content, previewText, postId }) {
   const response = await apiClient.post("/messages", {
     recipientUsername,
     content,
+    previewText,
     postId,
   });
 

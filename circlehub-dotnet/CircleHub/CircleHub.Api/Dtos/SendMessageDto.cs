@@ -15,6 +15,9 @@ namespace CircleHub.Api.Dtos
         [MaxLength(14000)]
         public string? Content { get; set; }
 
+        [MaxLength(300)]
+        public string? PreviewText { get; set; }
+
         [Required]
         public string RecipientUsername { get; set; } = string.Empty;
 

@@ -50,6 +50,7 @@ namespace CircleHub.Api.Services
             string title,
             string body,
             object? data = null,
+            string channelId = "default",
             CancellationToken cancellationToken = default)
         {
             var tokens = await _db.DeviceTokens
@@ -82,7 +83,7 @@ namespace CircleHub.Api.Services
                         Title = title,
                         Body = body,
                         Data = data,
-                        ChannelId = "default",
+                        ChannelId = channelId,
                         Priority = "high"
                     })
                     .ToArray();

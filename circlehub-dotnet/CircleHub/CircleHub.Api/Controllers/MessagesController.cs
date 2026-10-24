@@ -336,7 +336,8 @@ namespace CircleHub.Api.Controllers
                     MessageId = message.Id.ToString(),
                     ConversationId = conversation.Id.ToString()
                 },
-                senderName: sender.Name);
+                senderName: sender.Name,
+                previewText: !string.IsNullOrWhiteSpace(dto.PreviewText) ? dto.PreviewText.Trim() : (!string.IsNullOrEmpty(content) && !content.StartsWith("ENC:") ? content : null));
 
             return Ok(new ApiResponse<SendMessageResultDto>
             {
