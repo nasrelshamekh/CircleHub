@@ -31,6 +31,8 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 18 | Key recovery: random account key wrapped by a 12-word phrase, so history follows the account to any device without giving up E2EE | done, verified |
 | 19 | Web quality of life & layout alignment: native emoji picker, auto-resizing multiline composer + character counter, failed-send retry, sound mute toggles, New Message dialog, Mark all as read, route/vendor code splitting, Messages/Notifications width & header alignment | done, verified |
 | 27 | Web conversation loading polish: replaced plain "Loading…" text with CircleHub circular spinner indicator | done, verified |
+| 28 | Profile Message Policy Enforcement & Direct Messaging | done, verified |
+| 29 | Real-time post creation broadcast across web & mobile with 'X New Posts' scroll indicator, plus foreground notification suppression | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -1339,6 +1341,39 @@ Verification:
 - Web Linter: `npm run lint` passed (0 errors, 0 warnings).
 - Mobile Unit Tests: `npm test` passed (18/18 test suites, 114/114 tests).
 - Mobile Linter: `npm run lint` passed (0 errors, 0 warnings).
+
+### Step 29 — Real-Time Post Sync, 'X New Posts' Scroll Indicator & Foreground Notification Suppression (verified)
+
+1. **Foreground Notification Suppression & Active Thread Detection (`circlehub-mobile`):**
+   - **`src/services/pushNotifications.ts`**: Configured `Notifications.setNotificationHandler` to return all false for alerts, banners, notification shade list items, sounds, and badges when the app is in foreground. Only in-app drop-down notifications appear while the app is actively open. Initialized `getNotifications()` at module scope for immediate startup protection.
+   - **`src/context/chatconnectioncontext.tsx` & `src/app/(tabs)/messages/[id].tsx`**: Added `setActiveConversationId` to `ChatConnectionContext`. On conversation focus, sets active conversation ID and dismisses any matching in-app notification; on blur/unmount, resets to null. In `RECEIVE_MESSAGE_EVENT`, evaluated `isInActiveThread` through both `activeConversationId` and case-insensitive `pathname` matching, completely suppressing notifications when viewing that conversation.
+
+2. **Real-Time Post Creation Broadcast (`CircleHub.Api`):**
+   - **`ChatHub.cs`**: Added `public const string PostCreatedMethod = "PostCreated"`.
+   - **`PostsController.cs` & `CommunitiesController.cs`**: Injected `IHubContext<ChatHub>`. On post creation in `CreatePost` and `CreateCommunityPost`, broadcasts `ChatHub.PostCreatedMethod` with the newly saved `PostDto` (including community metadata) to all connected SignalR clients.
+
+3. **Web Feed Live Sync & Floating Indicator (`CircleHub`):**
+   - **`src/services/chatHub.js` & `src/context/ChatConnectionContext.jsx`**: Exported `POST_CREATED_EVENT = "PostCreated"`, listened on SignalR, and dispatched `window.dispatchEvent(new CustomEvent("circlehub:post-created", { detail: post }))`.
+   - **`src/pages/Feed/Feed.jsx`**:
+     - Tracks scroll position (`window.scrollY > 120`).
+     - **At top of feed**: Prepends new posts directly into the React Query feed cache without disrupting view.
+     - **Scrolled down**: Queues new posts into `pendingPosts` and displays a floating pill button at top center (`↑ X New Posts`) with smooth hover animations.
+     - Tapping the pill button or scrolling back to top smoothly scrolls up, prepends all pending posts into the feed without duplicates, and dismisses the pill.
+
+4. **Mobile Feed Live Sync & Floating Indicator (`circlehub-mobile`):**
+   - **`src/services/chatHub.ts` & `src/lib/feedEvents.ts`**: Added `POST_CREATED_EVENT` and decoupled event subscription `subscribePostCreated`.
+   - **`src/context/chatconnectioncontext.tsx`**: Listened on SignalR for `POST_CREATED_EVENT` and invoked `emitPostCreated(post)`.
+   - **`src/components/feed.tsx`**:
+     - Monitored `FlatList` scroll offset (`y > 80`).
+     - **At top of feed**: Prepends post directly to `queryKeys.feed()` query data.
+     - **Scrolled down**: Queues new posts into `pendingPosts` and renders a floating pill button at the top: `↑ X New Posts`.
+     - Tapping the pill button or scrolling back to top (`y <= 10`) prepends pending posts without duplicates, resets the queue, and calls `listRef.current?.scrollToOffset({ offset: 0, animated: true })`.
+
+Verification:
+- Web Build: `npm run build` passed (0 errors, 5.87s).
+- Mobile TypeScript: `npx tsc --noEmit` passed (0 errors).
+- Mobile Unit Tests: `npm test` passed (20/20 test suites, 120/120 tests passed).
+- Android Release APK: Successfully built local release APK (`circlehub-mobile-release.apk`) via Gradle, installed onto Android emulator, and verified app launch.
 
 
 
