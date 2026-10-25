@@ -15,6 +15,9 @@ export const TYPING_CHANGED_EVENT = "TypingChanged";
 // toast it immediately; the feed is still refetched, because the server stays the source of truth.
 export const NOTIFICATION_CREATED_EVENT = "NotificationCreated";
 
+// Event the API raises when a new post is created (ChatHub.PostCreatedMethod).
+export const POST_CREATED_EVENT = "PostCreated";
+
 // Hub method we invoke to say that we are (or are no longer) typing (ChatHub.SendTyping).
 export const SEND_TYPING_METHOD = "SendTyping";
 

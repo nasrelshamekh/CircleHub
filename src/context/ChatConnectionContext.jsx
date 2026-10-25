@@ -6,6 +6,7 @@ import { chatConnectionContext } from "@/hooks/useChatConnection";
 import {
     createChatConnection,
     NOTIFICATION_CREATED_EVENT,
+    POST_CREATED_EVENT,
     PRESENCE_CHANGED_EVENT,
     RECEIVE_MESSAGE_EVENT,
     sendTyping,
@@ -211,6 +212,14 @@ export default function ChatConnectionContextProvider({ children }) {
             });
         });
 
+        connection.on(POST_CREATED_EVENT, (post) => {
+            if (post?.id && typeof window !== "undefined") {
+                window.dispatchEvent(
+                    new CustomEvent("circlehub:post-created", { detail: post })
+                );
+            }
+        });
+
         // Ignoring the callbacks after teardown keeps our own stop() from reporting a connection we are
         // deliberately closing as a drop.
         connection.onreconnecting(() => {
@@ -264,6 +273,7 @@ export default function ChatConnectionContextProvider({ children }) {
             connection.off(PRESENCE_CHANGED_EVENT);
             connection.off(TYPING_CHANGED_EVENT);
             connection.off(NOTIFICATION_CREATED_EVENT);
+            connection.off(POST_CREATED_EVENT);
             connection.stop().catch(() => {});
 
             // A claim belongs to the session that received it: the next one must not open on someone

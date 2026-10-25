@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using CircleHub.Api.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace CircleHub.Api.Controllers
 {
@@ -18,12 +20,18 @@ namespace CircleHub.Api.Controllers
         private readonly AppDbContext _db;
         private readonly UploadService _uploadService;
         private readonly NotificationService _notifications;
+        private readonly IHubContext<ChatHub> _hub;
 
-        public PostsController(AppDbContext db, UploadService uploadService, NotificationService notifications)
+        public PostsController(
+            AppDbContext db,
+            UploadService uploadService,
+            NotificationService notifications,
+            IHubContext<ChatHub> hub)
         {
             _db = db;
             _uploadService = uploadService;
             _notifications = notifications;
+            _hub = hub;
         }
 
         private Guid? CurrentUserId
@@ -133,8 +141,10 @@ namespace CircleHub.Api.Controllers
 
             var created = await _db.Posts
                 .Where(p => p.Id == post.Id)
-                .Select(PostDto.Projection(userId))
+                .Select(PostDto.Projection(userId, includeCommunity: true))
                 .FirstAsync();
+
+            await _hub.Clients.All.SendAsync(ChatHub.PostCreatedMethod, created);
 
             return StatusCode(StatusCodes.Status201Created, new ApiResponse<PostDto>
             {
