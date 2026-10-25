@@ -40,7 +40,7 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount, follows
     const [isStartingChat, setIsStartingChat] = useState(false);
 
     const isFollowedByMe = Boolean(user.isFollowedByMe);
-    const messagesFrom = (user.messagesFrom || "").toLowerCase();
+    const messagesFrom = (user.messagesFrom || "followers").toLowerCase();
     const canMessage = typeof user.canMessage === "boolean"
         ? (messagesFrom === "followers" ? isFollowedByMe : user.canMessage)
         : (messagesFrom === "everyone" || (messagesFrom === "followers" && isFollowedByMe));

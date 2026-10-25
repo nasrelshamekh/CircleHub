@@ -462,12 +462,12 @@ app.MapGet("/health", async (AppDbContext db, CancellationToken cancellationToke
     try
     {
         return await db.Database.CanConnectAsync(cancellationToken)
-            ? Results.Ok(new { status = "ok", version = "2.6.0-discord-notif" })
-            : Results.Json(new { status = "degraded", version = "2.6.0-discord-notif" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+            ? Results.Ok(new { status = "ok", version = "2.7.0-profile-messaging" })
+            : Results.Json(new { status = "degraded", version = "2.7.0-profile-messaging" }, statusCode: StatusCodes.Status503ServiceUnavailable);
     }
     catch
     {
-        return Results.Json(new { status = "degraded", version = "2.6.0-discord-notif" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+        return Results.Json(new { status = "degraded", version = "2.7.0-profile-messaging" }, statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 });
 
