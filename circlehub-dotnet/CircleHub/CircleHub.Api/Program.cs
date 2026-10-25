@@ -462,8 +462,8 @@ app.MapGet("/health", async (AppDbContext db, CancellationToken cancellationToke
     try
     {
         return await db.Database.CanConnectAsync(cancellationToken)
-            ? Results.Ok(new { status = "ok", version = "2.7.0-profile-messaging" })
-            : Results.Json(new { status = "degraded", version = "2.7.0-profile-messaging" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+            ? Results.Ok(new { status = "ok", version = "2.8.0-live-feed-sync" })
+            : Results.Json(new { status = "degraded", version = "2.8.0-live-feed-sync" }, statusCode: StatusCodes.Status503ServiceUnavailable);
     }
     catch
     {
