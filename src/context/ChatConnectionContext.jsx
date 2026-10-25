@@ -213,9 +213,11 @@ export default function ChatConnectionContextProvider({ children }) {
         });
 
         connection.on(POST_CREATED_EVENT, (post) => {
-            if (post?.id && typeof window !== "undefined") {
+            const postId = post?.id || post?.Id;
+            if (postId && typeof window !== "undefined") {
+                const normalized = { ...post, id: postId };
                 window.dispatchEvent(
-                    new CustomEvent("circlehub:post-created", { detail: post })
+                    new CustomEvent("circlehub:post-created", { detail: normalized })
                 );
             }
         });

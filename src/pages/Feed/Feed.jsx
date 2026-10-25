@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowUp } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 
 import CreatePost from '@/components/createpost/CreatePost'
 import PostCard from '@/components/post/Post'
@@ -33,8 +34,8 @@ export default function Feed() {
         queryClient.setQueryData(queryKeys.feed(), (old) => {
             if (!old || !old.pages || old.pages.length === 0) return old;
             const [firstPage, ...rest] = old.pages;
-            const existingIds = new Set((firstPage.data || []).map((p) => p.id));
-            const newItems = toPrepend.filter((p) => !existingIds.has(p.id));
+            const existingIds = new Set((firstPage.data || []).map((p) => p.id || p.Id));
+            const newItems = toPrepend.filter((p) => !existingIds.has(p.id || p.Id));
 
             return {
                 ...old,
@@ -55,23 +56,25 @@ export default function Feed() {
     useEffect(() => {
         const handlePostCreated = (event) => {
             const newPost = event.detail;
-            if (!newPost?.id) return;
+            const postId = newPost?.id || newPost?.Id;
+            if (!postId) return;
 
-            const alreadyInFeed = posts.some((p) => p.id === newPost.id);
-            const alreadyPending = pendingPostsRef.current.some((p) => p.id === newPost.id);
+            const alreadyInFeed = posts.some((p) => (p.id || p.Id) === postId);
+            const alreadyPending = pendingPostsRef.current.some((p) => (p.id || p.Id) === postId);
             if (alreadyInFeed || alreadyPending) return;
 
-            const isScrolledDown = window.scrollY > 120;
+            const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            const isScrolledDown = scrollY > 60;
             if (isScrolledDown) {
                 setPendingPosts((prev) => {
-                    if (prev.some((p) => p.id === newPost.id)) return prev;
+                    if (prev.some((p) => (p.id || p.Id) === postId)) return prev;
                     return [newPost, ...prev];
                 });
             } else {
                 queryClient.setQueryData(queryKeys.feed(), (old) => {
                     if (!old || !old.pages || old.pages.length === 0) return old;
                     const [firstPage, ...rest] = old.pages;
-                    if (firstPage.data?.some((p) => p.id === newPost.id)) return old;
+                    if (firstPage.data?.some((p) => (p.id || p.Id) === postId)) return old;
                     return {
                         ...old,
                         pages: [
@@ -92,7 +95,8 @@ export default function Feed() {
 
     useEffect(() => {
         const onScroll = () => {
-            if (window.scrollY <= 10 && pendingPostsRef.current.length > 0) {
+            const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            if (scrollY <= 10 && pendingPostsRef.current.length > 0) {
                 handleRevealNewPosts();
             }
         };
@@ -129,21 +133,27 @@ export default function Feed() {
     return (
         <main>
             <div className="content-stack max-w-4xl relative">
-                {pendingPosts.length > 0 && (
-                    <div className="sticky top-4 z-30 flex justify-center w-full pointer-events-none mb-2">
-                        <button
-                            type="button"
-                            onClick={handleRevealNewPosts}
-                            className="pointer-events-auto flex cursor-pointer items-center gap-2 rounded-full bg-(--primary) px-4 py-2 text-sm font-semibold text-(--on-primary) shadow-(--shadow-md) transition-transform duration-200 ease-out hover:scale-105 active:scale-95"
-                            aria-label={`Show ${pendingPosts.length} new ${pendingPosts.length === 1 ? 'post' : 'posts'}`}
-                        >
-                            <ArrowUp className="h-4 w-4" />
-                            <span>
-                                {pendingPosts.length} New {pendingPosts.length === 1 ? 'Post' : 'Posts'}
-                            </span>
-                        </button>
-                    </div>
-                )}
+                <AnimatePresence>
+                    {pendingPosts.length > 0 && (
+                        <div className="sticky top-24 z-40 flex justify-center w-full pointer-events-none -mt-2 mb-2">
+                            <motion.button
+                                type="button"
+                                onClick={handleRevealNewPosts}
+                                initial={{ opacity: 0, y: -16, scale: 0.9 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -16, scale: 0.9 }}
+                                transition={{ duration: 0.2, ease: "easeOut" }}
+                                className="pointer-events-auto flex cursor-pointer items-center gap-2 rounded-full bg-gradient-to-r from-(--primary-gradient-start) to-(--primary-gradient-end) px-4 py-2.5 text-sm font-semibold text-(--button-gradient-text) shadow-(--shadow-lg) transition-transform duration-200 ease-out hover:scale-105 active:scale-95"
+                                aria-label={`Show ${pendingPosts.length} new ${pendingPosts.length === 1 ? 'post' : 'posts'}`}
+                            >
+                                <ArrowUp className="h-4 w-4" />
+                                <span>
+                                    {pendingPosts.length} New {pendingPosts.length === 1 ? 'Post' : 'Posts'}
+                                </span>
+                            </motion.button>
+                        </div>
+                    )}
+                </AnimatePresence>
 
                 {isLoading ? (
                     <CreatePostSkeleton />
