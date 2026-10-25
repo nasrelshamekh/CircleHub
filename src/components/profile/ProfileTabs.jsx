@@ -117,12 +117,17 @@ export default function ProfileTabs({
 
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                             {mediaPosts.map((post) => (
-                                <img
+                                <Link
                                     key={post.id}
-                                    src={post.imageUrl}
-                                    alt="Post media"
-                                    className="aspect-square w-full rounded-lg object-cover"
-                                />
+                                    to={`/post/${post.id}`}
+                                    className="block overflow-hidden rounded-lg transition hover:opacity-90"
+                                >
+                                    <img
+                                        src={post.imageUrl}
+                                        alt="Post media"
+                                        className="aspect-square w-full rounded-lg object-cover"
+                                    />
+                                </Link>
                             ))}
                         </div>
                     </div>

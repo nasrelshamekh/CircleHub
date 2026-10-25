@@ -1,6 +1,6 @@
-﻿import { Outlet, useLocation } from "react-router-dom"
-import RegisterBG from "@/assets/registerpage.png"
-import SigninBG from "@/assets/signinpage.png"
+import { Outlet, useLocation } from "react-router-dom"
+import RegisterBG from "@/assets/registerpage.webp"
+import SigninBG from "@/assets/signinpage.webp"
 
 export default function AuthLayout() {
   const { pathname } = useLocation();

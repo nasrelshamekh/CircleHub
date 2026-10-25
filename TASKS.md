@@ -34,6 +34,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 28 | Profile Message Policy Enforcement & Direct Messaging | done, verified |
 | 29 | Real-time post creation broadcast across web & mobile with 'X New Posts' scroll indicator, plus foreground notification suppression | done, verified |
 | 30 | Align mobile app primary action buttons with web app 135° brand gradient design and dynamic theme contrast | done, verified |
+| 31 | Phase 1 Polish & Performance: WebP image assets, communities skeleton, profile media link, expo-image disk caching, theme persistence, binary gender selection | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -1400,6 +1401,28 @@ Verification:
 - Mobile Unit Tests: `npm test` passed (20/20 test suites, 120/120 tests passed).
 - Android Release APK: Successfully built local release APK (`circlehub-mobile-release.apk`) via Gradle with custom JBR shim, copied to `circlehub-production-upload`, and installed onto Android emulator (`emulator-5554`).
 - Pushed to GitHub `main`: `circlehub-mobile` (commit `a5ac865`).
+
+### Step 31 — Phase 1 Polish & Performance Across Web & Mobile (verified)
+
+1. **Web Asset Optimization (`CircleHub`):**
+   - Converted `hero.png` (1.39 MB), `signinpage.png` (1.58 MB), and `registerpage.png` (1.65 MB) to WebP format (`hero.webp` 28 KB, `signinpage.webp` 64 KB, `registerpage.webp` 60 KB), cutting bundle download size by 4.3 MB (96.7% reduction).
+   - Removed obsolete raw PNGs and updated imports in `LandingHero.jsx` and `AuthLayout.jsx`.
+2. **Web UI Glitch Fixes (`CircleHub`):**
+   - Created `CommunitiesListSkeleton.jsx` and updated `Communities.jsx` to display skeletons while fetching, resolving the empty state flashing issue on load.
+   - Updated `ProfileTabs.jsx` media tab to wrap thumbnails in `<Link to={'/post/' + post.id}>` matching mobile behavior.
+3. **Mobile Performance & Persistence (`circlehub-mobile`):**
+   - Integrated `Image` from `expo-image` across `avatar.tsx`, `postcard.tsx`, `communitycard.tsx`, `profiletabs.tsx`, and `sharedpostcard.tsx` with memory/disk caching, content-fit, and smooth transitions.
+   - Added `SecureStore` persistence for user manual dark/light theme choice in `themecontext.tsx` and updated test setup mocks in `jest-setup.ts`.
+4. **Gender Selection Alignment (Web & Mobile):**
+   - Removed "Other" option from registration and edit profile forms on both web (`Register.jsx`, `authValidation.js`, `EditProfileForm.jsx`) and mobile (`gendermodal.tsx`, `registerValidation.ts`, `editprofileform.tsx`, `auth.ts`), restricting gender selection strictly to "Male" and "Female".
+
+Verification:
+- Web Linter: `npm run lint` passed (0 errors).
+- Web Production Build: `npm run build` passed (0 errors, 819ms).
+- Mobile TypeScript: `npx tsc --noEmit` passed (0 errors).
+- Mobile Unit Tests: `npm test` passed (20/20 test suites, 120/120 tests passed).
+- Android Release APK: Built and installed `circlehub-mobile-release.apk` onto `emulator-5554`.
+
 
 
 

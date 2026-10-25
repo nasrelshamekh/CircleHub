@@ -1,8 +1,8 @@
-﻿import { motion } from "motion/react";
+import { motion } from "motion/react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import heroImage from "@/assets/hero.png";
+import heroImage from "@/assets/hero.webp";
 import logo from "@/assets/circlehub-logo.png";
 import { fadeUp } from "./landingAnimations";
 import { floatingCards } from "./landingData";

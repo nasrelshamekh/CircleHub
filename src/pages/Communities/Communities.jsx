@@ -4,11 +4,12 @@ import { useState } from "react";
 import CommunityCard from "@/components/communitycard/CommunityCard";
 import CommunityCardSuggestion from "@/components/communitycard/CommunityCardSuggestion";
 import CreateCommunityModal from "@/components/createcommunity/CreateCommunityModal";
+import CommunitiesListSkeleton from "@/components/Skeletons/CommunitiesListSkeleton";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useToggleCommunityMembership } from "@/hooks/mutations/useToggleCommunityMembership";
 
 export default function Communities() {
-    const { communities } = useCommunities();
+    const { communities, isLoading } = useCommunities();
     const toggleMembership = useToggleCommunityMembership();
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -52,7 +53,10 @@ export default function Communities() {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {isLoading ? (
+                <CommunitiesListSkeleton />
+            ) : (
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <div className="lg:col-span-2">
                     <div className="space-y-6">
                         <CommunityCard
@@ -77,6 +81,7 @@ export default function Communities() {
                     />
                 </div>
             </div>
+            )}
 
             <CreateCommunityModal
                 open={isCreateOpen}

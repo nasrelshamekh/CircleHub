@@ -25,7 +25,7 @@ export const registerSchema = z.object({
         .string()
         .trim()
         .min(2, "Job title must be at least 2 characters"),
-    gender: z.enum(["male", "female", "other"], {
+    gender: z.enum(["male", "female"], {
         errorMap: () => ({ message: "Please select a gender" }),
     }),
     dateOfBirth: z

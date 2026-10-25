@@ -28,10 +28,6 @@ const genderOptions = [
         value: "female",
         label: "Female",
     },
-    {
-        value: "other",
-        label: "Other",
-    },
 ];
 
 export default function EditProfileForm({ onProfileUpdate, currentUser }) {
