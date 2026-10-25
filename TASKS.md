@@ -1353,11 +1353,11 @@ Verification:
    - **`PostsController.cs` & `CommunitiesController.cs`**: Injected `IHubContext<ChatHub>`. On post creation in `CreatePost` and `CreateCommunityPost`, broadcasts `ChatHub.PostCreatedMethod` with the newly saved `PostDto` (including community metadata) to all connected SignalR clients.
 
 3. **Web Feed Live Sync & Floating Indicator (`CircleHub`):**
-   - **`src/services/chatHub.js` & `src/context/ChatConnectionContext.jsx`**: Exported `POST_CREATED_EVENT = "PostCreated"`, listened on SignalR, and dispatched `window.dispatchEvent(new CustomEvent("circlehub:post-created", { detail: post }))`.
+   - **`src/services/chatHub.js` & `src/context/ChatConnectionContext.jsx`**: Exported `POST_CREATED_EVENT = "PostCreated"`, normalized `post.id || post.Id`, listened on SignalR, and dispatched `window.dispatchEvent(new CustomEvent("circlehub:post-created", { detail: normalized }))`.
    - **`src/pages/Feed/Feed.jsx`**:
-     - Tracks scroll position (`window.scrollY > 120`).
+     - Tracks scroll position (`window.scrollY || document.documentElement.scrollTop > 60`).
      - **At top of feed**: Prepends new posts directly into the React Query feed cache without disrupting view.
-     - **Scrolled down**: Queues new posts into `pendingPosts` and displays a floating pill button at top center (`↑ X New Posts`) with smooth hover animations.
+     - **Scrolled down**: Queues new posts into `pendingPosts` and displays an animated floating pill button positioned at `sticky top-24 z-40` (16px below the 80px navbar, resolving the previous navbar occlusion issue where `top-4` was hidden behind the solid navbar). Styled with `bg-gradient-to-r from-(--primary-gradient-start) to-(--primary-gradient-end)`, `text-(--button-gradient-text)`, and `motion.button` drop-in animation via `AnimatePresence`.
      - Tapping the pill button or scrolling back to top smoothly scrolls up, prepends all pending posts into the feed without duplicates, and dismisses the pill.
 
 4. **Mobile Feed Live Sync & Floating Indicator (`circlehub-mobile`):**
@@ -1367,13 +1367,15 @@ Verification:
      - Monitored `FlatList` scroll offset (`y > 80`).
      - **At top of feed**: Prepends post directly to `queryKeys.feed()` query data.
      - **Scrolled down**: Queues new posts into `pendingPosts` and renders a floating pill button at the top: `↑ X New Posts`.
+     - **Theme Alignment**: Replaced flat `bg-primary` and hardcoded white text with `LinearGradient` (`colors.primaryGradientStart` to `colors.primaryGradientEnd`), dynamic contrast `colors.buttonGradientText` (adapting correctly between dark and light themes), theme shadow with Android `elevation: 6`, and press feedback.
      - Tapping the pill button or scrolling back to top (`y <= 10`) prepends pending posts without duplicates, resets the queue, and calls `listRef.current?.scrollToOffset({ offset: 0, animated: true })`.
 
 Verification:
-- Web Build: `npm run build` passed (0 errors, 5.87s).
+- Web Build: `npm run build` passed (0 errors, 7.19s).
+- Web Linter: `npm run lint` passed (0 errors, 0 warnings).
 - Mobile TypeScript: `npx tsc --noEmit` passed (0 errors).
 - Mobile Unit Tests: `npm test` passed (20/20 test suites, 120/120 tests passed).
-- Android Release APK: Successfully built local release APK (`circlehub-mobile-release.apk`) via Gradle, installed onto Android emulator, and verified app launch.
+- Android Release APK: Successfully built local release APK (`circlehub-mobile-release.apk`) via Gradle with custom JBR shim, copied to `circlehub-production-upload`, and installed onto Android emulator (`emulator-5554`).
 - Backend Deployment Package: Published `CircleHub.Api` (`2.8.0-live-feed-sync`) with dual 32-bit/64-bit SkiaSharp native libraries and compressed fresh `C:\Projects\circlehub-api-publish.zip` (21.7 MB, pruned debug PDBs and unused Linux/OSX runtimes) for MonsterASP IIS deployment.
 
 
