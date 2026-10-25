@@ -109,6 +109,108 @@ namespace CircleHub.Api.Controllers
             });
         }
 
+        [HttpPost("conversations")]
+        public async Task<IActionResult> GetOrCreateConversation([FromBody] StartConversationDto dto)
+        {
+            var currentUserId = CurrentUserId!.Value;
+
+            User? recipient = null;
+            if (dto.RecipientId.HasValue && dto.RecipientId.Value != Guid.Empty)
+            {
+                recipient = await _db.Users.FirstOrDefaultAsync(u => u.Id == dto.RecipientId.Value);
+            }
+            else if (!string.IsNullOrWhiteSpace(dto.RecipientUsername))
+            {
+                var username = dto.RecipientUsername.Trim();
+                recipient = await _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+            }
+
+            if (recipient == null)
+                return Fail(StatusCodes.Status404NotFound, "Recipient not found");
+
+            if (recipient.Id == currentUserId)
+                return Fail(StatusCodes.Status400BadRequest, "Cannot start a conversation with yourself");
+
+            var canMessage = await _policy.CanMessageAsync(recipient, currentUserId);
+            if (!canMessage)
+                return Fail(StatusCodes.Status403Forbidden, "You cannot message this user based on their privacy settings");
+
+            var conversation = await _db.Conversations
+                .Where(c => c.Participants.Count == 2 &&
+                            c.Participants.Any(p => p.UserId == currentUserId) &&
+                            c.Participants.Any(p => p.UserId == recipient.Id))
+                .OrderByDescending(c => c.LastMessageAt)
+                .FirstOrDefaultAsync();
+
+            var isNew = false;
+            if (conversation == null)
+            {
+                var now = DateTime.UtcNow;
+                conversation = new Conversation
+                {
+                    Id = Guid.NewGuid(),
+                    CreatedAt = now,
+                    LastMessageAt = now,
+                    Participants =
+                    {
+                        new ConversationParticipant
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = currentUserId,
+                            LastReadAt = now
+                        },
+                        new ConversationParticipant
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = recipient.Id
+                        }
+                    }
+                };
+
+                _db.Conversations.Add(conversation);
+
+                try
+                {
+                    await _db.SaveChangesAsync();
+                    isNew = true;
+                }
+                catch (DbUpdateException)
+                {
+                    _db.ChangeTracker.Clear();
+
+                    conversation = await _db.Conversations
+                        .Where(c => c.Participants.Count == 2 &&
+                                    c.Participants.Any(p => p.UserId == currentUserId) &&
+                                    c.Participants.Any(p => p.UserId == recipient.Id))
+                        .OrderByDescending(c => c.LastMessageAt)
+                        .FirstOrDefaultAsync();
+
+                    if (conversation == null)
+                        throw;
+                }
+            }
+
+            var otherUser = new ConversationUserDto
+            {
+                Id = recipient.Id,
+                Name = recipient.Name,
+                Username = recipient.Username,
+                AvatarUrl = recipient.AvatarUrl,
+                LastSeenAt = recipient.LastSeenAt
+            };
+            ApplyPresence(otherUser);
+
+            return Ok(new ApiResponse<StartConversationResultDto>
+            {
+                Data = new StartConversationResultDto
+                {
+                    ConversationId = conversation.Id,
+                    OtherUser = otherUser,
+                    IsNew = isNew
+                }
+            });
+        }
+
         [HttpGet("conversations/{id}")]
         public async Task<IActionResult> GetConversation(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {

@@ -20,6 +20,15 @@ export async function getMessageRecipients() {
   return response.data;
 }
 
+export async function getOrCreateConversation({ recipientId, recipientUsername } = {}) {
+  const response = await apiClient.post("/messages/conversations", {
+    recipientId,
+    recipientUsername,
+  });
+
+  return response.data;
+}
+
 export async function sendMessage({ recipientUsername, content, previewText, postId }) {
   const response = await apiClient.post("/messages", {
     recipientUsername,

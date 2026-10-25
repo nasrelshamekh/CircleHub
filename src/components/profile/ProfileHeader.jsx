@@ -1,14 +1,20 @@
-﻿import {
+import {
     CalendarDays,
+    LoaderCircle,
     MapPin,
     MessageCircle,
     Pencil,
     Settings,
 } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import FollowButton from "@/components/followers/FollowButton";
 import Avatar from "@/components/profileimages/Avatar";
 import CoverImage from "@/components/profileimages/CoverImage";
-import { useNavigate } from "react-router-dom";
+import { getOrCreateConversation } from "@/services/messageApi";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function ProfileHeader({ user, isCurrentUser, postsCount, followsMe }) {
     const networkPath = `/followers/${user.username}`;
@@ -30,6 +36,35 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount, follows
     ];
 
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const [isStartingChat, setIsStartingChat] = useState(false);
+
+    const isFollowedByMe = Boolean(user.isFollowedByMe);
+    const messagesFrom = (user.messagesFrom || "").toLowerCase();
+    const canMessage = typeof user.canMessage === "boolean"
+        ? (messagesFrom === "followers" ? isFollowedByMe : user.canMessage)
+        : (messagesFrom === "everyone" || (messagesFrom === "followers" && isFollowedByMe));
+
+    const handleMessageClick = async () => {
+        if (!canMessage || isStartingChat) return;
+
+        try {
+            setIsStartingChat(true);
+            const res = await getOrCreateConversation({
+                recipientId: user.id,
+                recipientUsername: user.username,
+            });
+            const convId = res?.data?.conversationId;
+            if (convId) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
+                navigate(`/messages/${convId}`);
+            }
+        } catch (err) {
+            toast.error(err?.response?.data?.message || "Failed to open conversation");
+        } finally {
+            setIsStartingChat(false);
+        }
+    };
 
     return (
         <section className="w-full">
@@ -95,8 +130,30 @@ export default function ProfileHeader({ user, isCurrentUser, postsCount, follows
                                         <>
                                             <FollowButton key={user.id} user={user} variant="text" />
 
-                                            <button type="button" className="type-button flex flex-1 items-center justify-center gap-2 rounded-xl bg-(--surface-low) px-4 py-2 text-(--primary) transition hover:bg-(--hover) md:flex-none">
-                                                <MessageCircle size={16} />
+                                            <button
+                                                type="button"
+                                                onClick={handleMessageClick}
+                                                disabled={!canMessage || isStartingChat}
+                                                title={
+                                                    !canMessage
+                                                        ? messagesFrom === "none"
+                                                            ? "This user does not accept messages"
+                                                            : messagesFrom === "followers"
+                                                            ? "Only followers can message this user"
+                                                            : "You cannot message this user"
+                                                        : "Message"
+                                                }
+                                                className={`type-button flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-(--primary) transition md:flex-none ${
+                                                    canMessage
+                                                        ? "bg-(--surface-low) hover:bg-(--hover) cursor-pointer"
+                                                        : "bg-(--surface-low) opacity-50 cursor-not-allowed"
+                                                }`}
+                                            >
+                                                {isStartingChat ? (
+                                                    <LoaderCircle size={16} className="animate-spin" />
+                                                ) : (
+                                                    <MessageCircle size={16} />
+                                                )}
                                                 Message
                                             </button>
                                         </>

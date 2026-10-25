@@ -1309,5 +1309,37 @@ Verification:
 - Web Build: `npm run build` passed (0 errors).
 - Web Linter: `npm run lint` passed (0 errors, 0 warnings).
 
+### Step 28 — Profile Message Policy Enforcement & Direct Messaging (verified)
+
+1. **Backend Integration (`CircleHub.Api`):**
+   - **`UserProfileDto.cs`**: Added `MessagesFrom` (string) and `CanMessage` (bool) properties to expose the target user's messaging privacy policy.
+   - **`UsersController.cs`**: In `GetUserProfile`, computed `canMessage = !isCurrentUser && (user.MessagesFrom switch { MessagesFrom.Everyone => true, MessagesFrom.Followers => isFollowedByMe, _ => false })` and returned `MessagesFrom` and `CanMessage`.
+   - **`StartConversationDto.cs` & `MessagesController.cs`**: Added `POST /api/messages/conversations` (accepting `RecipientId` or `RecipientUsername`) to get an existing conversation between participants or create a new conversation atomically with concurrency retry handling. Validates message permissions using `MessagePolicyService.CanMessageAsync` before creating/returning conversation.
+
+2. **Web Application (`CircleHub`):**
+   - **`src/services/messageApi.js`**: Added `getOrCreateConversation({ recipientId, recipientUsername })`.
+   - **`src/components/profile/ProfileHeader.jsx`**:
+     - Evaluated `canMessage` based on `user.canMessage`, `user.messagesFrom`, and dynamic `user.isFollowedByMe`.
+     - Message button is disabled and dimmed (`opacity-50 cursor-not-allowed`) when messaging is not allowed with informative tooltip (`"This user does not accept messages"`, `"Only followers can message this user"`).
+     - When allowed, clicking calls `getOrCreateConversation` with a loading spinner, invalidates the conversations cache, and navigates seamlessly to `/messages/:conversationId`.
+   - **`src/hooks/mutations/useToggleFollow.jsx`**: Optimistically updates `canMessage` when following/unfollowing a user whose policy is `followers`, providing instantaneous UI responsiveness.
+
+3. **Mobile Application (`circlehub-mobile`):**
+   - **`src/types/user.ts`**: Added `canMessage?: boolean;` to `UserProfile`.
+   - **`src/api/messages.ts`**: Added `getOrCreateConversation({ recipientId, recipientUsername })`.
+   - **`src/components/profile/profileheader.tsx`**:
+     - Added Message button beside `FollowButton` in the non-current-user profile action bar.
+     - Respects `canMessage` with dimmed styling (`opacity-50`) when disallowed, providing informative alert explaining why messaging is restricted if tapped.
+     - When permitted, triggers `getOrCreateConversation`, displays `ActivityIndicator` during initiation, invalidates conversation query, and navigates directly to `/messages/[id]` passing recipient name/username/avatar so the header renders immediately while loading.
+   - **`src/hooks/mutations/useToggleFollow.ts`**: Optimistically updates `canMessage` in React Query cache when following/unfollowing a followers-only user.
+
+Verification:
+- Backend Build: `dotnet build` passed (0 errors, 0 warnings).
+- Web Build: `npm run build` passed (0 errors).
+- Web Linter: `npm run lint` passed (0 errors, 0 warnings).
+- Mobile Unit Tests: `npm test` passed (18/18 test suites, 114/114 tests).
+- Mobile Linter: `npm run lint` passed (0 errors, 0 warnings).
+
+
 
 

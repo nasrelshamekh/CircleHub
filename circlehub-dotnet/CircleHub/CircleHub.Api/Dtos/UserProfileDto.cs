@@ -1,4 +1,4 @@
-﻿namespace CircleHub.Api.Dtos
+namespace CircleHub.Api.Dtos
 {
     public class UserProfileDto
     {
@@ -23,6 +23,9 @@
         public bool IsCurrentUser { get; set; }
         public bool IsFollowedByMe { get; set; }
         public bool FollowsMe { get; set; }
+
+        public string MessagesFrom { get; set; } = string.Empty;
+        public bool CanMessage { get; set; }
 
         public bool IsProfileLocked { get; set; }
     }

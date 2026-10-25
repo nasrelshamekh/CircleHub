@@ -130,6 +130,13 @@ namespace CircleHub.Api.Controllers
             var followsMe = !isCurrentUser && await _db.Follows
                 .AnyAsync(f => f.FollowerId == user.Id && f.FollowingId == currentUserId);
 
+            var canMessage = !isCurrentUser && (user.MessagesFrom switch
+            {
+                MessagesFrom.Everyone => true,
+                MessagesFrom.Followers => isFollowedByMe,
+                _ => false
+            });
+
             var profile = new UserProfileDto
             {
                 Id = user.Id,
@@ -152,6 +159,8 @@ namespace CircleHub.Api.Controllers
                 IsCurrentUser = isCurrentUser,
                 IsFollowedByMe = isFollowedByMe,
                 FollowsMe = followsMe,
+                MessagesFrom = user.MessagesFrom.ToString().ToLower(),
+                CanMessage = canMessage,
                 IsProfileLocked = !canViewContent,
                 ProfileVisibility = user.ProfileVisibility.ToString().ToLower()
             };
