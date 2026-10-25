@@ -33,6 +33,7 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 27 | Web conversation loading polish: replaced plain "Loading…" text with CircleHub circular spinner indicator | done, verified |
 | 28 | Profile Message Policy Enforcement & Direct Messaging | done, verified |
 | 29 | Real-time post creation broadcast across web & mobile with 'X New Posts' scroll indicator, plus foreground notification suppression | done, verified |
+| 30 | Align mobile app primary action buttons with web app 135° brand gradient design and dynamic theme contrast | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -1377,6 +1378,29 @@ Verification:
 - Mobile Unit Tests: `npm test` passed (20/20 test suites, 120/120 tests passed).
 - Android Release APK: Successfully built local release APK (`circlehub-mobile-release.apk`) via Gradle with custom JBR shim, copied to `circlehub-production-upload`, and installed onto Android emulator (`emulator-5554`).
 - Backend Deployment Package: Published `CircleHub.Api` (`2.8.0-live-feed-sync`) with dual 32-bit/64-bit SkiaSharp native libraries and compressed fresh `C:\Projects\circlehub-api-publish.zip` (21.7 MB, pruned debug PDBs and unused Linux/OSX runtimes) for MonsterASP IIS deployment.
+
+### Step 30 — Gradient Button Alignment Across Mobile (`circlehub-mobile`) (verified)
+
+Aligned mobile action buttons corresponding to web `.button-primary` to use the 135° brand primary gradient (`colors.primaryGradientStart` to `colors.primaryGradientEnd`), dynamic contrast `colors.buttonGradientText`, and standard disabled opacity (0.6):
+
+1. **Messages Tab & Modal (`src/app/(tabs)/messages.tsx`, `src/components/messages/newmessagemodal.tsx`):**
+   - Replaced flat `bg-primary` "New" message button with `GradientButton` using `<SquarePen size={16} color={colors.buttonGradientText} />`.
+   - Replaced flat `bg-primary` Send/Chat button in `NewMessageModal` with `GradientButton` displaying `<Send size={15} color={colors.buttonGradientText} />` and proper disabled/sending opacity states.
+2. **Conversation Thread & Composer (`src/app/(tabs)/messages/[id].tsx`, `src/components/messages/messagethread.tsx`):**
+   - Replaced flat `bg-primary` error recovery "Try again" button with `GradientButton`.
+   - Replaced composer send button's flat `bg-primary` with `LinearGradient` (start `{x:0, y:0}`, end `{x:1, y:1}`) and `colors.buttonGradientText` when text is typed, cleanly falling back to `bg-surface-highest` when empty.
+3. **12-Word Recovery Card & Modals (`src/components/profile/messagerecoverycard.tsx`, `src/context/chatconnectioncontext.tsx`):**
+   - Replaced flat `bg-primary` buttons in `MessageRecoveryCard`: "Set Up 12-Word Recovery Phrase", "Unlock with Recovery Phrase", setup modal "Done", and restore modal "Restore and Unlock Key" with `GradientButton`.
+   - Replaced flat `bg-primary` "Unlock" button in `ChatConnectionContext`'s recovery prompt modal with `GradientButton`.
+4. **General Confirmation Dialog (`src/components/ui/confirmmodal.tsx`):**
+   - Maintained red `bg-error` for destructive actions, but upgraded primary confirmation actions to `GradientButton` with dynamic activity indicator.
+
+Verification:
+- Mobile TypeScript: `npx tsc --noEmit` passed (0 errors).
+- Mobile Unit Tests: `npm test` passed (20/20 test suites, 120/120 tests passed).
+- Android Release APK: Successfully built local release APK (`circlehub-mobile-release.apk`) via Gradle with custom JBR shim, copied to `circlehub-production-upload`, and installed onto Android emulator (`emulator-5554`).
+- Pushed to GitHub `main`: `circlehub-mobile` (commit `a5ac865`).
+
 
 
 
