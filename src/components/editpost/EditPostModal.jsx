@@ -11,7 +11,7 @@ import { toast } from "sonner"
 
 import { useUpdatePost } from "@/hooks/mutations/useUpdatePost"
 import Avatar from "@/components/profileimages/Avatar"
-import { ACCEPTED_IMAGE_TYPES, validateImageFile } from "@/lib/imageUpload"
+import { ACCEPTED_IMAGE_TYPES, prepareUploadImage } from "@/lib/imageUpload"
 
 export function EditPostModal({ open, onOpenChange, post }) {
     const [content, setContent] = useState(post.content);
@@ -71,35 +71,21 @@ export function EditPostModal({ open, onOpenChange, post }) {
         modalFileInput.current?.click();
     }
 
-    function handleModalPhotoSelect(event) {
+    async function handleModalPhotoSelect(event) {
         const file = event.target.files?.[0];
+        event.target.value = "";
         if (!file) return;
 
-        const error = validateImageFile(file);
+        const { file: processedFile, previewUrl: processedPreview, error } =
+            await prepareUploadImage(file);
 
         if (error) {
             toast.error(error);
             return;
         }
 
-        try {
-            const reader = new FileReader();
-
-            reader.onloadend = () => {
-                setPreviewUrl(reader.result);
-                setImageFile(file);
-            };
-
-            reader.onerror = () => {
-                toast.error("Could not read the selected image.");
-            };
-
-            reader.readAsDataURL(file);
-        } catch {
-            toast.error("Could not read the selected image.");
-        }
-
-        event.target.value = "";
+        setPreviewUrl(processedPreview);
+        setImageFile(processedFile);
     }
 
     function handleRemovePhoto() {

@@ -18,10 +18,11 @@ export function useBookmarks() {
     }, [storageKey]);
 
     const [bookmarks, setBookmarks] = useState(getSaved);
-
-    useEffect(() => {
+    const [prevStorageKey, setPrevStorageKey] = useState(storageKey);
+    if (prevStorageKey !== storageKey) {
+        setPrevStorageKey(storageKey);
         setBookmarks(getSaved());
-    }, [getSaved]);
+    }
 
     useEffect(() => {
         function handleSync() {
@@ -49,7 +50,9 @@ export function useBookmarks() {
             }
             try {
                 localStorage.setItem(storageKey, JSON.stringify(updated));
-            } catch {}
+            } catch {
+                // ignore
+            }
             setBookmarks(updated);
             window.dispatchEvent(
                 new CustomEvent(BOOKMARKS_EVENT, {

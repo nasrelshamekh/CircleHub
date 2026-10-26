@@ -1,4 +1,4 @@
-﻿import SidebarNav from './SidebarNav'
+import SidebarNav from './SidebarNav'
 import { ArrowLeftToLine, ArrowRightToLine, CirclePlus } from 'lucide-react'
 import { useState } from 'react'
 import { CreatePostModal } from '../createpost/CreatePostModal'
@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useSidebar } from '@/hooks/useSidebar'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
+import { prepareUploadImage } from '@/lib/imageUpload'
 
 export default function Sidebar() {
 
@@ -15,37 +16,22 @@ export default function Sidebar() {
     const { userData } = useAuth();
     const { isSidebarExpanded, toggleSidebar } = useSidebar();
 
-    function handlePhotoSelect(event) {
-        const file = event.target.files?.[0]
+    async function handlePhotoSelect(event) {
+        const file = event.target.files?.[0];
+        event.target.value = "";
         if (!file) return;
 
-        if (!file.type.startsWith("image/")) {
-            toast.error("Only image files are allowed.");
+        const { file: processedFile, previewUrl: processedPreview, error } =
+            await prepareUploadImage(file);
+
+        if (error) {
+            toast.error(error);
             return;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error("Image must be 5MB or smaller.");
-            return;
-        }
-
-        try {
-            const reader = new FileReader();
-
-            reader.onloadend = () => {
-                setPreviewUrl(reader.result);
-                setImageFile(file);
-                setOpen(true);
-            };
-
-            reader.onerror = () => {
-                toast.error("Could not read the selected image.");
-            };
-
-            reader.readAsDataURL(file);
-        } catch {
-            toast.error("Could not read the selected image.");
-        }
+        setPreviewUrl(processedPreview);
+        setImageFile(processedFile);
+        setOpen(true);
     }
 
     function handleRemovePhoto() {

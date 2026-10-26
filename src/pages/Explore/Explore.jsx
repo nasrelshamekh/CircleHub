@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import ExploreSearch from "@/components/explore/ExploreSearch";
@@ -11,10 +11,11 @@ export default function Explore() {
   const [searchParams] = useSearchParams();
   const urlQuery = searchParams.get("q") || "";
   const [searchQuery, setSearchQuery] = useState(urlQuery);
-
-  useEffect(() => {
+  const [prevUrlQuery, setPrevUrlQuery] = useState(urlQuery);
+  if (prevUrlQuery !== urlQuery) {
+    setPrevUrlQuery(urlQuery);
     setSearchQuery(urlQuery);
-  }, [urlQuery]);
+  }
 
   const { users, communities, posts, isLoading } = useSearch(searchQuery);
   const toggleMembership = useToggleCommunityMembership();

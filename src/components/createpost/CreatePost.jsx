@@ -1,11 +1,11 @@
-﻿import { Image } from "lucide-react"
+import { Image } from "lucide-react"
 import { useRef, useState } from "react"
 import { toast } from "sonner";
 
 import { CreatePostModal } from "./CreatePostModal"
 import { useAuth } from "@/hooks/useAuth"
 import Avatar from "@/components/profileimages/Avatar"
-import { ACCEPTED_IMAGE_TYPES, validateImageFile } from "@/lib/imageUpload"
+import { ACCEPTED_IMAGE_TYPES, prepareUploadImage } from "@/lib/imageUpload"
 
 export default function CreatePost({ community }) {
     const [open, setOpen] = useState(false);
@@ -18,34 +18,22 @@ export default function CreatePost({ community }) {
         fileInput.current?.click()
     }
 
-    function handlePhotoSelect(event) {
-        const file = event.target.files?.[0]
+    async function handlePhotoSelect(event) {
+        const file = event.target.files?.[0];
+        event.target.value = "";
         if (!file) return;
 
-        const error = validateImageFile(file);
+        const { file: processedFile, previewUrl: processedPreview, error } =
+            await prepareUploadImage(file);
 
         if (error) {
             toast.error(error);
             return;
         }
 
-        try {
-            const reader = new FileReader();
-
-            reader.onloadend = () => {
-                setPreviewUrl(reader.result);
-                setImageFile(file);
-                setOpen(true);
-            };
-
-            reader.onerror = () => {
-                toast.error("Could not read the selected image.");
-            };
-
-            reader.readAsDataURL(file);
-        } catch {
-            toast.error("Could not read the selected image.");
-        }
+        setPreviewUrl(processedPreview);
+        setImageFile(processedFile);
+        setOpen(true);
     }
 
     function handleRemovePhoto() {

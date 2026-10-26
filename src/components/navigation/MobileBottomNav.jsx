@@ -1,4 +1,4 @@
-﻿import {
+import {
     Home,
     Users,
     Compass,
@@ -10,8 +10,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { CreatePostModal } from "@/components/createpost/CreatePostModal";
-
-
+import { prepareUploadImage } from "@/lib/imageUpload";
 
 export default function MobileBottomNav() {
     const { userData } = useAuth();
@@ -46,37 +45,22 @@ export default function MobileBottomNav() {
         },
     ];
 
-    function handlePhotoSelect(event) {
-        const file = event.target.files?.[0]
+    async function handlePhotoSelect(event) {
+        const file = event.target.files?.[0];
+        event.target.value = "";
         if (!file) return;
 
-        if (!file.type.startsWith("image/")) {
-            toast.error("Only image files are allowed.");
+        const { file: processedFile, previewUrl: processedPreview, error } =
+            await prepareUploadImage(file);
+
+        if (error) {
+            toast.error(error);
             return;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error("Image must be 5MB or smaller.");
-            return;
-        }
-
-        try {
-            const reader = new FileReader();
-
-            reader.onloadend = () => {
-                setPreviewUrl(reader.result);
-                setImageFile(file);
-                setOpen(true);
-            };
-
-            reader.onerror = () => {
-                toast.error("Could not read the selected image.");
-            };
-
-            reader.readAsDataURL(file);
-        } catch {
-            toast.error("Could not read the selected image.");
-        }
+        setPreviewUrl(processedPreview);
+        setImageFile(processedFile);
+        setOpen(true);
     }
 
     function handleRemovePhoto() {

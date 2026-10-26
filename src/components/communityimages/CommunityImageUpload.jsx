@@ -9,7 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ACCEPTED_IMAGE_TYPES, validateImageFile } from "@/lib/imageUpload";
+import { ACCEPTED_IMAGE_TYPES, prepareUploadImage } from "@/lib/imageUpload";
 
 export default function CommunityImageUpload({
     variant,
@@ -38,35 +38,24 @@ export default function CommunityImageUpload({
         fileInputRef.current?.click();
     }
 
-    function handleFileChange(event) {
+    async function handleFileChange(event) {
         const file = event.target.files?.[0];
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
 
         if (!file) return;
 
-        const error = validateImageFile(file);
+        const { file: processedFile, previewUrl: processedPreview, error } =
+            await prepareUploadImage(file);
 
         if (error) {
             toast.error(error);
-            fileInputRef.current.value = "";
             return;
         }
 
-        try {
-            const reader = new FileReader();
-
-            reader.onloadend = () => {
-                setPreviewUrl(reader.result);
-                onImageChange?.(reader.result, file);
-            };
-
-            reader.onerror = () => {
-                toast.error(`Could not read the selected ${alt.toLowerCase()} image.`);
-            };
-
-            reader.readAsDataURL(file);
-        } catch {
-            toast.error(`Could not read the selected ${alt.toLowerCase()} image.`);
-        }
+        setPreviewUrl(processedPreview);
+        onImageChange?.(processedPreview, processedFile);
     }
 
     function handleRemovePreview() {
