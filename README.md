@@ -142,3 +142,33 @@ All protected endpoints require a `Bearer` token. Auth is username-or-email + pa
 - Uploads are validated by file type magic bytes and size, and are served only through an allow-listed static file content-type map.
 - Email credentials, DB connection string, and the JWT signing key are never committed.
 - Profile visibility is enforced server-side (`UserVisibility`). A profile locked for the viewer (followers-only and not followed, or private) still exposes its public card so the account stays discoverable — `id`, `name`, `username`, `jobTitle`, `avatarUrl`, `coverImageUrl`, `bio`, `location`, `skills`, `createdAt`, the follower/following/post counters and the relationship flags — but the About-tab details (`website`, `gender`, `dateOfBirth`) and everything behind the tabs (posts, liked posts, communities, followers/following) are returned only to the owner and to viewers the setting allows. `GET /api/search` and `GET /api/users/suggested` apply the same rule.
+
+## Release History
+
+### v1.1.0 (Current Release)
+- **Real-Time SignalR E2EE Messaging**: Full WebCrypto ECDH + AES-GCM encrypted direct messaging, SignalR chat hub, online/last-seen presence, and live typing indicators.
+- **12-Word Passphrase Backup & Recovery**: BIP39 English mnemonic key wrap (PBKDF2-HMAC-SHA256) allowing users to restore conversation history across browsers and devices.
+- **Real-Time Feed Sync & Floating Indicator**: Live post creation broadcasts with an animated drop-in `X New Posts` pill indicator when scrolled down.
+- **In-App Notification Feed**: Live count badges, audio chimes, row-level read tracking, and toast notifications.
+- **Asset Optimization**: Converted heavy PNG assets to modern WebP (hero, signin, register), achieving a 96.7% size reduction (saving 4.3 MB).
+- **UI & Accessibility Polish**: Added `CommunitiesListSkeleton`, linked profile media grid thumbnails, and aligned binary gender selection (Male / Female).
+
+### v1.0.0
+- Initial web release: Community network, accounts, profiles, post feed, likes, comments, communities, and light/dark theme.
+
+---
+
+## Upcoming (v1.2.0 — Package 1: Social Reach & Discovery)
+
+The upcoming **v1.2.0** release focuses on social sharing, content interactivity, and post collection:
+
+1. **Universal Sharing & "Copy Link to Post"**:
+   - One-click "Copy Link" with instant visual confirmation toast.
+   - Native Web Share API integration (`navigator.share`) for mobile browsers.
+   - Universal post options menu (`...`) accessible to all viewers, not just post authors.
+2. **Rich Interactive Text (Links, `@mentions` & `#hashtags`)**:
+   - Auto-parsing URLs into clickable links.
+   - Auto-linking `@username` mentions to open the mentioned user's profile.
+   - Auto-linking `#hashtags` to filter posts across Explore.
+3. **Post Bookmarks / Saved Posts**:
+   - Save posts to a private personal "Saved" tab on the user's profile for quick access.
