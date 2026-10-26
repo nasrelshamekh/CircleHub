@@ -1515,3 +1515,20 @@ Verification:
 - Android Release APK: Verified standalone release APK `circlehub-mobile-release.apk`.
 - Backend Package: Verified optimized publish archive `circlehub-api-publish.zip` (21.6 MB).
 
+### Step 37 — Web Chat Sent & Delivered Delivery Indicators (`CircleHub`) (verified)
+
+1. **Sent & Delivered Checkmarks on Web:**
+   - Implemented delivery checkmark indicators on outgoing messages (`isMine`) in `src/components/messages/MessageThread.jsx`:
+     - **Sent**: Single checkmark (`Check`, size 13, `text-secondary`, tooltip `title="Sent"`).
+     - **Delivered**: Double checkmark (`CheckCheck`, size 14, `text-(--primary)`, tooltip `title="Delivered"`).
+   - In-flight pending and failed messages do not display checkmarks (preserving existing opacity and red failed retry flow without clock or alert icons).
+   - Displayed seamlessly when collapsed (under the bubble on the right) and when expanded (beside the timestamp with `"Sent"` / `"Delivered"` labels).
+2. **Delivery State Propagation:**
+   - Updated `MessageComposer.jsx` to mark `deliveryStatus: "sent"` upon `sendMessage.mutate` success, which transitions to `delivered` (`CheckCheck`) once confirmed in the conversation thread.
+
+Verification:
+- Web Linter: `npm run lint` passed (0 errors, 0 warnings).
+- Web Production Build: `npm run build` passed (0 errors).
+- Pushed commit `831a573`.
+
+
