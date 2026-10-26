@@ -1,4 +1,6 @@
-﻿import avatarPlaceholder from "@/assets/avatar-placeholder.svg";
+import localAvatarPlaceholder from "@/assets/avatar-placeholder.svg";
+
+export const DEFAULT_AVATAR_PLACEHOLDER = "https://pub-b76e67ff61074ab197c54a2a3b53b763.r2.dev/defaults/avatar-placeholder.png";
 
 export default function Avatar({
     src,
@@ -8,12 +10,15 @@ export default function Avatar({
 }) {
     return (
         <img
-            src={src || avatarPlaceholder}
+            src={src || DEFAULT_AVATAR_PLACEHOLDER}
             alt={alt}
             className={className}
             onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = avatarPlaceholder;
+                if (e.currentTarget.src !== localAvatarPlaceholder) {
+                    e.currentTarget.src = localAvatarPlaceholder;
+                } else {
+                    e.currentTarget.onerror = null;
+                }
             }}
             {...props}
         />

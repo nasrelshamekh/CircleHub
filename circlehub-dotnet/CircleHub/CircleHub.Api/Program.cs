@@ -107,6 +107,7 @@ builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
 
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<UploadService>();
+builder.Services.AddScoped<StorageMigrationService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<EmailVerificationService>();
 builder.Services.AddScoped<PasswordResetService>();
@@ -478,6 +479,28 @@ app.MapHub<ChatHub>("/hubs/chat", options =>
         options.CloseOnAuthenticationExpiration = true;
     })
     .RequireCors("SignalR");
+
+app.MapPost("/api/admin/migrate-storage", async (StorageMigrationService migrationService) =>
+{
+    var result = await migrationService.RunMigrationAsync();
+    return Results.Ok(result);
+});
+
+// Run storage initialization & placeholder seeding in background on startup
+_ = Task.Run(async () =>
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var migrationService = scope.ServiceProvider.GetRequiredService<StorageMigrationService>();
+        await migrationService.RunMigrationAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Background storage migration encountered an unhandled error.");
+    }
+});
 
 app.Run();
 

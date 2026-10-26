@@ -398,7 +398,15 @@ namespace CircleHub.Api.Controllers
                 user.Location = dto.Location;
             if (dto.Website is not null)
                 user.Website = dto.Website;
-            if (dto.AvatarUrl is not null)
+            if (dto.RemoveAvatar == true || dto.AvatarUrl == "")
+            {
+                if (user.AvatarUrl is not null)
+                {
+                    await _uploadService.DeleteImageAsync(user.AvatarUrl);
+                    user.AvatarUrl = null;
+                }
+            }
+            else if (dto.AvatarUrl is not null)
             {
                 if (!IsAllowedImageUrl(dto.AvatarUrl))
                     return Fail(
@@ -408,7 +416,16 @@ namespace CircleHub.Api.Controllers
 
                 user.AvatarUrl = dto.AvatarUrl;
             }
-            if (dto.CoverImageUrl is not null)
+
+            if (dto.RemoveCoverImage == true || dto.CoverImageUrl == "")
+            {
+                if (user.CoverImageUrl is not null)
+                {
+                    await _uploadService.DeleteImageAsync(user.CoverImageUrl);
+                    user.CoverImageUrl = null;
+                }
+            }
+            else if (dto.CoverImageUrl is not null)
             {
                 if (!IsAllowedImageUrl(dto.CoverImageUrl))
                     return Fail(
@@ -418,6 +435,7 @@ namespace CircleHub.Api.Controllers
 
                 user.CoverImageUrl = dto.CoverImageUrl;
             }
+
             if (dto.Gender is not null)
                 user.Gender = dto.Gender;
             if (dto.DateOfBirth is not null)
@@ -431,9 +449,21 @@ namespace CircleHub.Api.Controllers
             try
             {
                 if (dto.AvatarImage is not null)
+                {
+                    if (user.AvatarUrl is not null)
+                    {
+                        await _uploadService.DeleteImageAsync(user.AvatarUrl);
+                    }
                     avatarRelative = await _uploadService.SaveUserImageAsync(dto.AvatarImage);
+                }
                 if (dto.CoverImage is not null)
+                {
+                    if (user.CoverImageUrl is not null)
+                    {
+                        await _uploadService.DeleteImageAsync(user.CoverImageUrl);
+                    }
                     coverRelative = await _uploadService.SaveUserImageAsync(dto.CoverImage, cover: true);
+                }
             }
             catch (ArgumentException ex)
             {

@@ -1,17 +1,25 @@
-﻿import { useRef, useState } from "react";
-import { PencilIcon, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { PencilIcon, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import Avatar from "@/components/profileimages/Avatar";
 import CoverImage from "@/components/profileimages/CoverImage";
 import { ACCEPTED_IMAGE_TYPES, validateImageFile } from "@/lib/imageUpload";
 
-export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc = imageSrc, alt, onImageChange }) {
+export default function ProfileImageUpload({
+  variant,
+  imageSrc,
+  originalImageSrc = imageSrc,
+  alt,
+  onImageChange,
+  onImageRemove
+}) {
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
 
   const isCover = variant === "cover";
   const ImageComponent = isCover ? CoverImage : Avatar;
   const visibleSrc = previewUrl || imageSrc;
+  const hasRemovableImage = Boolean(visibleSrc && !visibleSrc.includes("defaults/"));
 
   function openFilePicker() {
     fileInputRef.current?.click();
@@ -57,6 +65,15 @@ export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc
     }
   }
 
+  function handleRemoveImage() {
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    onImageRemove?.();
+    onImageChange?.("", null);
+  }
+
   return (
     <div className={isCover ? "relative" : "relative mx-auto -mt-13 h-26 w-26 lg:-mt-18 lg:h-32 lg:w-32"}>
       <div
@@ -73,25 +90,46 @@ export default function ProfileImageUpload({ variant, imageSrc, originalImageSrc
         />
       </div>
 
-      <button
-        type="button"
-        onClick={openFilePicker}
-        aria-label={isCover ? "Change cover photo" : "Change profile photo"}
-        className={
-          isCover
-            ? "button-primary absolute bottom-4 right-4 flex items-center gap-2 p-2 text-sm"
-            : "button-primary absolute bottom-0 right-0 flex items-center justify-center p-2 text-sm lg:h-9 lg:w-9"
-        }
-      >
-        <PencilIcon className="h-4 w-4" />
-        {isCover && <p className="hidden lg:block">Change Cover Photo</p>}
-      </button>
+      <div className={isCover ? "absolute bottom-4 right-4 flex items-center gap-2" : "absolute bottom-0 right-0 flex items-center gap-1"}>
+        {hasRemovableImage && (
+          <button
+            type="button"
+            onClick={handleRemoveImage}
+            aria-label={isCover ? "Remove cover photo" : "Remove profile photo"}
+            title={isCover ? "Remove cover photo" : "Remove profile photo"}
+            className={
+              isCover
+                ? "flex items-center gap-1.5 rounded-lg bg-(--surface-lowest)/90 px-3 py-2 text-xs font-medium text-error shadow-sm backdrop-blur-sm hover:bg-(--surface-lowest)"
+                : "flex h-8 w-8 items-center justify-center rounded-full bg-(--surface-lowest) text-error shadow-sm hover:bg-(--surface-low)"
+            }
+          >
+            <Trash2 className="h-4 w-4" />
+            {isCover && <span className="hidden sm:inline">Remove</span>}
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={openFilePicker}
+          aria-label={isCover ? "Change cover photo" : "Change profile photo"}
+          title={isCover ? "Change cover photo" : "Change profile photo"}
+          className={
+            isCover
+              ? "button-primary flex items-center gap-2 p-2 text-sm"
+              : "button-primary flex items-center justify-center p-2 text-sm lg:h-9 lg:w-9"
+          }
+        >
+          <PencilIcon className="h-4 w-4" />
+          {isCover && <p className="hidden lg:block">Change Cover Photo</p>}
+        </button>
+      </div>
 
       {previewUrl && (
         <button
           type="button"
           onClick={handleRemovePreview}
-          aria-label={`Remove ${alt} preview`}
+          aria-label={`Cancel ${alt} preview`}
+          title={`Cancel ${alt} preview`}
           className={
             isCover
               ? "icon-button-soft absolute right-4 top-4 flex h-9 w-9 items-center justify-center bg-(--surface-lowest) text-(--primary) shadow-sm"

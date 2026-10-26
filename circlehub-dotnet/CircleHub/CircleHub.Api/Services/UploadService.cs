@@ -67,11 +67,14 @@ namespace CircleHub.Api.Services
 
         public async Task DeleteImageAsync(string? url, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(url))
+            if (string.IsNullOrWhiteSpace(url) || url.Contains("/defaults/"))
                 return;
 
             if (_storage.TryGetPublicKey(url.Trim(), out var key))
             {
+                if (key.StartsWith("defaults/"))
+                    return;
+
                 await _storage.DeletePublicAsync(key, cancellationToken);
                 return;
             }

@@ -1,4 +1,4 @@
-﻿import { Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useState } from "react";
 import ProfileImageUpload from "./ProfileImageUpload";
 import ThemedDropdownSelect from "@/components/ui/ThemedDropdownSelect";
@@ -48,6 +48,8 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
 
     const [avatarFile, setAvatarFile] = useState(null);
     const [coverFile, setCoverFile] = useState(null);
+    const [removeAvatar, setRemoveAvatar] = useState(false);
+    const [removeCoverImage, setRemoveCoverImage] = useState(false);
 
     function handleChange(event) {
         const { name, value } = event.target;
@@ -84,6 +86,8 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
             skills,
             avatarImage: avatarFile,
             coverImage: coverFile,
+            removeAvatar,
+            removeCoverImage,
         });
     }
     
@@ -98,7 +102,13 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
                         originalImageSrc={currentUser.coverImageUrl}
                         onImageChange={(imageUrl, file) => {
                             setCoverFile(file);
+                            setRemoveCoverImage(!imageUrl && !file);
                             setFormData((currentData) => ({ ...currentData, coverImageUrl: imageUrl }));
+                        }}
+                        onImageRemove={() => {
+                            setCoverFile(null);
+                            setRemoveCoverImage(true);
+                            setFormData((currentData) => ({ ...currentData, coverImageUrl: "" }));
                         }}
                         alt="Profile Cover"
                     />
@@ -109,7 +119,13 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
                         originalImageSrc={currentUser.avatarUrl}
                         onImageChange={(imageUrl, file) => {
                             setAvatarFile(file);
+                            setRemoveAvatar(!imageUrl && !file);
                             setFormData((currentData) => ({ ...currentData, avatarUrl: imageUrl }));
+                        }}
+                        onImageRemove={() => {
+                            setAvatarFile(null);
+                            setRemoveAvatar(true);
+                            setFormData((currentData) => ({ ...currentData, avatarUrl: "" }));
                         }}
                         alt="Profile Avatar"
                     />

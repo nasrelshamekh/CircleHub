@@ -1,4 +1,4 @@
-﻿import { apiClient } from "./apiClient";
+import { apiClient } from "./apiClient";
 
 export async function getSuggestedUsers() {
   const response = await apiClient.get("/users/suggested");
@@ -54,7 +54,17 @@ export async function unfollowUser(userId) {
   return response.data;
 }
 
-export async function updateProfile({ name, jobTitle, bio, location, website, gender, skills, dateOfBirth, avatarImage, coverImage }) {
+export async function changePassword({ currentPassword, newPassword, confirmPassword }) {
+  const response = await apiClient.post("/users/me/change-password", {
+    currentPassword,
+    newPassword,
+    confirmPassword,
+  });
+
+  return response.data;
+}
+
+export async function updateProfile({ name, jobTitle, bio, location, website, gender, skills, dateOfBirth, avatarImage, coverImage, removeAvatar, removeCoverImage }) {
   const formData = new FormData();
 
   if (name != null) formData.append("name", name);
@@ -71,6 +81,8 @@ export async function updateProfile({ name, jobTitle, bio, location, website, ge
 
   if (avatarImage) formData.append("avatarImage", avatarImage);
   if (coverImage) formData.append("coverImage", coverImage);
+  if (removeAvatar) formData.append("removeAvatar", "true");
+  if (removeCoverImage) formData.append("removeCoverImage", "true");
 
   const response = await apiClient.patch("/users/me", formData);
 

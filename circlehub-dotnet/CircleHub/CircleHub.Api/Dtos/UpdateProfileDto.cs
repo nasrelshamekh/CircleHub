@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace CircleHub.Api.Dtos
 {
@@ -38,5 +38,9 @@ namespace CircleHub.Api.Dtos
         public IFormFile? AvatarImage { get; set; }
 
         public IFormFile? CoverImage { get; set; }
+
+        public bool? RemoveAvatar { get; set; }
+
+        public bool? RemoveCoverImage { get; set; }
     }
 }
