@@ -74,7 +74,7 @@ export default function PostActions({ post, onToggleLike }) {
         <button
           type="button"
           onClick={handleToggleBookmark}
-          className={`post-action-button ml-auto ${bookmarked ? "text-(--primary)" : ""}`}
+          className={`post-action-button ${bookmarked ? "text-(--primary)" : ""}`}
           aria-label={bookmarked ? "Remove bookmark" : "Save post"}
           aria-pressed={bookmarked}
         >
