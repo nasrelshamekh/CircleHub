@@ -51,6 +51,28 @@ export default function EditProfileForm({ onProfileUpdate, currentUser }) {
     const [removeAvatar, setRemoveAvatar] = useState(false);
     const [removeCoverImage, setRemoveCoverImage] = useState(false);
 
+    const [prevUser, setPrevUser] = useState(currentUser);
+    if (prevUser !== currentUser) {
+        setPrevUser(currentUser);
+        setFormData({
+            coverImageUrl: currentUser.coverImageUrl,
+            avatarUrl: currentUser.avatarUrl,
+            name: currentUser.name || "",
+            username: currentUser.username || "",
+            jobTitle: currentUser.jobTitle || "",
+            location: currentUser.location || "",
+            website: currentUser.website || "",
+            gender: currentUser.gender || "",
+            dateOfBirth: toDateInputValue(currentUser.dateOfBirth),
+            bio: currentUser.bio || "",
+            skills: (currentUser.skills || []).join(", "),
+        });
+        setAvatarFile(null);
+        setCoverFile(null);
+        setRemoveAvatar(false);
+        setRemoveCoverImage(false);
+    }
+
     function handleChange(event) {
         const { name, value } = event.target;
 

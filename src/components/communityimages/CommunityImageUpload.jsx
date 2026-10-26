@@ -1,17 +1,38 @@
 import { useRef, useState } from "react";
-import { PencilIcon, X } from "lucide-react";
+import { PencilIcon, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import CommunityImage from "@/components/communityimages/CommunityImage";
 import CommunityCoverImage from "@/components/communityimages/CommunityCoverImage";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ACCEPTED_IMAGE_TYPES, validateImageFile } from "@/lib/imageUpload";
 
-export default function CommunityImageUpload({ variant, imageSrc, originalImageSrc = imageSrc, alt, onImageChange, className }) {
+export default function CommunityImageUpload({
+    variant,
+    imageSrc,
+    originalImageSrc = imageSrc,
+    alt,
+    onImageChange,
+    onImageRemove,
+    className,
+}) {
     const [previewUrl, setPreviewUrl] = useState(null);
     const fileInputRef = useRef(null);
 
     const isCover = variant === "cover";
     const ImageComponent = isCover ? CommunityCoverImage : CommunityImage;
     const visibleSrc = previewUrl || imageSrc;
+    const hasRemovableImage = Boolean(visibleSrc && !visibleSrc.includes("defaults/"));
+
+    const [prevImageSrc, setPrevImageSrc] = useState(imageSrc);
+    if (prevImageSrc !== imageSrc) {
+        setPrevImageSrc(imageSrc);
+        setPreviewUrl(null);
+    }
 
     function openFilePicker() {
         fileInputRef.current?.click();
@@ -57,6 +78,15 @@ export default function CommunityImageUpload({ variant, imageSrc, originalImageS
         }
     }
 
+    function handleRemoveImage() {
+        setPreviewUrl(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+        onImageRemove?.();
+        onImageChange?.("", null);
+    }
+
     return (
         <div className={className ?? (isCover ? "relative" : "relative mx-auto -mt-13 h-26 w-26 lg:-mt-18 lg:h-32 lg:w-32")}>
             <div
@@ -73,19 +103,58 @@ export default function CommunityImageUpload({ variant, imageSrc, originalImageS
                 />
             </div>
 
-            <button
-                type="button"
-                onClick={openFilePicker}
-                aria-label={isCover ? "Change community cover image" : "Change community image"}
-                className={
-                    isCover
-                        ? "button-primary absolute bottom-4 right-4 flex items-center gap-2 p-2 text-sm"
-                        : "button-primary absolute bottom-0 right-0 flex items-center justify-center p-2 text-sm lg:h-9 lg:w-9"
-                }
-            >
-                <PencilIcon className="h-4 w-4" />
-                {isCover && <p className="hidden lg:block">Change Cover Image</p>}
-            </button>
+            <div className={isCover ? "absolute bottom-4 right-4 flex items-center gap-2" : "absolute bottom-0 right-0 flex items-center gap-1"}>
+                {hasRemovableImage && onImageRemove ? (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                aria-label={isCover ? "Edit community cover image" : "Edit community image"}
+                                title={isCover ? "Edit community cover image" : "Edit community image"}
+                                className={
+                                    isCover
+                                        ? "button-primary flex items-center gap-2 p-2 text-sm cursor-pointer shadow-md"
+                                        : "button-primary flex items-center justify-center p-2 text-sm lg:h-9 lg:w-9 cursor-pointer shadow-md"
+                                }
+                            >
+                                <PencilIcon className="h-4 w-4" />
+                                {isCover && <span className="hidden lg:inline">Edit Cover Image</span>}
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44 bg-(--surface) text-primary shadow-lg border border-(--border)">
+                            <DropdownMenuItem
+                                onClick={openFilePicker}
+                                className="cursor-pointer gap-2"
+                            >
+                                <Upload className="h-4 w-4 text-secondary" />
+                                <span>Upload photo</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={handleRemoveImage}
+                                className="cursor-pointer gap-2 text-error focus:text-error"
+                            >
+                                <Trash2 className="h-4 w-4 text-error" />
+                                <span>Remove photo</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={openFilePicker}
+                        aria-label={isCover ? "Change community cover image" : "Change community image"}
+                        title={isCover ? "Change community cover image" : "Change community image"}
+                        className={
+                            isCover
+                                ? "button-primary flex items-center gap-2 p-2 text-sm cursor-pointer shadow-md"
+                                : "button-primary flex items-center justify-center p-2 text-sm lg:h-9 lg:w-9 cursor-pointer shadow-md"
+                        }
+                    >
+                        <PencilIcon className="h-4 w-4" />
+                        {isCover && <span className="hidden lg:inline">Change Cover Image</span>}
+                    </button>
+                )}
+            </div>
 
             {previewUrl && (
                 <button
@@ -103,6 +172,7 @@ export default function CommunityImageUpload({ variant, imageSrc, originalImageS
             )}
 
             <input
+                key={imageSrc || "empty"}
                 ref={fileInputRef}
                 type="file"
                 accept={ACCEPTED_IMAGE_TYPES}

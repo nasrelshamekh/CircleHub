@@ -1,4 +1,4 @@
-﻿import { CheckCircle, MoveLeft, Settings, UserPlus, Users } from "lucide-react";
+import { CheckCircle, MoveLeft, Settings, UserPlus, Users } from "lucide-react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import CommunityMembersManager from "@/components/managecommunity/CommunityMembersManager";
@@ -207,7 +207,11 @@ export default function ManageCommunity() {
                 {isAdmin && (
                     <TabsContent value="manage">
                         <div className="flex flex-col gap-6">
-                            <CommunitySettingsForm community={community} onSave={handleSaveCommunity} />
+                            <CommunitySettingsForm
+                                key={community ? `${community.id}-${community.imageUrl || ""}-${community.coverImageUrl || ""}` : "community-settings"}
+                                community={community}
+                                onSave={handleSaveCommunity}
+                            />
                             <DeleteCommunityCard community={community} />
                         </div>
                     </TabsContent>

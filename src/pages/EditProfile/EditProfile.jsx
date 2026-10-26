@@ -45,18 +45,24 @@ export default function EditProfile() {
 
             setUserData(response.data);
 
+            queryClient.invalidateQueries({ queryKey: queryKeys.me() });
             const username = response.data?.username ?? userData?.username;
             if (username) {
                 queryClient.invalidateQueries({ queryKey: queryKeys.user(username) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.userPosts(username) });
             }
+            queryClient.invalidateQueries({ queryKey: ["posts"] });
 
             toast.success(response.message || "Profile updated successfully");
+            return true;
         } catch (error) {
             const message = error.response?.data?.message || "Failed to update profile";
 
             toast.error(message);
+            return false;
         }
     }
+
     return (
         <>
             <section className="content-stack max-w-7xl">
@@ -87,7 +93,11 @@ export default function EditProfile() {
 
                     <TabsContent value="profile">
                         <div className="flex flex-col gap-6">
-                            <EditProfileForm onProfileUpdate={handleProfileUpdate} currentUser={userData} />
+                            <EditProfileForm
+                                key={userData ? `${userData.id}-${userData.updatedAt || ""}` : "edit-profile"}
+                                onProfileUpdate={handleProfileUpdate}
+                                currentUser={userData}
+                            />
                             <ChangePasswordForm />
                         </div>
                     </TabsContent>
@@ -101,5 +111,5 @@ export default function EditProfile() {
                 </Tabs>
             </section>
         </>
-    )
+    );
 }

@@ -1,8 +1,14 @@
 import { useRef, useState } from "react";
-import { PencilIcon, Trash2, X } from "lucide-react";
+import { PencilIcon, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import Avatar from "@/components/profileimages/Avatar";
 import CoverImage from "@/components/profileimages/CoverImage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ACCEPTED_IMAGE_TYPES, validateImageFile } from "@/lib/imageUpload";
 
 export default function ProfileImageUpload({
@@ -11,7 +17,7 @@ export default function ProfileImageUpload({
   originalImageSrc = imageSrc,
   alt,
   onImageChange,
-  onImageRemove
+  onImageRemove,
 }) {
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
@@ -20,6 +26,12 @@ export default function ProfileImageUpload({
   const ImageComponent = isCover ? CoverImage : Avatar;
   const visibleSrc = previewUrl || imageSrc;
   const hasRemovableImage = Boolean(visibleSrc && !visibleSrc.includes("defaults/"));
+
+  const [prevImageSrc, setPrevImageSrc] = useState(imageSrc);
+  if (prevImageSrc !== imageSrc) {
+    setPrevImageSrc(imageSrc);
+    setPreviewUrl(null);
+  }
 
   function openFilePicker() {
     fileInputRef.current?.click();
@@ -91,37 +103,56 @@ export default function ProfileImageUpload({
       </div>
 
       <div className={isCover ? "absolute bottom-4 right-4 flex items-center gap-2" : "absolute bottom-0 right-0 flex items-center gap-1"}>
-        {hasRemovableImage && (
+        {hasRemovableImage ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={isCover ? "Edit cover photo" : "Edit profile photo"}
+                title={isCover ? "Edit cover photo" : "Edit profile photo"}
+                className={
+                  isCover
+                    ? "button-primary flex items-center gap-2 p-2 text-sm cursor-pointer shadow-md"
+                    : "button-primary flex items-center justify-center p-2 text-sm lg:h-9 lg:w-9 cursor-pointer shadow-md"
+                }
+              >
+                <PencilIcon className="h-4 w-4" />
+                {isCover && <span className="hidden lg:inline">Edit Cover Photo</span>}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44 bg-(--surface) text-primary shadow-lg border border-(--border)">
+              <DropdownMenuItem
+                onClick={openFilePicker}
+                className="cursor-pointer gap-2"
+              >
+                <Upload className="h-4 w-4 text-secondary" />
+                <span>Upload photo</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleRemoveImage}
+                className="cursor-pointer gap-2 text-error focus:text-error"
+              >
+                <Trash2 className="h-4 w-4 text-error" />
+                <span>Remove photo</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
           <button
             type="button"
-            onClick={handleRemoveImage}
-            aria-label={isCover ? "Remove cover photo" : "Remove profile photo"}
-            title={isCover ? "Remove cover photo" : "Remove profile photo"}
+            onClick={openFilePicker}
+            aria-label={isCover ? "Upload cover photo" : "Upload profile photo"}
+            title={isCover ? "Upload cover photo" : "Upload profile photo"}
             className={
               isCover
-                ? "flex items-center gap-1.5 rounded-lg bg-(--surface-lowest)/90 px-3 py-2 text-xs font-medium text-error shadow-sm backdrop-blur-sm hover:bg-(--surface-lowest)"
-                : "flex h-8 w-8 items-center justify-center rounded-full bg-(--surface-lowest) text-error shadow-sm hover:bg-(--surface-low)"
+                ? "button-primary flex items-center gap-2 p-2 text-sm cursor-pointer shadow-md"
+                : "button-primary flex items-center justify-center p-2 text-sm lg:h-9 lg:w-9 cursor-pointer shadow-md"
             }
           >
-            <Trash2 className="h-4 w-4" />
-            {isCover && <span className="hidden sm:inline">Remove</span>}
+            <PencilIcon className="h-4 w-4" />
+            {isCover && <span className="hidden lg:inline">Upload Cover Photo</span>}
           </button>
         )}
-
-        <button
-          type="button"
-          onClick={openFilePicker}
-          aria-label={isCover ? "Change cover photo" : "Change profile photo"}
-          title={isCover ? "Change cover photo" : "Change profile photo"}
-          className={
-            isCover
-              ? "button-primary flex items-center gap-2 p-2 text-sm"
-              : "button-primary flex items-center justify-center p-2 text-sm lg:h-9 lg:w-9"
-          }
-        >
-          <PencilIcon className="h-4 w-4" />
-          {isCover && <p className="hidden lg:block">Change Cover Photo</p>}
-        </button>
       </div>
 
       {previewUrl && (
@@ -141,6 +172,7 @@ export default function ProfileImageUpload({
       )}
 
       <input
+        key={imageSrc || "empty"}
         ref={fileInputRef}
         type="file"
         accept={ACCEPTED_IMAGE_TYPES}

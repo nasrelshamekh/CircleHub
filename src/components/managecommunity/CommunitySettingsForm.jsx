@@ -40,6 +40,21 @@ export default function CommunitySettingsForm({ community, onSave }) {
     const [imageFile, setImageFile] = useState(null);
     const [coverFile, setCoverFile] = useState(null);
 
+    const [prevCommunity, setPrevCommunity] = useState(community);
+    if (prevCommunity !== community) {
+        setPrevCommunity(community);
+        setFormData({
+            imageUrl: community.imageUrl,
+            coverImageUrl: community.coverImageUrl,
+            name: community.name,
+            category: community.category,
+            visibility: community.visibility,
+            description: community.description,
+        });
+        setImageFile(null);
+        setCoverFile(null);
+    }
+
     function handleChange(event) {
         const { name, value } = event.target;
 
