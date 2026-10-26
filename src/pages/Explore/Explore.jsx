@@ -1,13 +1,21 @@
-﻿import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import ExploreSearch from "@/components/explore/ExploreSearch";
 import ExploreTabs from "@/components/explore/ExploreTabs";
 import { useSearch } from "@/hooks/useSearch";
 import { useToggleCommunityMembership } from "@/hooks/mutations/useToggleCommunityMembership";
-import { useToggleLike } from '@/hooks/mutations/useToggleLike'
+import { useToggleLike } from "@/hooks/mutations/useToggleLike";
 
 export default function Explore() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const urlQuery = searchParams.get("q") || "";
+  const [searchQuery, setSearchQuery] = useState(urlQuery);
+
+  useEffect(() => {
+    setSearchQuery(urlQuery);
+  }, [urlQuery]);
+
   const { users, communities, posts, isLoading } = useSearch(searchQuery);
   const toggleMembership = useToggleCommunityMembership();
   const toggleLike = useToggleLike();

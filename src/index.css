@@ -478,6 +478,32 @@ img {
   color: var(--primary);
 }
 
+.richtext-link {
+  color: var(--primary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.richtext-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  opacity: 0.85;
+}
+
+.richtext-url {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  word-break: break-all;
+  transition: opacity 0.15s ease;
+}
+
+.richtext-url:hover {
+  opacity: 0.8;
+}
+
 .focus-ring {
   outline: 2px solid transparent;
   outline-offset: 2px;

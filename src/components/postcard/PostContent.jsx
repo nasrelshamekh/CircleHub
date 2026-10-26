@@ -1,7 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import RichText from "@/components/common/RichText";
 
 export default function PostContent({ post, isDetailsPage = false }) {
+  const navigate = useNavigate();
+
+  const handleContentClick = () => {
+    if (!isDetailsPage) {
+      navigate(`/post/${post.id}`);
+    }
+  };
+
   const contentElement = (
     <p className="type-body-md text-secondary whitespace-pre-line">
       <RichText content={post.content} />
@@ -14,12 +22,20 @@ export default function PostContent({ post, isDetailsPage = false }) {
         isDetailsPage ? (
           contentElement
         ) : (
-          <Link
-            to={`/post/${post.id}`}
-            className="block transition-opacity hover:opacity-85"
+          <div
+            onClick={handleContentClick}
+            className="block cursor-pointer"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" || e.key === " ") && !isDetailsPage) {
+                e.preventDefault();
+                handleContentClick();
+              }
+            }}
           >
             {contentElement}
-          </Link>
+          </div>
         )
       )}
 
@@ -38,7 +54,7 @@ export default function PostContent({ post, isDetailsPage = false }) {
               <img
                 src={post.imageUrl}
                 alt="Post preview"
-                className="max-h-[520px] max-w-full w-auto h-auto object-contain rounded-2xl transition-transform duration-200 hover:scale-[1.01]"
+                className="max-h-[520px] max-w-full w-auto h-auto object-contain rounded-2xl"
               />
             </div>
           </Link>

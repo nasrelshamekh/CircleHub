@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 // Combined regex to match URLs, @mentions, and #hashtags
-const TOKEN_REGEX = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_]+|#[a-zA-Z0-9_]+)/g;
+const TOKEN_REGEX = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_]{1,30}|#[a-zA-Z0-9_\u0600-\u06FF]+)/g;
 
 export default function RichText({ content, className = "" }) {
     if (!content) return null;
@@ -15,17 +15,27 @@ export default function RichText({ content, className = "" }) {
 
                 // Match URLs
                 if (/^https?:\/\//i.test(part)) {
+                    let url = part;
+                    let trailing = "";
+                    const matchTrailing = url.match(/[.,;:!?)]+$/);
+                    if (matchTrailing) {
+                        trailing = matchTrailing[0];
+                        url = url.slice(0, -trailing.length);
+                    }
+
                     return (
-                        <a
-                            key={index}
-                            href={part}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-(--primary) hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {part}
-                        </a>
+                        <span key={index}>
+                            <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="richtext-url font-medium"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {url}
+                            </a>
+                            {trailing}
+                        </span>
                     );
                 }
 
@@ -36,7 +46,7 @@ export default function RichText({ content, className = "" }) {
                         <Link
                             key={index}
                             to={`/profile/${username}`}
-                            className="font-semibold text-(--primary) hover:underline"
+                            className="richtext-link font-semibold"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {part}
@@ -51,7 +61,7 @@ export default function RichText({ content, className = "" }) {
                         <Link
                             key={index}
                             to={`/explore?q=${encodeURIComponent(tag)}`}
-                            className="font-medium text-(--primary) hover:underline"
+                            className="richtext-link font-medium"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {part}
