@@ -1423,9 +1423,95 @@ Verification:
 - Mobile Unit Tests: `npm test` passed (20/20 test suites, 120/120 tests passed).
 - Android Release APK: Built and installed `circlehub-mobile-release.apk` onto `emulator-5554`.
 
+### Step 32 — Cloudflare R2 Placeholder Unification, Avatar/Cover Removal & Storage Migration (verified)
 
+1. **Backend Support for Avatar & Cover Removal (`CircleHub.Api`):**
+   - Extended `UpdateProfileDto` with `RemoveAvatar` and `RemoveCover` boolean properties.
+   - Updated `UsersController.UpdateProfile`: If `RemoveAvatar` is true, sets `user.AvatarUrl = null`; if `RemoveCover` is true, sets `user.CoverImageUrl = null`.
+   - Updated `UploadService.cs` default avatar and cover fallback URLs to point directly to Cloudflare R2 public bucket (`https://pub-2e921e1e47e340a688006368d4d80a1c.r2.dev/defaults/...`).
+2. **Cloudflare R2 Object Storage Placeholders & Migration (`CircleHub.Api`):**
+   - Seeded default placeholder assets into R2 bucket under `/defaults/`: `avatar-placeholder.png`, `avatar-placeholder.svg`, `cover-placeholder.png`, `cover-placeholder.svg`, `community-placeholder.svg`, and `community-cover-placeholder.svg`.
+   - Implemented `StorageMigrationService.cs`: Scanned legacy local disk uploads (`/uploads/...`) and non-R2 image URLs across PostgreSQL (posts, user avatars, cover images, community avatars/covers) and migrated them directly to Cloudflare R2 object storage, establishing a unified single source of truth.
+3. **Web Image Removal & Fallback Integration (`CircleHub`):**
+   - Updated `Avatar.jsx` and `CoverImage.jsx` to fallback directly to R2 public CDN URLs whenever image source is null or fails to load.
+   - Updated `userApi.js` to send `removeAvatar` and `removeCover` flags during profile update.
+4. **Mobile Parity (`circlehub-mobile`):**
+   - Added Cloudflare R2 placeholder URL constants to `src/lib/imageUrl.ts`.
+   - Updated `avatar.tsx` to fallback to `DEFAULT_AVATAR_PLACEHOLDER_R2` when src is null or empty.
+   - Updated `src/api/users.ts` to include `removeAvatar` and `removeCover` flags in `updateProfile`.
+   - Updated `editprofileform.tsx` and `profileheader.tsx` to handle photo removal and fallback states.
+   - Pushed commits: `CircleHub` (`9c80071`), `circlehub-mobile` (`b29c23d`, `2a8821c`).
 
+### Step 33 — Photo Removal Action Consolidation & Post-Save State Reset (verified)
 
+1. **Web Image Action Consolidation (`CircleHub`):**
+   - Removed standalone trash bin icon from avatar and separate remove button from cover image in `ProfileImageUpload.jsx`.
+   - Integrated "Remove Photo" / "Remove Cover" actions directly inside the "Edit avatar" and "Edit cover image" menu/action flows.
+   - Applied identical action consolidation in `CommunityImageUpload.jsx` for community avatars and cover banners.
+2. **Post-Save Preview State Reset (`CircleHub`):**
+   - In `EditProfile.jsx` and `EditProfileForm.jsx`: Triggered query refetch on save and reset local preview/removal states (`setAvatarPreview(null)`, `setCoverPreview(null)`, `setRemoveAvatar(false)`, `setRemoveCover(false)`), resolving the issue where remove indicators and stale previews persisted after saving.
+   - Applied identical post-save reset logic in `ManageCommunity.jsx` and `CommunitySettingsForm.jsx`.
+3. **Mobile Parity (`circlehub-mobile`):**
+   - Removed floating trash buttons from `profileimagepicker.tsx` in favor of in-modal options.
+   - Pushed commits: `CircleHub` (`f10fdab`), `circlehub-mobile` (`a5ee9d2`).
 
+### Step 34 — Resilient Uploads & Client-Side Image Optimization (verified)
 
+1. **Mobile Native `uploadAsync` Parity (`circlehub-mobile`):**
+   - Fixed "The connection dropped before the photo finished uploading. Try again" network socket drop error on mobile avatar and community image uploads.
+   - Replaced Axios/FormData upload with Expo `FileSystem.uploadAsync` (`uploadProfileImageAsync` in `src/api/users.ts` and `uploadCommunityImageAsync` in `src/api/communities.ts`), matching `CreatePost`'s resilient multipart streaming and token authorization headers.
+2. **Web Client-Side Canvas Image Downscaling & Compression (`CircleHub`):**
+   - Built `src/lib/imageUpload.js` with `prepareUploadImage`:
+     - Dynamically downscales oversized images (e.g. raw 12MP+ camera uploads) exceeding 2048px (`MAX_UPLOAD_DIMENSION`) using HTML5 Offscreen/DOM Canvas.
+     - Compresses images above 1MB (`SHRINK_ABOVE_BYTES`) to JPEG/WebP at 0.9 quality (`UPLOAD_JPEG_QUALITY`).
+     - Detects and preserves alpha channel / PNG transparency when present.
+   - Integrated across all web upload entry points: `CreatePost.jsx`, `CreatePostModal.jsx`, `EditPostModal.jsx`, `ProfileImageUpload.jsx`, `CommunityImageUpload.jsx`, `Sidebar.jsx`, and `MobileBottomNav.jsx`.
+   - Pushed commits: `CircleHub` (`ee37e5b`), `circlehub-mobile` (`a5ee9d2`).
+
+### Step 35 — Offline & Reconnecting Pill Banner Across Web & Mobile (verified)
+
+1. **Web Offline Banner (`CircleHub`):**
+   - Created `src/components/common/OfflineBanner.jsx` using `useSyncExternalStore` for browser network connectivity (`navigator.onLine`, `online`/`offline` window events) and SignalR hub status (`Reconnecting` / `Disconnected`).
+   - Floats fixed at top-center (`z-50`) with backdrop blur:
+     - Offline / Reconnecting: Amber pill displaying `<WifiOff size={14} />` and *"You're offline. Reconnecting..."*.
+     - Back online: Emerald green pill displaying `<CheckCircle2 size={14} />` and *"Back online"*, auto-fading out after 2.5 seconds.
+   - Mounted globally in `src/App.jsx`.
+2. **Mobile Offline Banner (`circlehub-mobile`):**
+   - Created `src/components/ui/offlinebanner.tsx` using `@react-native-community/netinfo` and `ChatConnectionContext` SignalR status.
+   - Positioned safely below the status bar with React Native `Animated` slide-in (`translateY: -50` -> `0`) and fade animations (`opacity: 0` -> `1`).
+   - Fully supports light/dark theme tokens, accessibility `accessibilityRole="alert"`, and automated test coverage in `__tests__/components/OfflineBanner.test.tsx`.
+   - Mounted globally in `src/app/_layout.tsx`.
+   - Pushed commits: `CircleHub` (`e22f3a2`), `circlehub-mobile` (`a9aedc8`).
+
+### Step 36 — Mobile UX Enhancements: Profile Navigation, Chat Delivery Progression & Composer Polish (verified)
+
+1. **Mobile Edit Profile Navigation Fix (`circlehub-mobile`):**
+   - In `src/app/(tabs)/edit-profile.tsx` and `src/components/profile/editprofileform.tsx`, replaced `router.back()` with `router.replace("/(tabs)/profile")`, ensuring users return directly to their Profile tab instead of dropping back to the Home/Feed.
+2. **Chat Message Delivery States Progression (`circlehub-mobile`):**
+   - Added `MessageDeliveryStatus` (`"sending" | "sent" | "delivered" | "failed"`) to `src/types/message.ts`.
+   - Updated `messagethread.tsx` to display full delivery indicators alongside timestamps:
+     - **Sending**: Clock icon (`Clock`, size 11, muted).
+     - **Sent**: Single checkmark (`Check`, size 12, muted).
+     - **Delivered**: Double checkmark (`CheckCheck`, size 13, themed primary color `colors.primary`).
+     - **Failed**: Alert icon (`AlertCircle`, size 12, error red `colors.error`) with tap-to-retry callback.
+   - Comprehensive unit tests in `__tests__/components/MessageThreadDeliveryStates.test.tsx` verifying all status transitions and accessibility labels.
+3. **Composer Polish & Send Button Consistency (`circlehub-mobile`):**
+   - Send Button: Restored clean, consistent appearance without gradient shifts or shape alterations while typing.
+   - Emoji Picker: Enlarged emoji trigger icon in composer.
+   - Removed self-avatar on the far left of the message composer to maximize input space.
+4. **Tactile Haptics & Scroll-To-Top (`circlehub-mobile`):**
+   - Integrated `src/lib/haptics.ts` (`expo-haptics`) for post likes, bookmarking, message sending, and refresh gestures.
+   - Implemented tab double-tap / re-tap scroll-to-top with feed refresh in `_layout.tsx` and `feedScroll.ts`.
+5. **Backend Publish Bundle Optimization & Mobile Release Hardening:**
+   - Pruned debug symbols (PDBs) and extraneous platform binaries from `circlehub-api-publish.zip`, reducing bundle size from 165.2 MB down to 21.6 MB.
+   - Hardened `circlehub-mobile` release build: bumped `versionCode` to 2, disabled cleartext traffic, and verified standalone release APK (`116.7 MB`).
+   - Pushed commits: `circlehub-mobile` (`6976bcf`, `907ec32`, `a758709`, `b372b25`, `f8d556a`).
+
+Verification:
+- Web Production Build: `npm run build` passed (0 errors).
+- Web Linter: `npm run lint` passed (0 errors, 0 warnings).
+- Mobile TypeScript: `npx tsc --noEmit` passed (0 errors).
+- Mobile Unit Tests: `npm test` passed (26/26 test suites, 143/143 tests passed).
+- Android Release APK: Verified standalone release APK `circlehub-mobile-release.apk`.
+- Backend Package: Verified optimized publish archive `circlehub-api-publish.zip` (21.6 MB).
 
