@@ -1,10 +1,11 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 import { useDeleteComment } from "@/hooks/mutations/useDeleteComment";
 import Avatar from "@/components/profileimages/Avatar";
+import RichText from "@/components/common/RichText";
 
 export default function CommentItem({
   id,
@@ -57,7 +58,7 @@ export default function CommentItem({
         </div>
         <div className="flex items-center justify-between gap-3">
           <p className="type-body-sm-readable mt-1 text-secondary">
-            {content}
+            <RichText content={content} />
           </p>
           <span className="type-label-sm text-secondary">
             {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}

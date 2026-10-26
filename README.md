@@ -1,151 +1,97 @@
-# CircleHub
+# CircleHub Web
 
-A full-stack social networking platform where users post updates, share photos, follow each other, and join curated communities.
+The modern social platform for communities, creators, and conversations. CircleHub connects users through topic-based communities, rich multimedia posts, real-time messaging, and profile customization.
 
-Built as a monorepo: a React frontend plus an ASP.NET Core Web API backend backed by MySQL.
+Built with **React 19**, **Vite**, **Tailwind CSS v4**, and backed by the ASP.NET Core **CircleHub.Api**.
+
+---
 
 ## Features
 
-- **Accounts** — register/login with email + username, JWT authentication, email verification (with resend cooldown), forgot/reset password, and signed-in password change (which signs out every session)
-- **Profiles** — avatar & cover uploads, bio, job title, dates, profile visibility
-- **Posts** — text and image posts, edit content and replace images, delete, like/unlike
-- **Comments** — thread comments on posts
-- **Follows** — follow/unfollow, followers & following lists, suggested users
-- **Communities** — public/private, cover image, join requests, roles (owner/admin/moderator/member), member management, moderation logs, community-specific posts
-- **Search** — users and communities
-- **Notifications** — notifications page
-- **Theming** — light/dark mode
+- **Authentication & Onboarding**: Username/email login, registration with binary gender selection, avatar upload, and email verification.
+- **Feed & Interactions**: Chronological post feed, like reactions with animations, threaded comments, and universal sharing.
+- **Communities**: Topic-based community discovery, member roles, join requests, community avatars, and custom covers.
+- **Direct Messaging & E2EE**: Real-time 1-on-1 chats powered by SignalR with end-to-end encryption (WebCrypto ECDH + AES-GCM) and BIP39 12-word passphrase recovery.
+- **Social Reach & Interactivity**: Rich text auto-linking (@mentions, #hashtags, URLs), universal Copy Link / Share post dropdown, and private post bookmarking.
+- **User Profiles**: Custom banners, avatars, bios, tabbed views (Posts, Media, Liked, Saved, About), and profile privacy controls.
+- **Theme Support**: Seamless light and dark mode toggling.
+
+---
 
 ## Tech Stack
 
-| Layer    | Technology |
-| -------- | ---------- |
-| Frontend | React · Vite · Tailwind CSS v4 · React Router v7 · TanStack Query · Axios · Zod · React Hook Form · Radix UI · shadcn · Sonner · next-themes · Motion |
-| Backend  | ASP.NET Core (.NET 10) Web API · Entity Framework Core (Pomelo) · JWT Bearer · BCrypt · MailKit |
-| Database | MySQL 8 |
+| Layer | Technology |
+| --- | --- |
+| **Framework** | [React 19](https://react.dev/) + [Vite](https://vitejs.dev/) |
+| **Styling** | [Tailwind CSS v4](https://tailwindcss.com/) + custom design tokens |
+| **Icons & UI** | [Lucide React](https://lucide.dev/), [Radix UI](https://www.radix-ui.com/), [Motion](https://motion.dev/) |
+| **Data Fetching** | [TanStack React Query v5](https://tanstack.com/query) + [Axios](https://axios-http.com/) |
+| **Real-Time** | [@microsoft/signalr](https://www.npmjs.com/package/@microsoft/signalr) |
+| **Forms & Validation** | [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/) |
+| **Notifications** | [Sonner](https://sonner.emilkowal.ski/) |
 
-## Repository Layout
-
-```
-CircleHub/
-├── src/                          # Frontend (React + Vite)
-│   ├── components/               # Reusable UI, feature components
-│   ├── pages/                    # Route pages
-│   ├── hooks/                    # Data hooks + TanStack Query mutations
-│   ├── services/                 # API clients (axios)
-│   ├── layouts/                  # App, auth, focus layouts
-│   ├── routes/                   # Router definitions
-│   └── lib/                      # Validation & utilities
-├── circlehub-dotnet/
-│   └── CircleHub/
-│       ├── CircleHub.Api/        # ASP.NET Core Web API
-│       │   ├── Controllers/      # Auth, Posts, Comments, Communities, Users, Search
-│       │   ├── Dtos/             # Request/response models
-│       │   ├── Entities/         # EF Core entities
-│       │   ├── Enums/            # Community visibility, roles, etc.
-│       │   ├── Services/         # Tokens, email, uploads
-│       │   ├── Data/             # DbContext + migrations
-│       │   └── wwwroot/          # Static assets + uploads
-│       └── CircleHub.slnx
-└── README.md
-```
-
-## Prerequisites
-
-- Node.js 20+ and npm
-- .NET 10 SDK
-- MySQL 8 (e.g. running on `localhost:3306`)
+---
 
 ## Getting Started
 
-### 1. Backend
+### Prerequisites
+
+- Node.js 20+
+- npm or pnpm
+
+### Installation
 
 ```bash
-cd circlehub-dotnet/CircleHub/CircleHub.Api
+# Clone the repository
+git clone https://github.com/your-username/CircleHub.git
+cd CircleHub
 
-# configure local secrets (never commit these)
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "server=localhost;port=3306;database=circlehub;user=root;password=YOUR_PASSWORD"
-dotnet user-secrets set "Jwt:Key" "SOME_LONG_RANDOM_STRING"
-dotnet user-secrets set "Jwt:Issuer" "CircleHubApi"
-dotnet user-secrets set "Jwt:Audience" "CircleHubClient"
-dotnet user-secrets set "Email:SmtpHost" "smtp.gmail.com"
-dotnet user-secrets set "Email:SmtpPort" "587"
-dotnet user-secrets set "Email:SenderEmail" "YOUR_EMAIL"
-dotnet user-secrets set "Email:SmtpAppPassword" "YOUR_APP_PASSWORD"
-
-# create/update the database schema
-dotnet ef database update
-
-# run the API (listens on http://localhost:5289)
-dotnet run --project CircleHub.Api -lp http
-```
-
-Secrets stay out of the repo via .NET user-secrets. The committed `appsettings.json` contains only placeholders.
-
-### 2. Frontend
-
-```bash
-cd ../..   # repo root
-
+# Install dependencies
 npm install
 
-# point the frontend at your API (defaults can go in .env.local)
-echo "VITE_BASE_URL=http://localhost:5289/api" > .env.local
-
-npm run dev   # opens http://localhost:5173
+# Start local development server
+npm run dev
 ```
 
-`VITE_BASE_URL` is baked into the bundle at build time. `.env.local` is gitignored; `.env.production` is committed so deployed builds resolve their API origin.
+The app will be available at `http://localhost:5173`.
 
-## Scripts
+### Environment Configuration
 
-### Frontend
+Create a `.env` or `.env.local` file in the project root:
 
-| Command          | Description                        |
-| ---------------- | ---------------------------------- |
-| `npm run dev`    | Start the Vite dev server          |
-| `npm run build`  | Production build (Vite)            |
-| `npm run lint`   | Run ESLint                         |
-| `npm run preview`| Preview the production build       |
+```env
+VITE_BASE_URL=https://circlehub.runasp.net
+```
 
-### Backend
+### Scripts
 
-| Command | Description                  |
-| ------- | ---------------------------- |
-| `dotnet run --project CircleHub.Api` | Run the API          |
-| `dotnet build`                       | Build the solution |
-| `dotnet ef database update`          | Apply EF migrations |
-| `dotnet ef migrations add <Name>`    | Create a migration   |
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start Vite dev server with Hot Module Replacement |
+| `npm run build` | Compile and bundle production assets to `/dist` |
+| `npm run preview` | Locally preview production build |
+| `npm run lint` | Run ESLint checks across codebase |
 
-## API Overview
-
-- **Auth** — `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/verify-email`, `POST /api/auth/resend-verification`, `GET /api/auth/me`
-- **Posts** — `GET /api/posts` (feed), `GET /api/posts/{id}`, `POST /api/posts`, `PATCH /api/posts/{id}` (text/image), `DELETE /api/posts/{id}`, `PATCH /api/posts/{id}/like`
-- **Comments** — `GET|POST /api/posts/{postId}/comments`, `DELETE /api/posts/{postId}/comments/{commentId}`
-- **Communities** — `GET /api/communities`, `GET /api/communities/categories`, `POST /api/communities`, `GET /api/communities/{slug}`, `PATCH|DELETE /api/communities/{id}`, `POST /api/communities/{id}/join`, `DELETE /api/communities/{id}/membership`, member list/roles, join-request approve/reject, `GET|POST /api/communities/{id}/posts`
-- **Users** — `PATCH /api/users/me`, `GET /api/users/{username}`, `GET /api/users/suggested`, follower/following lists, `POST|DELETE /api/users/{id}/follow`
-- **Search** — `GET /api/search?q=` (users and communities)
-
-All protected endpoints require a `Bearer` token. Auth is username-or-email + password; tokens expire after the configured `Jwt:ExpiresInDays`.
-
-## Deployment
-
-- **Frontend** — deployed to Vercel (GitHub integration). The `VITE_BASE_URL` used in production builds is read from the committed `.env.production`.
-- **Backend** — see [`DEPLOYMENT.md`](DEPLOYMENT.md) for the MonsterASP.NET checklist: environment variables, MariaDB 10.10 server version, `deploy/migrate.sql`, `/health`, and proxy/HTTPS notes.
-- Set `FrontendUrl` in `appsettings.json`/environment to the deployed frontend URL so email verification links point to the right place.
-- The API trusts `X-Forwarded-For` / `X-Forwarded-Proto` headers, so behind a TLS-terminating proxy (e.g. Cloudflare) it correctly emits `https` URLs for uploaded images and links. When the proxy is not loopback, its addresses must be listed under `ForwardedHeaders:KnownProxies`.
-
-## Security Notes
-
-- Passwords are hashed with BCrypt.
-- JWT `sub` claims are validated as GUIDs on every request, and a per-user token version rejects tokens minted before the latest password change.
-- Uploads are validated by file type magic bytes and size, and are served only through an allow-listed static file content-type map.
-- Email credentials, DB connection string, and the JWT signing key are never committed.
-- Profile visibility is enforced server-side (`UserVisibility`). A profile locked for the viewer (followers-only and not followed, or private) still exposes its public card so the account stays discoverable — `id`, `name`, `username`, `jobTitle`, `avatarUrl`, `coverImageUrl`, `bio`, `location`, `skills`, `createdAt`, the follower/following/post counters and the relationship flags — but the About-tab details (`website`, `gender`, `dateOfBirth`) and everything behind the tabs (posts, liked posts, communities, followers/following) are returned only to the owner and to viewers the setting allows. `GET /api/search` and `GET /api/users/suggested` apply the same rule.
+---
 
 ## Release History
 
-### v1.1.0 (Current Release)
+### v1.2.0 (Current Release)
+- **Universal Sharing & "Copy Link to Post"**:
+  - Universal post dropdown menu (`...`) accessible to all users across the feed and post details.
+  - One-click "Copy link" action with clipboard copy and toast notification.
+  - Native browser sharing via `navigator.share` with automatic fallback.
+- **Rich Interactive Text (`RichText`)**:
+  - Auto-parsing URLs (`https?://...`) into clickable web links with propagation isolation.
+  - Auto-detecting `@username` mentions linking directly to user profiles (`/profile/{username}`).
+  - Auto-detecting `#hashtags` linking directly to filtered Explore views.
+  - Supported across post content and comment threads.
+- **Post Bookmarks / Saved Posts**:
+  - Per-account client-side bookmarking hook (`useBookmarks`) with cross-tab/cross-component synchronization.
+  - Bookmark toggle action button with instant optimistic feedback.
+  - Dedicated "Saved" tab on the user's profile displaying all bookmarked posts with empty state.
+
+### v1.1.0
 - **Real-Time SignalR E2EE Messaging**: Full WebCrypto ECDH + AES-GCM encrypted direct messaging, SignalR chat hub, online/last-seen presence, and live typing indicators.
 - **12-Word Passphrase Backup & Recovery**: BIP39 English mnemonic key wrap (PBKDF2-HMAC-SHA256) allowing users to restore conversation history across browsers and devices.
 - **Real-Time Feed Sync & Floating Indicator**: Live post creation broadcasts with an animated drop-in `X New Posts` pill indicator when scrolled down.
@@ -158,17 +104,10 @@ All protected endpoints require a `Bearer` token. Auth is username-or-email + pa
 
 ---
 
-## Upcoming (v1.2.0 — Package 1: Social Reach & Discovery)
+## Upcoming (v1.3.0 — Package 2: Media & Community Experience)
 
-The upcoming **v1.2.0** release focuses on social sharing, content interactivity, and post collection:
+The upcoming **v1.3.0** release will focus on rich media and community engagement:
 
-1. **Universal Sharing & "Copy Link to Post"**:
-   - One-click "Copy Link" with instant visual confirmation toast.
-   - Native Web Share API integration (`navigator.share`) for mobile browsers.
-   - Universal post options menu (`...`) accessible to all viewers, not just post authors.
-2. **Rich Interactive Text (Links, `@mentions` & `#hashtags`)**:
-   - Auto-parsing URLs into clickable links.
-   - Auto-linking `@username` mentions to open the mentioned user's profile.
-   - Auto-linking `#hashtags` to filter posts across Explore.
-3. **Post Bookmarks / Saved Posts**:
-   - Save posts to a private personal "Saved" tab on the user's profile for quick access.
+1. **Full-Screen Media Lightbox**: Pinch-to-zoom, high-res previews, and swipe-to-dismiss for post images.
+2. **Community Polls & Rich Post Types**: Interactive community polls and multi-image galleries.
+3. **Enhanced Search Filters**: Categorical search facets and advanced discovery tools.

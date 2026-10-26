@@ -1,4 +1,5 @@
-﻿import { Grid2X2, Heart, Image, Info, Lock } from "lucide-react";
+import { Bookmark, Grid2X2, Heart, Image, Info, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import PostCard from "@/components/post/Post";
 import PostSkeleton from "@/components/Skeletons/PostSkeleton";
@@ -8,30 +9,8 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs";
-import { Link } from "react-router-dom";
-
-const tabs = [
-    {
-        value: "posts",
-        label: "Posts",
-        icon: Grid2X2,
-    },
-    {
-        value: "media",
-        label: "Media",
-        icon: Image,
-    },
-    {
-        value: "liked",
-        label: "Liked",
-        icon: Heart,
-    },
-    {
-        value: "about",
-        label: "About",
-        icon: Info,
-    },
-];
+import { useAuth } from "@/hooks/useAuth";
+import { useBookmarks } from "@/hooks/useBookmarks";
 
 export default function ProfileTabs({
     user,
@@ -41,6 +20,42 @@ export default function ProfileTabs({
     isLoadingLikedPosts,
     onToggleLike,
 }) {
+    const { userData } = useAuth();
+    const isSelf = Boolean(userData?.id && userData.id === user.id);
+    const { bookmarks } = useBookmarks();
+
+    const tabs = [
+        {
+            value: "posts",
+            label: "Posts",
+            icon: Grid2X2,
+        },
+        {
+            value: "media",
+            label: "Media",
+            icon: Image,
+        },
+        {
+            value: "liked",
+            label: "Liked",
+            icon: Heart,
+        },
+        ...(isSelf
+            ? [
+                  {
+                      value: "saved",
+                      label: "Saved",
+                      icon: Bookmark,
+                  },
+              ]
+            : []),
+        {
+            value: "about",
+            label: "About",
+            icon: Info,
+        },
+    ];
+
     const userPosts = posts.filter((post) => post.author.id === user.id);
     const mediaPosts = posts.filter((post) => post.author.id === user.id && post.imageUrl);
 
@@ -172,6 +187,30 @@ export default function ProfileTabs({
                     </div>
                 )}
             </TabsContent>
+
+            {isSelf && (
+                <TabsContent value="saved" className="space-y-5">
+                    {bookmarks.length > 0 ? (
+                        bookmarks.map((post) => (
+                            <PostCard key={post.id} post={post} onToggleLike={onToggleLike} />
+                        ))
+                    ) : (
+                        <div className="content-card-padded flex flex-col items-center justify-center py-10 text-center">
+                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-(--radius-full) bg-(--active) text-(--primary)">
+                                <Bookmark size={24} />
+                            </div>
+
+                            <h3 className="type-title-lg text-primary">
+                                No saved posts yet
+                            </h3>
+
+                            <p className="type-body-sm-readable mt-2 max-w-sm text-secondary">
+                                Posts you bookmark will appear here for easy access.
+                            </p>
+                        </div>
+                    )}
+                </TabsContent>
+            )}
 
             <TabsContent value="about">
                 <div className="content-card-padded">

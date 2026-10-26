@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
+import RichText from "@/components/common/RichText";
 
 export default function PostContent({ post, isDetailsPage = false }) {
   const contentElement = (
     <p className="type-body-md text-secondary whitespace-pre-line">
-      {post.content}
+      <RichText content={post.content} />
     </p>
   );
 
