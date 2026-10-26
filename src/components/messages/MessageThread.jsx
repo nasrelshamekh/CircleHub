@@ -7,7 +7,7 @@ import {
     useState,
 } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, AlertCircle, LoaderCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, Check, CheckCheck, LoaderCircle } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { toast } from "sonner";
 
@@ -23,6 +23,19 @@ import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 
 function MessageBubble({ message, otherUser, onRetry }) {
     const [isExpanded, setIsExpanded] = useState(false);
+
+    const isMine = Boolean(message.isMine);
+    const isPending = Boolean(message.pending);
+    const isFailed = Boolean(message.failed);
+
+    let deliveryState = null;
+    if (isMine && !isFailed && !isPending) {
+        if (message.deliveryStatus === "sent") {
+            deliveryState = "sent";
+        } else {
+            deliveryState = "delivered";
+        }
+    }
 
     const hasContent = Boolean(message.content || message.plaintext);
     // The stored row is ciphertext; the reader only ever sees the decrypted body (the optimistic
@@ -113,6 +126,21 @@ function MessageBubble({ message, otherUser, onRetry }) {
                             )}
                         </div>
                     )}
+
+                    {isMine && deliveryState && !isExpanded && (
+                        <div
+                            className="mt-0.5 flex items-center justify-end pr-1 text-secondary"
+                            aria-label={deliveryState === "delivered" ? "Delivered" : "Sent"}
+                            title={deliveryState === "delivered" ? "Delivered" : "Sent"}
+                        >
+                            {deliveryState === "delivered" && (
+                                <CheckCheck size={14} className="text-(--primary)" />
+                            )}
+                            {deliveryState === "sent" && (
+                                <Check size={13} className="text-secondary" />
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -123,6 +151,23 @@ function MessageBubble({ message, otherUser, onRetry }) {
                     }`}
                 >
                     <span>{formatMessageTime(message.createdAt)}</span>
+
+                    {isMine && deliveryState && (
+                        <span className="flex items-center gap-1">
+                            {deliveryState === "delivered" && (
+                                <>
+                                    <CheckCheck size={14} className="text-(--primary)" />
+                                    <span>Delivered</span>
+                                </>
+                            )}
+                            {deliveryState === "sent" && (
+                                <>
+                                    <Check size={13} className="text-secondary" />
+                                    <span>Sent</span>
+                                </>
+                            )}
+                        </span>
+                    )}
 
                     {hasContent && (
                         <button

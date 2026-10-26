@@ -106,6 +106,7 @@ export default function MessageComposer({
                         realId: result.data?.message?.id,
                         pending: false,
                         failed: false,
+                        deliveryStatus: "sent",
                     });
                 },
                 onError: (error) => {
