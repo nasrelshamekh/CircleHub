@@ -18,10 +18,28 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Globalization;
+using System.IO.Compression;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMemoryCache();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
 
 builder.Services.AddControllers(options =>
     {
@@ -105,6 +123,7 @@ builder.Services.Configure<R2Options>(
     builder.Configuration.GetSection(R2Options.SectionName));
 builder.Services.AddSingleton<IObjectStorage, R2ObjectStorage>();
 
+builder.Services.AddSingleton<TokenVersionCache>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<UploadService>();
 builder.Services.AddScoped<StorageMigrationService>();
@@ -190,10 +209,11 @@ builder.Services
                     int.TryParse(versionClaim.Value, out tokenVersion);
 
                 var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                var currentVersion = await db.Users
-                    .Where(u => u.Id == userId)
-                    .Select(u => (int?)u.TokenVersion)
-                    .FirstOrDefaultAsync();
+                var versionCache = context.HttpContext.RequestServices.GetRequiredService<TokenVersionCache>();
+                var currentVersion = await versionCache.GetAsync(
+                    userId,
+                    db,
+                    context.HttpContext.RequestAborted);
 
                 if (currentVersion is null || currentVersion.Value != tokenVersion)
                     context.Fail("Token has been revoked");
@@ -433,6 +453,7 @@ contentTypeProvider.Mappings[".webp"] = "image/webp";
 contentTypeProvider.Mappings[".ico"] = "image/x-icon";
 
 app.UseCors("AllowAll");
+app.UseResponseCompression();
 
 // On IIS/MonsterASP TLS terminates at the web server, so a redirect is either a no-op
 // or a loop. Enable this only when the app itself owns the HTTPS endpoint.

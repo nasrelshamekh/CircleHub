@@ -26,17 +26,20 @@ namespace CircleHub.Api.Services
         private readonly IEmailService _emailService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<PasswordResetService> _logger;
+        private readonly TokenVersionCache _tokenVersionCache;
 
         public PasswordResetService(
             AppDbContext db,
             IEmailService emailService,
             IConfiguration configuration,
-            ILogger<PasswordResetService> logger)
+            ILogger<PasswordResetService> logger,
+            TokenVersionCache tokenVersionCache)
         {
             _db = db;
             _emailService = emailService;
             _configuration = configuration;
             _logger = logger;
+            _tokenVersionCache = tokenVersionCache;
         }
 
         private string FrontendUrl => _configuration["FrontendUrl"] ?? "http://localhost:5173";
@@ -97,6 +100,7 @@ namespace CircleHub.Api.Services
             user.TokenVersion++;
             user.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
+            _tokenVersionCache.Set(user.Id, user.TokenVersion);
 
             return ResetPasswordResult.Reset;
         }

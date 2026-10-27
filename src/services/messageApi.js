@@ -6,12 +6,19 @@ export async function getConversations() {
   return response.data;
 }
 
-export async function getConversation(id, { page = 1, pageSize = 50 } = {}) {
+export async function getConversation(
+  id,
+  { page = 1, pageSize = 25, markRead = true } = {}
+) {
   const response = await apiClient.get(`/messages/conversations/${id}`, {
-    params: { page, pageSize },
+    params: markRead ? { page, pageSize } : { page, pageSize, markRead: false },
   });
 
   return response.data;
+}
+
+export async function markConversationRead(id) {
+  await apiClient.post(`/messages/conversations/${id}/read`);
 }
 
 export async function getMessageRecipients() {

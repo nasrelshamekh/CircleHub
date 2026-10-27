@@ -52,6 +52,7 @@ const decryptCache = new Map();
 const settledCache = new Map();
 const DECRYPT_CACHE_LIMIT = 1000;
 let cacheVersion = 0;
+let notifyPending = false;
 const cacheListeners = new Set();
 
 function notifyDecryptCacheChanged() {
@@ -59,6 +60,15 @@ function notifyDecryptCacheChanged() {
     for (const listener of cacheListeners) {
         listener();
     }
+}
+
+function scheduleNotifyDecryptCacheChanged() {
+    if (notifyPending) return;
+    notifyPending = true;
+    queueMicrotask(() => {
+        notifyPending = false;
+        notifyDecryptCacheChanged();
+    });
 }
 
 export function subscribeDecryptCache(listener) {
@@ -75,6 +85,7 @@ export function getDecryptCacheVersion() {
 if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
+            keysLoadedFromDb = false;
             notifyDecryptCacheChanged();
         }
     });
@@ -125,7 +136,10 @@ function randomBytes(length) {
 // Two tabs of the same browser share one store, which is also how the two-tabs-publish-at-once race
 // heals: whichever key ended up published, the other tab finds its private half here.
 let storePromise = null;
+let loadKeysPromise = null;
+let keysLoadedFromDb = false;
 let memoryKeys = [];
+let memoryDeviceId = null;
 
 function mergeKeyLists(primary, secondary) {
     const byId = new Map();
@@ -176,6 +190,7 @@ function openStore() {
                 db.onversionchange = () => {
                     db.close();
                     storePromise = null;
+                    keysLoadedFromDb = false;
                 };
                 finish(db);
             };
@@ -193,28 +208,40 @@ function openStore() {
 }
 
 async function loadStoredKeys() {
-    const db = await openStore();
-    if (!db) return memoryKeys;
+    if (keysLoadedFromDb) return memoryKeys;
+    if (loadKeysPromise) return loadKeysPromise;
 
-    // A transaction against a wedged database fires no event either, and a decrypt that never settles
-    // renders an empty bubble forever. Treat a stalled read as whatever we already hold in memory.
-    return new Promise((resolve) => {
-        const timer = setTimeout(() => resolve(memoryKeys), STORE_OPEN_TIMEOUT_MS);
-        const finish = (value) => {
-            clearTimeout(timer);
-            memoryKeys = mergeKeyLists(value, memoryKeys);
-            resolve(memoryKeys);
-        };
+    loadKeysPromise = (async () => {
+        const db = await openStore();
+        if (!db) return memoryKeys;
 
-        try {
-            const request = db.transaction("privateKeys", "readonly").objectStore("privateKeys").getAll();
-            request.onsuccess = () => finish(request.result ?? []);
-            request.onerror = () => finish(memoryKeys);
-        } catch {
-            storePromise = null;
-            finish(memoryKeys);
-        }
+        // A transaction against a wedged database fires no event either, and a decrypt that never settles
+        // renders an empty bubble forever. Treat a stalled read as whatever we already hold in memory.
+        return new Promise((resolve) => {
+            const timer = setTimeout(() => resolve(memoryKeys), STORE_OPEN_TIMEOUT_MS);
+            const finish = (value, loadedFromStore = false) => {
+                clearTimeout(timer);
+                memoryKeys = mergeKeyLists(value, memoryKeys);
+                if (loadedFromStore) {
+                    keysLoadedFromDb = true;
+                }
+                resolve(memoryKeys);
+            };
+
+            try {
+                const request = db.transaction("privateKeys", "readonly").objectStore("privateKeys").getAll();
+                request.onsuccess = () => finish(request.result ?? [], true);
+                request.onerror = () => finish(memoryKeys, false);
+            } catch {
+                storePromise = null;
+                finish(memoryKeys, false);
+            }
+        });
+    })().finally(() => {
+        loadKeysPromise = null;
     });
+
+    return loadKeysPromise;
 }
 
 async function saveStoredKey(record) {
@@ -247,11 +274,13 @@ async function saveStoredKey(record) {
 }
 
 export function getDeviceId() {
+    if (memoryDeviceId) return memoryDeviceId;
     let id = localStorage.getItem(DEVICE_ID_KEY);
     if (!id) {
         id = crypto.randomUUID();
         localStorage.setItem(DEVICE_ID_KEY, id);
     }
+    memoryDeviceId = id;
     return id;
 }
 
@@ -605,15 +634,18 @@ async function openWrap(wrapKey, wrap, contentIv, ciphertext) {
     }
 }
 
-async function decryptEnvelope(envelope) {
-    if (!envelope || envelope.v !== 1 || !envelope.e || !Array.isArray(envelope.w)) {
-        return UNREADABLE;
-    }
+function prioritizeKeysForDevice(keys, currentDeviceId) {
+    if (keys.length <= 1) return keys;
+    return [...keys].sort((a, b) => {
+        const aCurrent = a.deviceId === currentDeviceId ? 1 : 0;
+        const bCurrent = b.deviceId === currentDeviceId ? 1 : 0;
+        if (aCurrent !== bCurrent) return bCurrent - aCurrent;
+        return (b.createdAt ?? 0) - (a.createdAt ?? 0);
+    });
+}
 
-    const ephemeralPublicKey = await importPeerKey(envelope.e);
-    const keys = await loadStoredKeys();
-    const contentIv = fromBase64(envelope.iv);
-    const ciphertext = fromBase64(envelope.ct);
+async function tryDecryptWithKeys(envelope, rawKeys, ephemeralPublicKey, contentIv, ciphertext) {
+    const keys = prioritizeKeysForDevice(rawKeys, getDeviceId());
 
     // The wrap key depends only on our private key and the sender's ephemeral public key — never on
     // which wrap is being opened — so it is derived once per local key and reused for every wrap.
@@ -665,6 +697,50 @@ async function decryptEnvelope(envelope) {
         }
     }
 
+    return null;
+}
+
+async function decryptEnvelope(envelope) {
+    if (!envelope || envelope.v !== 1 || !envelope.e || !Array.isArray(envelope.w)) {
+        return UNREADABLE;
+    }
+
+    const hadCachedDbKeys = keysLoadedFromDb;
+    const [ephemeralPublicKey, keys] = await Promise.all([
+        importPeerKey(envelope.e),
+        loadStoredKeys(),
+    ]);
+    const contentIv = fromBase64(envelope.iv);
+    const ciphertext = fromBase64(envelope.ct);
+
+    const firstAttempt = await tryDecryptWithKeys(
+        envelope,
+        keys,
+        ephemeralPublicKey,
+        contentIv,
+        ciphertext
+    );
+    if (firstAttempt !== null) return firstAttempt;
+
+    // If keys came from the in-memory cache and could not open the envelope, another window of the
+    // same browser may have written a fresh key to IndexedDB without triggering visibilitychange.
+    if (hadCachedDbKeys) {
+        keysLoadedFromDb = false;
+        const refreshedKeys = await loadStoredKeys();
+        if (refreshedKeys.length > keys.length) {
+            const knownIds = new Set(keys.map((k) => k.localId));
+            const newKeys = refreshedKeys.filter((k) => !knownIds.has(k.localId));
+            const retryAttempt = await tryDecryptWithKeys(
+                envelope,
+                newKeys,
+                ephemeralPublicKey,
+                contentIv,
+                ciphertext
+            );
+            if (retryAttempt !== null) return retryAttempt;
+        }
+    }
+
     return UNREADABLE;
 }
 
@@ -705,6 +781,7 @@ export function decryptMessageContent(content) {
             decryptCache.delete(oldest);
             settledCache.delete(oldest);
         }
+        scheduleNotifyDecryptCacheChanged();
         return text;
     });
 

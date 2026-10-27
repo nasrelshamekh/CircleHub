@@ -1,10 +1,16 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getConversation } from "@/services/messageApi";
+import {
+    clearConversationUnreadInCache,
+    sameId,
+} from "@/lib/messageCacheHelpers";
 import { queryKeys } from "@/lib/queryKeys";
+import { getConversation, markConversationRead } from "@/services/messageApi";
+import { decryptMessageContent, peekDecrypted } from "@/services/messageCrypto";
 
-const PAGE_SIZE = 50;
+export const CONVERSATION_PAGE_SIZE = 25;
+export const CONVERSATION_STALE_TIME_MS = 60_000;
 
 function mergePages(pages) {
     const seen = new Set();
@@ -12,9 +18,10 @@ function mergePages(pages) {
 
     for (let index = pages.length - 1; index >= 0; index -= 1) {
         for (const message of pages[index].messages) {
-            if (seen.has(message.id)) continue;
+            const key = String(message.id).toLowerCase();
+            if (seen.has(key)) continue;
 
-            seen.add(message.id);
+            seen.add(key);
             merged.push(message);
         }
     }
@@ -22,21 +29,58 @@ function mergePages(pages) {
     return merged;
 }
 
-export function useConversation(id) {
-    const queryClient = useQueryClient();
+export async function fetchConversationThread(
+    id,
+    { page = 1, pageSize = CONVERSATION_PAGE_SIZE, markRead = true } = {}
+) {
+    const { data } = await getConversation(id, { page, pageSize, markRead });
 
-    const query = useInfiniteQuery({
+    const messages = await Promise.all(
+        (data.messages ?? []).map(async (message) => {
+            if (!message?.content) return message;
+            const settled = peekDecrypted(message.content);
+            if (settled !== null) {
+                return { ...message, plaintext: settled };
+            }
+            const plaintext = await decryptMessageContent(message.content);
+            return { ...message, plaintext };
+        })
+    );
+
+    const newestId =
+        markRead && page === 1 && messages.length > 0
+            ? messages[messages.length - 1].id
+            : null;
+
+    return {
+        ...data,
+        messages,
+        _markedReadNewestId: newestId,
+    };
+}
+
+export function conversationQueryOptions(id, { markRead = false } = {}) {
+    return {
         queryKey: queryKeys.conversation(id),
-        queryFn: async ({ pageParam }) => {
-            const { data } = await getConversation(id, {
+        queryFn: ({ pageParam }) =>
+            fetchConversationThread(id, {
                 page: pageParam,
-                pageSize: PAGE_SIZE,
-            });
-            return data;
-        },
+                pageSize: CONVERSATION_PAGE_SIZE,
+                markRead: pageParam === 1 ? markRead : false,
+            }),
         initialPageParam: 1,
         getNextPageParam: (lastPage, pages) =>
             lastPage.hasMore ? pages.length + 1 : undefined,
+        staleTime: CONVERSATION_STALE_TIME_MS,
+    };
+}
+
+export function useConversation(id) {
+    const queryClient = useQueryClient();
+    const lastMarkedServerReadRef = useRef({ conversationId: null, messageId: null });
+
+    const query = useInfiniteQuery({
+        ...conversationQueryOptions(id, { markRead: true }),
         enabled: Boolean(id),
     });
 
@@ -44,17 +88,37 @@ export function useConversation(id) {
 
     const messages = useMemo(() => (pages ? mergePages(pages) : []), [pages]);
 
-    // The list carries the preview and the unread badge, so it has to follow the thread's messages — and
-    // nothing else. Depending on `query.data` was too broad: a presence event patches the thread's object
-    // identity without touching a single message, so this effect re-ran and paid for a full list refetch to
-    // learn nothing. The newest id plus the count is the whole signal.
-    const newestMessageId = messages.length ? messages[messages.length - 1].id : null;
+    const newestMessage = messages.length ? messages[messages.length - 1] : null;
+    const newestMessageId = newestMessage?.id ?? null;
+    const newestIsMine = Boolean(newestMessage?.isMine);
+    const markedReadOnFetch = pages?.[0]?._markedReadNewestId ?? null;
 
     useEffect(() => {
-        if (!newestMessageId) return;
+        if (!id || !newestMessageId) return;
 
-        queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
-    }, [messages.length, newestMessageId, queryClient]);
+        const { found } = clearConversationUnreadInCache(queryClient, id);
+        if (!found) {
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.conversations(),
+                exact: true,
+            });
+        }
+
+        // If the thread opened from a `markRead: false` prefetch, hydrated from IndexedDB, or received
+        // a live SignalR message via setQueryData while mounted, persist LastReadAt on the server once.
+        const alreadyMarkedOnFetch = sameId(markedReadOnFetch, newestMessageId);
+        const alreadySentReadReceipt =
+            sameId(lastMarkedServerReadRef.current.conversationId, id) &&
+            sameId(lastMarkedServerReadRef.current.messageId, newestMessageId);
+
+        if (!newestIsMine && !alreadyMarkedOnFetch && !alreadySentReadReceipt) {
+            lastMarkedServerReadRef.current = {
+                conversationId: id,
+                messageId: newestMessageId,
+            };
+            markConversationRead(id).catch(() => undefined);
+        }
+    }, [id, messages.length, newestMessageId, newestIsMine, markedReadOnFetch, queryClient]);
 
     function loadOlder() {
         if (!query.hasNextPage || query.isFetchingNextPage) return;

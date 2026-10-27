@@ -29,6 +29,12 @@ namespace CircleHub.Api.Dtos
 
         public string? SenderName { get; set; }
 
+        public string? SenderUsername { get; set; }
+
         public string? SenderAvatarUrl { get; set; }
+
+        public Guid? PostId { get; init; }
+
+        public PostDto? Post { get; init; }
     }
 }

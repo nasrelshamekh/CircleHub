@@ -19,17 +19,20 @@ namespace CircleHub.Api.Controllers
         private readonly TokenService _tokenService;
         private readonly EmailVerificationService _verification;
         private readonly PasswordResetService _passwordReset;
+        private readonly TokenVersionCache _tokenVersionCache;
 
         public AuthController(
             AppDbContext db,
             TokenService tokenService,
             EmailVerificationService verification,
-            PasswordResetService passwordReset)
+            PasswordResetService passwordReset,
+            TokenVersionCache tokenVersionCache)
         {
             _db = db;
             _tokenService = tokenService;
             _verification = verification;
             _passwordReset = passwordReset;
+            _tokenVersionCache = tokenVersionCache;
         }
 
         [HttpPost("register")]
@@ -238,6 +241,7 @@ namespace CircleHub.Api.Controllers
             user.TokenVersion++;
             user.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
+            _tokenVersionCache.Set(user.Id, user.TokenVersion);
 
             return Ok(new ApiResponse<string>
             {

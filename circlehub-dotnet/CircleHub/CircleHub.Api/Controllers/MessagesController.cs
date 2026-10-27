@@ -3,6 +3,7 @@ using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
 using CircleHub.Api.Enums;
+using CircleHub.Api.Filters;
 using CircleHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -63,6 +64,7 @@ namespace CircleHub.Api.Controllers
             var currentUserId = CurrentUserId!.Value;
 
             var conversations = await _db.ConversationParticipants
+                .AsNoTracking()
                 .Where(p => p.UserId == currentUserId)
                 .Select(p => new ConversationDto
                 {
@@ -212,7 +214,11 @@ namespace CircleHub.Api.Controllers
         }
 
         [HttpGet("conversations/{id}")]
-        public async Task<IActionResult> GetConversation(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        public async Task<IActionResult> GetConversation(
+            Guid id,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50,
+            [FromQuery] bool markRead = true)
         {
             var currentUserId = CurrentUserId!.Value;
 
@@ -220,7 +226,18 @@ namespace CircleHub.Api.Controllers
             pageSize = Math.Clamp(pageSize, 1, 100);
 
             var participants = await _db.ConversationParticipants
+                .AsNoTracking()
                 .Where(p => p.ConversationId == id)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.UserId,
+                    p.LastReadAt,
+                    p.User.Name,
+                    p.User.Username,
+                    p.User.AvatarUrl,
+                    p.User.LastSeenAt
+                })
                 .ToListAsync();
 
             var mine = participants.FirstOrDefault(p => p.UserId == currentUserId);
@@ -228,56 +245,88 @@ namespace CircleHub.Api.Controllers
             if (mine == null)
                 return Fail(StatusCodes.Status404NotFound, "Conversation not found");
 
-            var otherId = participants.FirstOrDefault(p => p.UserId != currentUserId)?.UserId;
+            var other = participants.FirstOrDefault(p => p.UserId != currentUserId);
 
-            var otherUser = await _db.Users
-                .Where(u => u.Id == otherId)
-                .Select(u => new ConversationUserDto
+            var otherUser = other != null
+                ? new ConversationUserDto
                 {
-                    Id = u.Id,
-                    Name = u.Name,
-                    Username = u.Username,
-                    AvatarUrl = u.AvatarUrl,
-                    LastSeenAt = u.LastSeenAt
-                })
-                .FirstOrDefaultAsync()
-                ?? new ConversationUserDto { Id = Guid.Empty, Name = "Unknown", Username = "unknown" };
+                    Id = other.UserId,
+                    Name = other.Name,
+                    Username = other.Username,
+                    AvatarUrl = other.AvatarUrl,
+                    LastSeenAt = other.LastSeenAt
+                }
+                : new ConversationUserDto { Id = Guid.Empty, Name = "Unknown", Username = "unknown" };
 
             ApplyPresence(otherUser);
 
-            var total = await _db.Messages.CountAsync(m => m.ConversationId == id);
+            var meAuthor = new AuthorDto
+            {
+                Id = mine.UserId,
+                Name = mine.Name,
+                Username = mine.Username,
+                AvatarUrl = mine.AvatarUrl
+            };
 
-            var messages = await _db.Messages
+            var otherAuthor = new AuthorDto
+            {
+                Id = otherUser.Id,
+                Name = otherUser.Name,
+                Username = otherUser.Username,
+                AvatarUrl = otherUser.AvatarUrl
+            };
+
+            var rawMessages = await _db.Messages
+                .AsNoTracking()
                 .Where(m => m.ConversationId == id)
                 .OrderByDescending(m => m.CreatedAt)
                 .ThenByDescending(m => m.Id)
                 .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(m => new MessageDto
+                .Take(pageSize + 1)
+                .Select(m => new
+                {
+                    m.Id,
+                    m.Content,
+                    m.PostId,
+                    m.CreatedAt,
+                    m.SenderId
+                })
+                .ToListAsync();
+
+            var hasMore = rawMessages.Count > pageSize;
+            if (hasMore)
+            {
+                rawMessages.RemoveAt(rawMessages.Count - 1);
+            }
+
+            var hasUnreadToClear = markRead && page == 1 && rawMessages.Any(m =>
+                m.SenderId != currentUserId &&
+                (mine.LastReadAt == null || m.CreatedAt > mine.LastReadAt));
+
+            var messages = new List<MessageDto>(rawMessages.Count);
+            for (var i = rawMessages.Count - 1; i >= 0; i--)
+            {
+                var m = rawMessages[i];
+                var isMine = m.SenderId == currentUserId;
+                messages.Add(new MessageDto
                 {
                     Id = m.Id,
                     Content = m.Content,
                     PostId = m.PostId,
                     CreatedAt = m.CreatedAt,
-                    IsMine = m.SenderId == currentUserId,
-                    Sender = new AuthorDto
-                    {
-                        Id = m.Sender.Id,
-                        Name = m.Sender.Name,
-                        Username = m.Sender.Username,
-                        AvatarUrl = m.Sender.AvatarUrl
-                    }
-                })
-                .ToListAsync();
-
-            messages.Reverse();
+                    IsMine = isMine,
+                    Sender = isMine ? meAuthor : otherAuthor
+                });
+            }
 
             await AttachPosts(messages, currentUserId);
 
-            if (mine.LastReadAt == null || mine.LastReadAt < DateTime.UtcNow)
+            if (hasUnreadToClear)
             {
-                mine.LastReadAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
+                var readNow = DateTime.UtcNow;
+                await _db.ConversationParticipants
+                    .Where(p => p.Id == mine.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.LastReadAt, readNow));
                 _delivery.ClearUnreadPreviews(id, currentUserId);
             }
 
@@ -288,9 +337,26 @@ namespace CircleHub.Api.Controllers
                     Id = id,
                     OtherUser = otherUser,
                     Messages = messages,
-                    HasMore = total > page * pageSize
+                    HasMore = hasMore
                 }
             });
+        }
+
+        [HttpPost("conversations/{id}/read")]
+        public async Task<IActionResult> MarkConversationRead(Guid id)
+        {
+            var currentUserId = CurrentUserId!.Value;
+            var readNow = DateTime.UtcNow;
+
+            var updated = await _db.ConversationParticipants
+                .Where(p => p.ConversationId == id && p.UserId == currentUserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.LastReadAt, readNow));
+
+            if (updated == 0)
+                return Fail(StatusCodes.Status404NotFound, "Conversation not found");
+
+            _delivery.ClearUnreadPreviews(id, currentUserId);
+            return NoContent();
         }
 
         [HttpPost]
@@ -434,6 +500,11 @@ namespace CircleHub.Api.Controllers
             var unreadCount = await _db.Messages
                 .CountAsync(m => m.ConversationId == conversation.Id && m.SenderId == currentUserId && (recipientParticipant == null || recipientParticipant.LastReadAt == null || m.CreatedAt > recipientParticipant.LastReadAt));
 
+            if (postDto != null)
+            {
+                ResolveAbsoluteUrlFilter.ResolveUrls(postDto, Request);
+            }
+
             await _delivery.DeliverAsync(
                 recipient.Id,
                 currentUserId,
@@ -443,9 +514,12 @@ namespace CircleHub.Api.Controllers
                     EncryptedPayload = message.Content ?? string.Empty,
                     SentAt = message.CreatedAt,
                     MessageId = message.Id.ToString(),
-                    ConversationId = conversation.Id.ToString()
+                    ConversationId = conversation.Id.ToString(),
+                    PostId = message.PostId,
+                    Post = postDto
                 },
                 senderName: sender.Name,
+                senderUsername: sender.Username,
                 senderAvatarUrl: sender.AvatarUrl,
                 previewText: !string.IsNullOrWhiteSpace(dto.PreviewText) ? dto.PreviewText.Trim() : (!string.IsNullOrEmpty(content) && !content.StartsWith("ENC:") ? content : null),
                 unreadCount: Math.Max(1, unreadCount));
@@ -543,6 +617,7 @@ namespace CircleHub.Api.Controllers
                 return;
 
             var posts = await _db.Posts
+                .AsNoTracking()
                 .Where(p => postIds.Contains(p.Id))
                 .WhereVisibleTo(currentUserId)
                 .Select(PostDto.Projection(currentUserId, includeCommunity: true))

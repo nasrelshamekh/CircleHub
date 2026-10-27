@@ -51,6 +51,7 @@ namespace CircleHub.Api.Services
             Guid senderId,
             EncryptedMessageEnvelope envelope,
             string? senderName = null,
+            string? senderUsername = null,
             string? senderAvatarUrl = null,
             string? previewText = null,
             int unreadCount = 1,
@@ -77,6 +78,7 @@ namespace CircleHub.Api.Services
             }
 
             envelope.SenderName = baseTitle;
+            envelope.SenderUsername = senderUsername;
             envelope.SenderAvatarUrl = resolvedAvatarUrl;
 
             // Two audiences, one call: the recipient's live connections get the message, and the

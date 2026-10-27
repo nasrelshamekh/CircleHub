@@ -1,11 +1,19 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 
 import logo from "@/assets/circlehub-logo.png";
 import { authContext } from "@/hooks/useAuth";
 import { getCurrentUser } from "@/services/authApi";
+import { clearDecryptCache } from "@/services/messageCrypto";
+import {
+    attachThreadCachePersistence,
+    clearThreadCache,
+    hydrateThreadCache,
+} from "@/services/threadCache";
 
 export default function AuthContextProvider({ children }) {
+    const queryClient = useQueryClient();
     const [userData, setUserData] = useState(() => {
         if (!localStorage.getItem("token")) return null;
 
@@ -21,6 +29,14 @@ export default function AuthContextProvider({ children }) {
     );
 
     const hadSessionRef = useRef(Boolean(userData));
+    const userId = userData?.id ?? null;
+
+    useEffect(() => {
+        if (!userId) return undefined;
+
+        hydrateThreadCache(queryClient, userId).catch(() => undefined);
+        return attachThreadCachePersistence(queryClient, userId);
+    }, [queryClient, userId]);
 
     useEffect(() => {
         if (userData) {
@@ -30,11 +46,14 @@ export default function AuthContextProvider({ children }) {
 
             if (hadSessionRef.current) {
                 localStorage.removeItem("token");
+                clearThreadCache().catch(() => undefined);
+                clearDecryptCache();
+                queryClient.removeQueries({ queryKey: ["messages"] });
             }
         }
 
         hadSessionRef.current = Boolean(userData);
-    }, [userData]);
+    }, [queryClient, userData]);
 
     useEffect(() => {
         if (!localStorage.getItem("token")) return;

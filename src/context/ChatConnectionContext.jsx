@@ -15,6 +15,11 @@ import {
 } from "@/services/chatHub";
 import { decryptMessageContent } from "@/services/messageCrypto";
 import { chimeForIncomingMessage } from "@/lib/messageChime";
+import {
+    appendMessageToThreadCache,
+    patchConversationListOnMessage,
+    sameId,
+} from "@/lib/messageCacheHelpers";
 import { shouldToast, showMessageToast } from "@/lib/messageToast";
 import { chimeForIncomingNotification } from "@/lib/notificationChime";
 import { shouldToastNotification, showNotificationToast } from "@/lib/notificationToast";
@@ -125,10 +130,10 @@ export default function ChatConnectionContextProvider({ children }) {
         connection.on(RECEIVE_MESSAGE_EVENT, (message) => {
             // The fan-out echoes a message to the sender's own connections too, so a send made in tab A
             // lands in tab B (and on the sender's phone) without waiting for a refetch. That echo is app
-            // data for them — the invalidation below — but never a reason to ring or toast: nobody gets
+            // data for them — the cache update below — but never a reason to ring or toast: nobody gets
             // notified about their own message. Compared at event time through myUserIdRef.
             const isOwnEcho =
-                message?.senderId != null && message.senderId === myUserIdRef.current;
+                message?.senderId != null && sameId(message.senderId, myUserIdRef.current);
 
             if (!isOwnEcho) {
                 // The sound is for a message the reader cannot see landing: it stays quiet while they are
@@ -155,25 +160,89 @@ export default function ChatConnectionContextProvider({ children }) {
                 }
             }
 
-            // The event carries the ciphertext, so it can be opened while the refetch below is still in
-            // flight. The bubble then mounts with its text already settled and never shows the decrypt
-            // skeleton, which is what a burst of messages used to flash on the receiving end.
-            if (message?.encryptedPayload) {
-                decryptMessageContent(message.encryptedPayload).catch(() => undefined);
+            const canApplyDirect =
+                Boolean(message?.conversationId && message?.messageId) &&
+                (!message?.postId || Boolean(message?.post));
+
+            if (!canApplyDirect) {
+                if (message?.encryptedPayload) {
+                    decryptMessageContent(message.encryptedPayload).catch(() => undefined);
+                }
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.conversations(),
+                    exact: true,
+                });
+                if (message?.conversationId) {
+                    queryClient.invalidateQueries({
+                        queryKey: queryKeys.conversation(message.conversationId),
+                    });
+                }
+                return;
             }
 
-            // A message from someone else — or an echo of one's own — affects the conversation list, the
-            // open thread and the unread badge. Exact invalidation targets the list without refetching
-            // unrelated threads, and invalidating the specific conversation updates the open thread.
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.conversations(),
-                exact: true,
-            });
-            if (message?.conversationId) {
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.conversation(message.conversationId),
+            const decryptPromise = message?.encryptedPayload
+                ? decryptMessageContent(message.encryptedPayload).catch(() => "")
+                : Promise.resolve("");
+
+            void decryptPromise.then((plaintext) => {
+                if (disposed) return;
+
+                const senderConversation = findConversationByPartner(
+                    queryClient,
+                    message?.senderId
+                );
+                const partner = senderConversation?.otherUser;
+                const createdAt = message.sentAt ?? new Date().toISOString();
+
+                const newMessage = {
+                    id: message.messageId,
+                    content: message.encryptedPayload || null,
+                    ...(plaintext ? { plaintext } : {}),
+                    postId: message.postId ?? null,
+                    post: message.post ?? null,
+                    createdAt,
+                    isMine: isOwnEcho,
+                    sender: {
+                        id: message.senderId,
+                        name: message.senderName ?? partner?.name ?? "",
+                        username: message.senderUsername ?? partner?.username ?? "",
+                        avatarUrl: message.senderAvatarUrl ?? partner?.avatarUrl ?? null,
+                    },
+                };
+
+                appendMessageToThreadCache(
+                    queryClient,
+                    message.conversationId,
+                    newMessage,
+                    { markReadUpTo: isOwnEcho }
+                );
+
+                const isViewingThread =
+                    typeof window !== "undefined" &&
+                    window.location.pathname.toLowerCase() ===
+                        `/messages/${String(message.conversationId).toLowerCase()}`;
+
+                const patchedList = patchConversationListOnMessage(queryClient, {
+                    conversationId: message.conversationId,
+                    lastMessage: {
+                        id: message.messageId,
+                        content: message.encryptedPayload || null,
+                        hasPost: Boolean(message.postId),
+                        isMine: isOwnEcho,
+                        createdAt,
+                    },
+                    lastMessageAt: createdAt,
+                    unreadDelta: isOwnEcho || isViewingThread ? 0 : 1,
+                    resetUnread: isOwnEcho || isViewingThread,
                 });
-            }
+
+                if (!patchedList) {
+                    queryClient.invalidateQueries({
+                        queryKey: queryKeys.conversations(),
+                        exact: true,
+                    });
+                }
+            });
         });
 
         connection.on(PRESENCE_CHANGED_EVENT, (presence) => {

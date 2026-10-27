@@ -1,5 +1,7 @@
 import {
     Fragment,
+    memo,
+    useCallback,
     useEffect,
     useLayoutEffect,
     useMemo,
@@ -21,7 +23,7 @@ import { useDecryptedContent } from "@/hooks/useDecryptedContent";
 import { peekDecrypted } from "@/services/messageCrypto";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 
-function MessageBubble({ message, otherUser, onRetry }) {
+const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry }) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     const isMine = Boolean(message.isMine);
@@ -182,7 +184,7 @@ function MessageBubble({ message, otherUser, onRetry }) {
             )}
         </div>
     );
-}
+});
 
 function DateDivider({ value }) {
     return (
@@ -223,6 +225,10 @@ export default function MessageThread({
     const [retryText, setRetryText] = useState(null);
     const [seen, setSeen] = useState({ conversationId: null, messageId: null });
     const [pendingMessage, setPendingMessage] = useState(null);
+
+    const handleRetryPending = useCallback((msg) => {
+        setRetryText(msg.content);
+    }, []);
 
     // The header's second line, while the other person is writing: presence gives way to "typing…" rather
     // than sitting underneath it, which is where the eye already looks for their state.
@@ -491,7 +497,7 @@ export default function MessageThread({
                             <MessageBubble
                                 message={pendingMessage}
                                 otherUser={otherUser}
-                                onRetry={(msg) => setRetryText(msg.content)}
+                                onRetry={handleRetryPending}
                             />
                         )}
                     </div>

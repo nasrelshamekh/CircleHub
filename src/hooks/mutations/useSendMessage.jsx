@@ -1,8 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import {
+    appendMessageToThreadCache,
+    patchConversationListOnMessage,
+} from "@/lib/messageCacheHelpers";
+import { queryKeys } from "@/lib/queryKeys";
 import { sendMessage } from "@/services/messageApi";
 import { encryptMessageContent } from "@/services/messageCrypto";
-import { queryKeys } from "@/lib/queryKeys";
 
 export function useSendMessage() {
     const queryClient = useQueryClient();
@@ -23,11 +27,43 @@ export function useSendMessage() {
             }),
 
         onSuccess: (result, variables) => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.conversations() });
+            const conversationId = result?.data?.conversationId;
+            const sentMessage = result?.data?.message;
+            const trimmedPlaintext = variables?.content ? variables.content.trim() : "";
 
-            if (result?.data?.conversationId) {
+            if (conversationId && sentMessage) {
+                const enrichedMessage = {
+                    ...sentMessage,
+                    ...(trimmedPlaintext ? { plaintext: trimmedPlaintext } : {}),
+                };
+
+                appendMessageToThreadCache(queryClient, conversationId, enrichedMessage, {
+                    markReadUpTo: true,
+                });
+
+                const patchedList = patchConversationListOnMessage(queryClient, {
+                    conversationId,
+                    lastMessage: {
+                        id: sentMessage.id,
+                        content: sentMessage.content,
+                        hasPost: Boolean(sentMessage.postId),
+                        isMine: true,
+                        createdAt: sentMessage.createdAt,
+                    },
+                    lastMessageAt: sentMessage.createdAt,
+                    resetUnread: true,
+                });
+
+                if (!patchedList) {
+                    queryClient.invalidateQueries({
+                        queryKey: queryKeys.conversations(),
+                        exact: true,
+                    });
+                }
+            } else {
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.conversation(result.data.conversationId),
+                    queryKey: queryKeys.conversations(),
+                    exact: true,
                 });
             }
 
