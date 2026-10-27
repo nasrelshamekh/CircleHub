@@ -298,6 +298,17 @@ export default function ChatConnectionContextProvider({ children }) {
             }
         });
 
+        let wasOfflineOrClosed = false;
+
+        function resyncMissedRealtimeData() {
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.conversations(),
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.notifications(),
+            });
+        }
+
         // Ignoring the callbacks after teardown keeps our own stop() from reporting a connection we are
         // deliberately closing as a drop.
         connection.onreconnecting(() => {
@@ -310,12 +321,17 @@ export default function ChatConnectionContextProvider({ children }) {
 
             // Presence moved while we were away and no event was delivered to us: resync from the
             // server rather than trusting what the caches held when the socket dropped.
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.conversations(),
-            });
+            resyncMissedRealtimeData();
         });
         connection.onclose(() => {
+            wasOfflineOrClosed = true;
             if (!disposed) setStatus("offline");
+            if (!disposed && !retryTimer) {
+                retryTimer = setTimeout(() => {
+                    retryTimer = null;
+                    connect();
+                }, CONNECT_RETRY_MS);
+            }
         });
 
         function connect() {
@@ -327,16 +343,25 @@ export default function ChatConnectionContextProvider({ children }) {
                 .start()
                 .then(() => {
                     connecting = false;
-                    if (!disposed) setStatus("live");
+                    if (disposed) return;
+                    setStatus("live");
+                    if (wasOfflineOrClosed) {
+                        wasOfflineOrClosed = false;
+                        resyncMissedRealtimeData();
+                    }
                 })
                 .catch(() => {
                     connecting = false;
+                    wasOfflineOrClosed = true;
                     if (disposed) return;
 
                     // The connection is created per session, so a failed start leaves it permanently
                     // disconnected; only a fresh start() can recover it.
                     setStatus("offline");
-                    retryTimer = setTimeout(connect, CONNECT_RETRY_MS);
+                    retryTimer = setTimeout(() => {
+                        retryTimer = null;
+                        connect();
+                    }, CONNECT_RETRY_MS);
                 });
         }
 

@@ -199,11 +199,13 @@ export async function hydrateThreadCache(queryClient, userId) {
     if (Array.isArray(snapshot.conversations)) {
         const listKey = queryKeys.conversations();
         const currentState = queryClient.getQueryState(listKey);
-        const savedAt = snapshot.conversationsUpdatedAt ?? snapshot.savedAt ?? 0;
 
-        if (!currentState?.dataUpdatedAt || currentState.dataUpdatedAt < savedAt) {
+        // Stamp `updatedAt: 1` so IndexedDB-hydrated data renders immediately (0 ms) while
+        // remaining stale relative to `staleTime`, guaranteeing an immediate background
+        // revalidation for any messages received while the tab was closed.
+        if (!currentState?.dataUpdatedAt) {
             queryClient.setQueryData(listKey, snapshot.conversations, {
-                updatedAt: savedAt,
+                updatedAt: 1,
             });
         }
 
@@ -221,15 +223,14 @@ export async function hydrateThreadCache(queryClient, userId) {
                 if (!entry?.id || !entry?.firstPage) return;
                 const threadKey = queryKeys.conversation(entry.id);
                 const existing = queryClient.getQueryState(threadKey);
-                const savedAt = entry.updatedAt ?? snapshot.savedAt ?? 0;
 
-                if (existing?.dataUpdatedAt && existing.dataUpdatedAt >= savedAt) {
+                if (existing?.dataUpdatedAt) {
                     return;
                 }
 
                 const hydratedPage = await hydrateThreadPageFromDisk(entry.firstPage);
                 const latestState = queryClient.getQueryState(threadKey);
-                if (latestState?.dataUpdatedAt && latestState.dataUpdatedAt >= savedAt) {
+                if (latestState?.dataUpdatedAt) {
                     return;
                 }
 
@@ -239,7 +240,7 @@ export async function hydrateThreadCache(queryClient, userId) {
                         pages: [hydratedPage],
                         pageParams: [1],
                     },
-                    { updatedAt: savedAt }
+                    { updatedAt: 1 }
                 );
             })
         );

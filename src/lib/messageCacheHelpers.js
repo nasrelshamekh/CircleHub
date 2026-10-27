@@ -142,3 +142,61 @@ export function clearConversationUnreadInCache(queryClient, conversationId) {
     queryClient.setQueryData(queryKeys.conversations(), nextList);
     return { found: true, cleared: true };
 }
+
+/**
+ * Reconciles fresh server `conversations` list entries against any cached `conversation(id)`
+ * threads in memory so missed messages invalidate stale cached threads immediately.
+ */
+export function reconcileCachedThreadsWithList(queryClient, conversations) {
+    if (!Array.isArray(conversations) || conversations.length === 0) {
+        return conversations;
+    }
+
+    const matchingQueries = queryClient.getQueriesData({
+        queryKey: queryKeys.conversations(),
+    });
+
+    let adjusted = null;
+
+    for (let i = 0; i < conversations.length; i += 1) {
+        const conv = conversations[i];
+        if (!conv?.id) continue;
+
+        const lastMsgId = conv.lastMessage?.id ?? null;
+
+        for (const [key, data] of matchingQueries) {
+            if (!Array.isArray(key) || key.length !== 3 || !sameId(key[2], conv.id)) {
+                continue;
+            }
+
+            if (!data || Array.isArray(data) || !Array.isArray(data.pages)) {
+                continue;
+            }
+
+            const firstPage = data.pages[0];
+            if (!firstPage) continue;
+
+            const cachedMessages = Array.isArray(firstPage.messages)
+                ? firstPage.messages
+                : [];
+
+            if (lastMsgId && !cachedMessages.some((m) => sameId(m.id, lastMsgId))) {
+                queryClient.invalidateQueries({
+                    queryKey: key,
+                    exact: true,
+                });
+            } else if (
+                conv.unreadCount > 0 &&
+                lastMsgId &&
+                sameId(firstPage._markedReadNewestId, lastMsgId)
+            ) {
+                if (!adjusted) {
+                    adjusted = [...conversations];
+                }
+                adjusted[i] = { ...conv, unreadCount: 0 };
+            }
+        }
+    }
+
+    return adjusted ?? conversations;
+}
