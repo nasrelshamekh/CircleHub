@@ -70,10 +70,7 @@ namespace CircleHub.Api.Controllers
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
 
-            var query = _db.Communities
-                .Where(c => c.Visibility == CommunityVisibility.Public ||
-                            c.AdminId == currentUserId ||
-                            c.Members.Any(m => m.UserId == currentUserId));
+            var query = _db.Communities.AsQueryable();
 
             var total = await query.CountAsync();
 
