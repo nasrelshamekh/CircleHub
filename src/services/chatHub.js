@@ -15,6 +15,8 @@ export const TYPING_CHANGED_EVENT = "TypingChanged";
 // toast it immediately; the feed is still refetched, because the server stays the source of truth.
 export const NOTIFICATION_CREATED_EVENT = "NotificationCreated";
 
+export const NOTIFICATION_DELETED_EVENT = "NotificationDeleted";
+
 // Event the API raises when a new post is created (ChatHub.PostCreatedMethod).
 export const POST_CREATED_EVENT = "PostCreated";
 

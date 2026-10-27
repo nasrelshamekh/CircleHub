@@ -6,6 +6,7 @@ import { chatConnectionContext } from "@/hooks/useChatConnection";
 import {
     createChatConnection,
     NOTIFICATION_CREATED_EVENT,
+    NOTIFICATION_DELETED_EVENT,
     POST_CREATED_EVENT,
     PRESENCE_CHANGED_EVENT,
     RECEIVE_MESSAGE_EVENT,
@@ -212,6 +213,12 @@ export default function ChatConnectionContextProvider({ children }) {
             });
         });
 
+        connection.on(NOTIFICATION_DELETED_EVENT, () => {
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.notifications(),
+            });
+        });
+
         connection.on(POST_CREATED_EVENT, (post) => {
             const postId = post?.id || post?.Id;
             if (postId && typeof window !== "undefined") {
@@ -275,8 +282,9 @@ export default function ChatConnectionContextProvider({ children }) {
             connection.off(PRESENCE_CHANGED_EVENT);
             connection.off(TYPING_CHANGED_EVENT);
             connection.off(NOTIFICATION_CREATED_EVENT);
+            connection.off(NOTIFICATION_DELETED_EVENT);
             connection.off(POST_CREATED_EVENT);
-            connection.stop().catch(() => {});
+            connection.stop().catch(() => { });
 
             // A claim belongs to the session that received it: the next one must not open on someone
             // else's "typing…".

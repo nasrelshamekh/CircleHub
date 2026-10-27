@@ -39,6 +39,8 @@ namespace CircleHub.Api.Hubs
         /// </summary>
         public const string NotificationCreatedMethod = "NotificationCreated";
 
+        public const string NotificationDeletedMethod = "NotificationDeleted";
+
         /// <summary>
         /// Client-side handler for newly published posts, allowing live feed updates and scroll indicators.
         /// </summary>

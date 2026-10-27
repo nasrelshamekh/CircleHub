@@ -699,19 +699,13 @@ namespace CircleHub.Api.Controllers
                     c.AdminId,
                     Membership = c.Members
                         .Where(m => m.UserId == currentUserId)
-                        .Select(m => new
-                        {
-                            m.Id
-                        })
+                        .Select(m => new { m.Id })
                         .FirstOrDefault(),
                     PendingRequest = c.Requests
                         .Where(r =>
                             r.UserId == currentUserId &&
                             r.Status == CommunityJoinRequestStatus.Pending)
-                        .Select(r => new
-                        {
-                            r.Id
-                        })
+                        .Select(r => new { r.Id })
                         .FirstOrDefault()
                 })
                 .FirstOrDefaultAsync();
@@ -742,15 +736,63 @@ namespace CircleHub.Api.Controllers
                 _db.CommunityMembers.Remove(membership);
             }
 
+            var deletedNotificationIds = new List<(Guid Id, Guid UserId)>();
+
             if (hasPendingRequest)
             {
                 var request = await _db.CommunityJoinRequests
                     .FirstAsync(r => r.Id == community.PendingRequest!.Id);
 
+                var oldNotifications = await _db.Notifications
+                    .Where(n =>
+                        n.ActorId == currentUserId &&
+                        n.CommunityId == id &&
+                        n.Type == NotificationType.CommunityJoinRequested)
+                    .Select(n => new
+                    {
+                        n.Id,
+                        n.UserId
+                    })
+                    .ToListAsync();
+
+                deletedNotificationIds = oldNotifications
+                    .Select(n => (n.Id, n.UserId))
+                    .ToList();
+
+                var notificationIds = deletedNotificationIds
+                    .Select(n => n.Id)
+                    .ToList();
+
+                if (notificationIds.Count > 0)
+                {
+                    var notificationsToDelete = await _db.Notifications
+                        .Where(n => notificationIds.Contains(n.Id))
+                        .ToListAsync();
+
+                    _db.Notifications.RemoveRange(notificationsToDelete);
+                }
+
                 _db.CommunityJoinRequests.Remove(request);
             }
 
             await _db.SaveChangesAsync();
+
+            // Notify each recipient after the database changes have succeeded.
+            foreach (var recipientId in deletedNotificationIds
+                .Select(n => n.UserId)
+                .Distinct())
+            {
+                var notificationIds = deletedNotificationIds
+                    .Where(n => n.UserId == recipientId)
+                    .Select(n => n.Id)
+                    .ToList();
+
+                await _hub.Clients.User(recipientId.ToString())
+                    .SendAsync(
+                        ChatHub.NotificationDeletedMethod,
+                        new { notificationIds }
+                    );
+            }
 
             return Ok(new ApiResponse<object>
             {
