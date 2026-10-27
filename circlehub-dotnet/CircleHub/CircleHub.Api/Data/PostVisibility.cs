@@ -19,14 +19,14 @@ namespace CircleHub.Api.Data
             var viewer = viewerId.Value;
 
             return posts.Where(p =>
-                (p.CommunityId == null ||
-                 p.Community!.Visibility == CommunityVisibility.Public ||
-                 p.Community!.AdminId == viewer ||
-                 p.Community!.Members.Any(m => m.UserId == viewer)) &&
-                (p.Author.ProfileVisibility == ProfileVisibility.Public ||
-                 p.AuthorId == viewer ||
-                 (p.Author.ProfileVisibility == ProfileVisibility.Followers &&
-                  p.Author.Followers.Any(f => f.FollowerId == viewer))));
+                p.CommunityId != null
+                    ? p.Community!.Visibility == CommunityVisibility.Public ||
+                      p.Community!.AdminId == viewer ||
+                      p.Community!.Members.Any(m => m.UserId == viewer)
+                    : p.Author.ProfileVisibility == ProfileVisibility.Public ||
+                      p.AuthorId == viewer ||
+                      (p.Author.ProfileVisibility == ProfileVisibility.Followers &&
+                       p.Author.Followers.Any(f => f.FollowerId == viewer)));
         }
     }
 }

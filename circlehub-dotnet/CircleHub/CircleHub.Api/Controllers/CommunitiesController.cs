@@ -1216,16 +1216,23 @@ namespace CircleHub.Api.Controllers
         {
             var currentUserId = CurrentUserId!.Value;
 
+
             var community = await _db.Communities
                 .Where(c => c.Id == communityId)
                 .Select(c => new
                 {
                     c.Id,
+                    c.Visibility,
+                    c.AdminId,
+                    MemberIds = c.Members
+                        .Select(m => m.UserId)
+                        .ToList(),
                     IsMember =
                         c.AdminId == currentUserId ||
                         c.Members.Any(m => m.UserId == currentUserId)
                 })
                 .FirstOrDefaultAsync();
+
 
             if (community is null)
                 return Fail(StatusCodes.Status404NotFound, "Community not found");
@@ -1274,7 +1281,24 @@ namespace CircleHub.Api.Controllers
                 .Select(PostDto.Projection(currentUserId, includeCommunity: true))
                 .FirstAsync();
 
-            await _hub.Clients.All.SendAsync(ChatHub.PostCreatedMethod, created);
+
+            if (community.Visibility == CommunityVisibility.Private)
+            {
+                var recipientIds = community.MemberIds
+                    .Append(community.AdminId)
+                    .Distinct()
+                    .Select(id => id.ToString())
+                    .ToList();
+
+                await _hub.Clients.Users(recipientIds)
+                    .SendAsync(ChatHub.PostCreatedMethod, created);
+            }
+            else
+            {
+                await _hub.Clients.All
+                    .SendAsync(ChatHub.PostCreatedMethod, created);
+            }
+
 
             return StatusCode(StatusCodes.Status201Created, new ApiResponse<PostDto>
             {
