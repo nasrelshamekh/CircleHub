@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import RecoveryRestoreDialog from "@/components/messages/RecoveryRestoreDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { hasBackup } from "@/services/keyRecovery";
-import { ensureDeviceKey } from "@/services/messageCrypto";
+import { clearDeviceKeyCache, ensureDeviceKey } from "@/services/messageCrypto";
 
 /**
  * Gives this browser an encryption keypair for messages, once per signed-in session. Mounted inside the
@@ -20,7 +20,10 @@ export default function DeviceKeyPublisher() {
     const [restoreOpen, setRestoreOpen] = useState(false);
 
     useEffect(() => {
-        if (!username) return undefined;
+        if (!username) {
+            clearDeviceKeyCache();
+            return undefined;
+        }
 
         let live = true;
 

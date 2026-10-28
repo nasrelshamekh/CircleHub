@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LoaderCircle, MessageCircle, MessageSquarePlus } from "lucide-react";
 import { useParams } from "react-router-dom";
 
@@ -8,6 +8,7 @@ import MessageThread from "@/components/messages/MessageThread";
 import NewMessageDialog from "@/components/messages/NewMessageDialog";
 import { useConversations } from "@/hooks/useConversations";
 import { useConversation } from "@/hooks/useConversation";
+import { prefetchRecipientDeviceKeys } from "@/services/messageCrypto";
 
 export default function Messages() {
     const { id } = useParams();
@@ -29,6 +30,11 @@ export default function Messages() {
         (c) => String(c.id).toLowerCase() === String(id).toLowerCase()
     );
     const resolvedOtherUser = otherUser || activeConversation?.otherUser;
+
+    useEffect(() => {
+        if (!id || !resolvedOtherUser?.username) return;
+        prefetchRecipientDeviceKeys(resolvedOtherUser.username);
+    }, [id, resolvedOtherUser?.username]);
 
     // Same shell as Explore / Communities (`content-stack`, responsive headline + subtitle), centred in the
     // main column. AppLayout drops the right rail on this route, so the cap is wider (96rem) to let the

@@ -274,12 +274,13 @@ async function saveStoredKey(record) {
 }
 
 export function getDeviceId() {
-    if (memoryDeviceId) return memoryDeviceId;
-    let id = localStorage.getItem(DEVICE_ID_KEY);
-    if (!id) {
-        id = crypto.randomUUID();
-        localStorage.setItem(DEVICE_ID_KEY, id);
+    const stored = localStorage.getItem(DEVICE_ID_KEY);
+    if (stored) {
+        memoryDeviceId = stored;
+        return stored;
     }
+    const id = memoryDeviceId ?? crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
     memoryDeviceId = id;
     return id;
 }
@@ -374,21 +375,95 @@ export async function importDeviceKey(deviceId, pkcs8Bytes, publicKeyB64) {
     return record;
 }
 
-async function fetchDeviceKeys(username) {
-    if (!username) return [];
-    try {
-        const response = await apiClient.get(`/keys/${encodeURIComponent(username)}`);
-        return response.data?.data ?? [];
-    } catch (error) {
-        // 403 (the policy refuses this sender) or 404: treat as "no keys", which sends plaintext —
-        // the message itself would be refused anyway, so nothing leaks that a send could succeed.
-        if (error.response) return [];
-        throw error;
+export const DEVICE_KEY_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const deviceKeyDirectoryCache = new Map();
+const deviceKeyInFlight = new Map();
+const importedPeerKeyCache = new Map();
+let ensuredOwnKeyCache = null;
+
+function normalizeUsernameKey(username) {
+    return (username ?? "").trim().toLowerCase();
+}
+
+export function clearDeviceKeyCache(username) {
+    if (username) {
+        const key = normalizeUsernameKey(username);
+        if (key) {
+            deviceKeyDirectoryCache.delete(key);
+            deviceKeyInFlight.delete(key);
+            if (ensuredOwnKeyCache?.usernameKey === key) {
+                ensuredOwnKeyCache = null;
+            }
+        }
+        return;
     }
+    deviceKeyDirectoryCache.clear();
+    deviceKeyInFlight.clear();
+    importedPeerKeyCache.clear();
+    ensuredOwnKeyCache = null;
+}
+
+async function fetchDeviceKeys(username, options) {
+    const trimmed = username?.trim();
+    if (!trimmed) return [];
+
+    const cacheKey = normalizeUsernameKey(trimmed);
+    const now = Date.now();
+
+    if (!options?.forceRefresh) {
+        const cached = deviceKeyDirectoryCache.get(cacheKey);
+        if (cached && cached.expiresAt > now) {
+            return cached.keys;
+        }
+    }
+
+    const inFlight = deviceKeyInFlight.get(cacheKey);
+    if (inFlight && !options?.forceRefresh) {
+        return inFlight;
+    }
+
+    const promise = (async () => {
+        try {
+            const response = await apiClient.get(`/keys/${encodeURIComponent(trimmed)}`);
+            const keys = response.data?.data ?? [];
+            if (keys.length > 0) {
+                deviceKeyDirectoryCache.set(cacheKey, {
+                    keys,
+                    expiresAt: Date.now() + DEVICE_KEY_CACHE_TTL_MS,
+                });
+            } else {
+                deviceKeyDirectoryCache.delete(cacheKey);
+            }
+            return keys;
+        } catch (error) {
+            // 403 (the policy refuses this sender) or 404: treat as "no keys", which sends plaintext —
+            // the message itself would be refused anyway, so nothing leaks that a send could succeed.
+            if (error.response) return [];
+            throw error;
+        }
+    })().finally(() => {
+        if (deviceKeyInFlight.get(cacheKey) === promise) {
+            deviceKeyInFlight.delete(cacheKey);
+        }
+    });
+
+    deviceKeyInFlight.set(cacheKey, promise);
+    return promise;
 }
 
 export async function publishKey(deviceId, publicKey) {
+    clearDeviceKeyCache();
     await apiClient.post("/keys", { deviceId, publicKey });
+    clearDeviceKeyCache();
+}
+
+export function prefetchRecipientDeviceKeys(recipientUsername) {
+    const trimmed = recipientUsername?.trim();
+    if (trimmed) {
+        fetchDeviceKeys(trimmed).catch(() => undefined);
+    }
+    ensureDeviceKey().catch(() => undefined);
 }
 
 // How old a device's `lastSeenAt` may get before this device re-publishes to refresh it. Far
@@ -412,6 +487,19 @@ function isLivenessStale(key) {
 let ensurePromise = null;
 
 export function ensureDeviceKey() {
+    const username = currentUsername();
+    const usernameKey = normalizeUsernameKey(username);
+    if (
+        usernameKey &&
+        ensuredOwnKeyCache &&
+        ensuredOwnKeyCache.expiresAt > Date.now() &&
+        ensuredOwnKeyCache.usernameKey === usernameKey &&
+        (!memoryDeviceId || memoryDeviceId === ensuredOwnKeyCache.deviceId) &&
+        memoryKeys?.some((entry) => entry.publicKeyB64 === ensuredOwnKeyCache.result.record.publicKeyB64)
+    ) {
+        return Promise.resolve(ensuredOwnKeyCache.result);
+    }
+
     if (!ensurePromise) {
         ensurePromise = runEnsureDeviceKey().finally(() => {
             ensurePromise = null;
@@ -420,12 +508,47 @@ export function ensureDeviceKey() {
     return ensurePromise;
 }
 
+function cacheEnsuredOwnKey(username, deviceId, result) {
+    const usernameKey = normalizeUsernameKey(username);
+    const expiresAt = Date.now() + DEVICE_KEY_CACHE_TTL_MS;
+    ensuredOwnKeyCache = {
+        usernameKey,
+        deviceId,
+        result,
+        expiresAt,
+    };
+    if (result.published.length > 0) {
+        deviceKeyDirectoryCache.set(usernameKey, {
+            keys: result.published.map((k) => ({
+                deviceId: k.deviceId,
+                publicKey: k.publicKey ?? k.publicKeyB64,
+                createdAt: k.createdAt,
+                lastSeenAt: k.lastSeenAt,
+            })),
+            expiresAt,
+        });
+    }
+    return result;
+}
+
 async function runEnsureDeviceKey() {
     const username = currentUsername();
     if (!username) throw new Error("Not signed in");
 
+    const usernameKey = normalizeUsernameKey(username);
     const deviceId = getDeviceId();
     const stored = await loadStoredKeys();
+
+    if (
+        ensuredOwnKeyCache &&
+        ensuredOwnKeyCache.expiresAt > Date.now() &&
+        ensuredOwnKeyCache.usernameKey === usernameKey &&
+        ensuredOwnKeyCache.deviceId === deviceId &&
+        stored.some((entry) => entry.publicKeyB64 === ensuredOwnKeyCache.result.record.publicKeyB64)
+    ) {
+        return ensuredOwnKeyCache.result;
+    }
+
     const published = await fetchDeviceKeys(username);
     const mine = published.find((key) => key.deviceId === deviceId);
 
@@ -437,9 +560,9 @@ async function runEnsureDeviceKey() {
             // phone used every day would still be pruned a month after it first signed in. Re-publish
             // once the stamp is a day old: one cheap upsert a day keeps an active device alive.
             if (isLivenessStale(mine)) {
-                publishKey(deviceId, record.publicKeyB64).catch(() => undefined);
+                apiClient.post("/keys", { deviceId, publicKey: record.publicKeyB64 }).catch(() => undefined);
             }
-            return { record, published };
+            return cacheEnsuredOwnKey(username, deviceId, { record, published });
         }
 
         // The public key is on the server but its private half is gone (storage cleared since): rotate
@@ -447,10 +570,13 @@ async function runEnsureDeviceKey() {
         // ones wrap to this one.
         const fresh = await createAndStoreKey(deviceId);
         await publishKey(deviceId, fresh.publicKeyB64);
-        return {
+        return cacheEnsuredOwnKey(username, deviceId, {
             record: fresh,
-            published: [...published.filter((key) => key.deviceId !== deviceId), fresh],
-        };
+            published: [
+                ...published.filter((key) => key.deviceId !== deviceId),
+                { deviceId, publicKey: fresh.publicKeyB64 },
+            ],
+        });
     }
 
     // Nothing published for this device yet. Prefer a key this device already generated (an upload that
@@ -462,7 +588,10 @@ async function runEnsureDeviceKey() {
 
     if (ours.length > 0) {
         await publishKey(deviceId, ours[0].publicKeyB64);
-        return { record: ours[0], published: [...published, ours[0]] };
+        return cacheEnsuredOwnKey(username, deviceId, {
+            record: ours[0],
+            published: [...published, { deviceId, publicKey: ours[0].publicKeyB64 }],
+        });
     }
 
     const fresh = await createAndStoreKey(deviceId);
@@ -470,19 +599,32 @@ async function runEnsureDeviceKey() {
     // Another tab may have published between our fetch and now; last write wins on the server and the
     // loser's private half is still in the store, so either key opens the messages.
     await publishKey(deviceId, fresh.publicKeyB64);
-    return { record: fresh, published: [...published, fresh] };
+    return cacheEnsuredOwnKey(username, deviceId, {
+        record: fresh,
+        published: [...published, { deviceId, publicKey: fresh.publicKeyB64 }],
+    });
 }
 
 /* ------------------------------------------------------------------ crypto primitives */
 
 async function importPeerKey(publicKeyB64) {
-    return crypto.subtle.importKey(
-        "raw",
-        fromBase64(publicKeyB64),
-        { name: "ECDH", namedCurve: "P-256" },
-        false,
-        [],
-    );
+    let cached = importedPeerKeyCache.get(publicKeyB64);
+    if (!cached) {
+        cached = crypto.subtle
+            .importKey(
+                "raw",
+                fromBase64(publicKeyB64),
+                { name: "ECDH", namedCurve: "P-256" },
+                false,
+                [],
+            )
+            .catch((err) => {
+                importedPeerKeyCache.delete(publicKeyB64);
+                throw err;
+            });
+        importedPeerKeyCache.set(publicKeyB64, cached);
+    }
+    return cached;
 }
 
 async function deriveWrapKey(ephemeralPrivateKey, peerPublicKey) {
@@ -548,10 +690,18 @@ export async function encryptMessageContent({ recipientUsername, plaintext }) {
         throw new Error(`Messages can be at most ${MAX_PLAINTEXT_LENGTH} characters`);
     }
 
+    const ownKeyPromise = ensureDeviceKey().then(
+        (value) => ({ ok: true, value }),
+        (error) => ({ ok: false, error }),
+    );
     const recipientKeys = await fetchDeviceKeys(recipientUsername);
     if (recipientKeys.length === 0) return plaintext;
 
-    const { published: ownKeys } = await ensureDeviceKey();
+    const ownOutcome = await ownKeyPromise;
+    if (!ownOutcome.ok) {
+        throw ownOutcome.error;
+    }
+    const { published: ownKeys } = ownOutcome.value;
 
     // Dedupe: a user messaging themselves (or the same key listed twice) must not get two wraps.
     const targets = new Map();
@@ -797,5 +947,6 @@ export function peekDecrypted(content) {
 export function clearDecryptCache() {
     decryptCache.clear();
     settledCache.clear();
+    clearDeviceKeyCache();
     notifyDecryptCacheChanged();
 }

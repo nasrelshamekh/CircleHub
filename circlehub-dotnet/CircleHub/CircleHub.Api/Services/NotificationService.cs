@@ -192,6 +192,8 @@ namespace CircleHub.Api.Services
                     }
                 }
 
+                var notificationTag = $"notif_{dto.Id}";
+
                 // Send push notification to any registered mobile devices
                 await _push.SendToUserAsync(
                     recipientId,
@@ -204,9 +206,13 @@ namespace CircleHub.Api.Services
                         notificationType = dto.Type,
                         postId = dto.PostId?.ToString(),
                         communitySlug = dto.CommunitySlug,
-                        actorUsername = dto.Actor.Username
+                        actorUsername = dto.Actor.Username,
+                        senderName = dto.Actor.Name,
+                        senderAvatarUrl = resolvedActorAvatar,
+                        tag = notificationTag
                     },
                     channelId: "default",
+                    tag: notificationTag,
                     imageUrl: null);
             }
         }

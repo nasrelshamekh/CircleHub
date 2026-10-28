@@ -108,7 +108,7 @@ namespace CircleHub.Api.Services
                             existing.Clear();
                         }
                         existing.Add(singleBody);
-                        while (existing.Count > 3)
+                        while (existing.Count > 5)
                         {
                             existing.RemoveAt(0);
                         }
@@ -117,13 +117,14 @@ namespace CircleHub.Api.Services
                 });
 
             string expandedBody;
+            string[] previewsSnapshot;
             lock (previews)
             {
-                expandedBody = string.Join("\n", previews);
+                previewsSnapshot = previews.ToArray();
+                expandedBody = string.Join("\n", previewsSnapshot);
             }
 
-
-
+            var safeUnreadCount = Math.Max(1, unreadCount);
             var conversationTag = $"chat_{envelope.ConversationId}";
 
             await _push.SendToUserAsync(
@@ -138,12 +139,14 @@ namespace CircleHub.Api.Services
                     senderId = envelope.SenderId,
                     senderName = baseTitle,
                     senderAvatarUrl = resolvedAvatarUrl,
+                    unreadCount = safeUnreadCount,
+                    messages = previewsSnapshot,
                     tag = conversationTag,
-                    bigText = expandedBody // Expanded view (hold and drag down) displays up to 3 messages
+                    bigText = expandedBody // Expanded view (hold and drag down) stacks up to 5 unread messages
                 },
                 channelId: "messages",
                 tag: conversationTag,
-                imageUrl: resolvedAvatarUrl,
+                imageUrl: null,
                 cancellationToken: cancellationToken);
         }
     }
