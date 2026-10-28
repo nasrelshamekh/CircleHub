@@ -503,7 +503,7 @@ export default function MessageThread({
                                     alt={otherUser.name}
                                     className="h-7 w-7 shrink-0 text-xs"
                                 />
-                                <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-xs border border-(--border) bg-(--surface-lowest) px-3.5 py-2">
+                                <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-xs bg-(--surface-lowest) px-3.5 py-2">
                                     <span className="flex gap-1">
                                         <span className="h-1.5 w-1.5 rounded-full bg-(--primary) animate-bounce [animation-delay:-0.3s]" />
                                         <span className="h-1.5 w-1.5 rounded-full bg-(--primary) animate-bounce [animation-delay:-0.15s]" />
