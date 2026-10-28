@@ -461,6 +461,7 @@ export async function publishKey(deviceId, publicKey) {
 export function prefetchRecipientDeviceKeys(recipientUsername) {
     const trimmed = recipientUsername?.trim();
     if (trimmed) {
+        clearDeviceKeyCache(trimmed);
         fetchDeviceKeys(trimmed).catch(() => undefined);
     }
     ensureDeviceKey().catch(() => undefined);
@@ -662,7 +663,10 @@ export function isEncryptedContent(content) {
  * decides which wrap the recipient's fast path finds first.
  */
 export function selectWrapTargets(ownKeys, recipientKeys, currentDeviceId) {
-    const seenAt = (key) => Date.parse(key.lastSeenAt ?? key.createdAt ?? "") || 0;
+    const seenAt = (key) => {
+        const parsed = Date.parse(key.lastSeenAt ?? key.createdAt ?? "");
+        return Number.isFinite(parsed) ? parsed : Date.now();
+    };
     const byRecency = (a, b) => seenAt(b) - seenAt(a);
 
     const own = [...ownKeys].sort(byRecency);
