@@ -375,7 +375,8 @@ export async function importDeviceKey(deviceId, pkcs8Bytes, publicKeyB64) {
     return record;
 }
 
-export const DEVICE_KEY_CACHE_TTL_MS = 2 * 60 * 1000;
+export const DEVICE_KEY_CACHE_TTL_MS = 10 * 60 * 1000;
+export const OWN_KEY_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const deviceKeyDirectoryCache = new Map();
 const deviceKeyInFlight = new Map();
@@ -401,6 +402,10 @@ export function clearDeviceKeyCache(username) {
     deviceKeyDirectoryCache.clear();
     deviceKeyInFlight.clear();
     importedPeerKeyCache.clear();
+    // Do not clear ensuredOwnKeyCache here; own key is persistent for the active session.
+}
+
+export function clearOwnDeviceKeyCache() {
     ensuredOwnKeyCache = null;
 }
 
@@ -461,8 +466,11 @@ export async function publishKey(deviceId, publicKey) {
 export function prefetchRecipientDeviceKeys(recipientUsername) {
     const trimmed = recipientUsername?.trim();
     if (trimmed) {
-        clearDeviceKeyCache(trimmed);
-        fetchDeviceKeys(trimmed).catch(() => undefined);
+        const cacheKey = normalizeUsernameKey(trimmed);
+        const cached = deviceKeyDirectoryCache.get(cacheKey);
+        if (!cached || cached.expiresAt <= Date.now()) {
+            fetchDeviceKeys(trimmed).catch(() => undefined);
+        }
     }
     ensureDeviceKey().catch(() => undefined);
 }
@@ -511,7 +519,7 @@ export function ensureDeviceKey() {
 
 function cacheEnsuredOwnKey(username, deviceId, result) {
     const usernameKey = normalizeUsernameKey(username);
-    const expiresAt = Date.now() + DEVICE_KEY_CACHE_TTL_MS;
+    const expiresAt = Date.now() + OWN_KEY_CACHE_TTL_MS;
     ensuredOwnKeyCache = {
         usernameKey,
         deviceId,
@@ -526,7 +534,7 @@ function cacheEnsuredOwnKey(username, deviceId, result) {
                 createdAt: k.createdAt,
                 lastSeenAt: k.lastSeenAt,
             })),
-            expiresAt,
+            expiresAt: Date.now() + OWN_KEY_CACHE_TTL_MS,
         });
     }
     return result;

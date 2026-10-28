@@ -251,11 +251,7 @@ export default function ChatConnectionContextProvider({ children }) {
                 const partner = findConversationByPartner(queryClient, userId);
                 if (partner?.otherUser?.username) {
                     clearDeviceKeyCache(partner.otherUser.username);
-                } else {
-                    clearDeviceKeyCache();
                 }
-            } else {
-                clearDeviceKeyCache();
             }
 
             // Patched by hand so the dot and the wording flip the moment the event lands, without
