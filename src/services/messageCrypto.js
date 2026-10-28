@@ -127,6 +127,31 @@ function randomBytes(length) {
     return bytes;
 }
 
+export const PADDING_BLOCK_SIZE = 128;
+
+export function padPlaintext(plaintext) {
+    const raw = utf8(plaintext);
+    const padLen = PADDING_BLOCK_SIZE - (raw.length % PADDING_BLOCK_SIZE);
+    const padded = new Uint8Array(raw.length + padLen);
+    padded.set(raw, 0);
+    padded.fill(padLen, raw.length);
+    return padded;
+}
+
+export function unpadPlaintext(padded) {
+    if (!padded || padded.length === 0) return "";
+    const padLen = padded[padded.length - 1];
+    if (padLen < 1 || padLen > PADDING_BLOCK_SIZE || padLen > padded.length) {
+        return new TextDecoder().decode(padded);
+    }
+    for (let i = padded.length - padLen; i < padded.length; i += 1) {
+        if (padded[i] !== padLen) {
+            return new TextDecoder().decode(padded);
+        }
+    }
+    return new TextDecoder().decode(padded.subarray(0, padded.length - padLen));
+}
+
 /* ------------------------------------------------------------------ key store */
 
 // IndexedDB holds CryptoKey objects by structured clone, so the private key can be generated
@@ -381,6 +406,7 @@ export const OWN_KEY_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const deviceKeyDirectoryCache = new Map();
 const deviceKeyInFlight = new Map();
 const importedPeerKeyCache = new Map();
+const recipientStatusCache = new Map();
 let ensuredOwnKeyCache = null;
 
 function normalizeUsernameKey(username) {
@@ -393,6 +419,7 @@ export function clearDeviceKeyCache(username) {
         if (key) {
             deviceKeyDirectoryCache.delete(key);
             deviceKeyInFlight.delete(key);
+            recipientStatusCache.delete(key);
             if (ensuredOwnKeyCache?.usernameKey === key) {
                 ensuredOwnKeyCache = null;
             }
@@ -402,6 +429,7 @@ export function clearDeviceKeyCache(username) {
     deviceKeyDirectoryCache.clear();
     deviceKeyInFlight.clear();
     importedPeerKeyCache.clear();
+    recipientStatusCache.clear();
     // Do not clear ensuredOwnKeyCache here; own key is persistent for the active session.
 }
 
@@ -437,8 +465,18 @@ async function fetchDeviceKeys(username, options) {
                     keys,
                     expiresAt: Date.now() + DEVICE_KEY_CACHE_TTL_MS,
                 });
+                recipientStatusCache.set(cacheKey, {
+                    hasKeys: true,
+                    expiresAt: Date.now() + DEVICE_KEY_CACHE_TTL_MS,
+                });
             } else {
+                // Do not cache empty key list in deviceKeyDirectoryCache so new keys upgrade immediately.
                 deviceKeyDirectoryCache.delete(cacheKey);
+                // Keep recipient status for 30s for UI fallback indicators.
+                recipientStatusCache.set(cacheKey, {
+                    hasKeys: false,
+                    expiresAt: Date.now() + 30 * 1000,
+                });
             }
             return keys;
         } catch (error) {
@@ -457,22 +495,49 @@ async function fetchDeviceKeys(username, options) {
     return promise;
 }
 
+export function hasCachedRecipientDeviceKeys(username) {
+    const trimmed = username?.trim();
+    if (!trimmed) return null;
+    const cacheKey = normalizeUsernameKey(trimmed);
+    const cachedDir = deviceKeyDirectoryCache.get(cacheKey);
+    if (cachedDir && cachedDir.expiresAt > Date.now() && cachedDir.keys.length > 0) {
+        return true;
+    }
+    const cachedStatus = recipientStatusCache.get(cacheKey);
+    if (cachedStatus && cachedStatus.expiresAt > Date.now()) {
+        return cachedStatus.hasKeys;
+    }
+    return null;
+}
+
 export async function publishKey(deviceId, publicKey) {
     clearDeviceKeyCache();
     await apiClient.post("/keys", { deviceId, publicKey });
     clearDeviceKeyCache();
 }
 
-export function prefetchRecipientDeviceKeys(recipientUsername) {
+/**
+ * Pre-warms the recipient's published device keys (and this device's own key state) when opening a
+ * conversation thread so the first and subsequent message sends execute with zero `/api/keys` RTTs.
+ * Returns true if recipient has keys, false if recipient has 0 keys (fallback), or null if indeterminate.
+ */
+export async function prefetchRecipientDeviceKeys(recipientUsername) {
     const trimmed = recipientUsername?.trim();
-    if (trimmed) {
-        const cacheKey = normalizeUsernameKey(trimmed);
-        const cached = deviceKeyDirectoryCache.get(cacheKey);
-        if (!cached || cached.expiresAt <= Date.now()) {
-            fetchDeviceKeys(trimmed).catch(() => undefined);
-        }
+    if (!trimmed) {
+        ensureDeviceKey().catch(() => undefined);
+        return null;
+    }
+    const cacheKey = normalizeUsernameKey(trimmed);
+    const cached = deviceKeyDirectoryCache.get(cacheKey);
+    let hasKeys = null;
+    if (cached && cached.expiresAt > Date.now() && cached.keys.length > 0) {
+        hasKeys = true;
+    } else {
+        const keys = await fetchDeviceKeys(trimmed).catch(() => []);
+        hasKeys = keys.length > 0;
     }
     ensureDeviceKey().catch(() => undefined);
+    return hasKeys;
 }
 
 // How old a device's `lastSeenAt` may get before this device re-publishes to refresh it. Far
@@ -723,13 +788,6 @@ export async function encryptMessageContent({ recipientUsername, plaintext }) {
 
     const contentKey = randomBytes(32);
     const iv = randomBytes(12);
-    const ciphertext = new Uint8Array(
-        await crypto.subtle.encrypt(
-            { name: "AES-GCM", iv },
-            await importAesKey(contentKey),
-            utf8(plaintext),
-        ),
-    );
 
     // One ephemeral keypair per message: the wrap keys are all derived from it, so learning one
     // message's wrap key never opens another message.
@@ -739,19 +797,30 @@ export async function encryptMessageContent({ recipientUsername, plaintext }) {
         ["deriveKey", "deriveBits"],
     );
     const ephemeralB64 = toBase64(new Uint8Array(await crypto.subtle.exportKey("raw", ephemeral.publicKey)));
+    const payloadAad = utf8(`circlehub:v1:${ephemeralB64}`);
+
+    const ciphertext = new Uint8Array(
+        await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv, additionalData: payloadAad },
+            await importAesKey(contentKey),
+            padPlaintext(plaintext),
+        ),
+    );
 
     const wraps = [];
     for (const target of targets.values()) {
         const wrapKey = await deriveWrapKey(ephemeral.privateKey, await importPeerKey(target.publicKey));
         const wrapIv = randomBytes(12);
+        const wrapAad = utf8(`${target.deviceId}:${ephemeralB64}`);
         const wrapped = new Uint8Array(
-            await crypto.subtle.encrypt({ name: "AES-GCM", iv: wrapIv }, wrapKey, contentKey),
+            await crypto.subtle.encrypt({ name: "AES-GCM", iv: wrapIv, additionalData: wrapAad }, wrapKey, contentKey),
         );
         wraps.push({ d: target.deviceId, k: toBase64(concat(wrapIv, wrapped)) });
     }
 
     const envelope = JSON.stringify({
         v: 1,
+        p: 1,
         alg: "ECDH-P256+HKDF-SHA256+AES-256-GCM",
         e: ephemeralB64,
         iv: toBase64(iv),
@@ -777,20 +846,39 @@ export async function encryptMessageContent({ recipientUsername, plaintext }) {
  * authenticate. The AEAD tag is the only thing that proves a key is the right one, so a failure
  * here is a "keep trying", never a hard error.
  */
-async function openWrap(wrapKey, wrap, contentIv, ciphertext) {
+async function openWrap(wrapKey, wrap, contentIv, ciphertext, ephemeralB64, isPhase1) {
     try {
         const packed = fromBase64(wrap.k);
-        const contentKey = await crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: packed.slice(0, 12) },
-            wrapKey,
-            packed.slice(12),
-        );
-        const plaintext = await crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: contentIv },
-            await importAesKey(new Uint8Array(contentKey)),
-            ciphertext,
-        );
-        return new TextDecoder().decode(plaintext);
+        let contentKey;
+        let plaintext;
+
+        if (isPhase1 && ephemeralB64) {
+            const wrapAad = utf8(`${wrap.d}:${ephemeralB64}`);
+            const payloadAad = utf8(`circlehub:v1:${ephemeralB64}`);
+            contentKey = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: packed.slice(0, 12), additionalData: wrapAad },
+                wrapKey,
+                packed.slice(12),
+            );
+            plaintext = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: contentIv, additionalData: payloadAad },
+                await importAesKey(new Uint8Array(contentKey)),
+                ciphertext,
+            );
+            return unpadPlaintext(new Uint8Array(plaintext));
+        } else {
+            contentKey = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: packed.slice(0, 12) },
+                wrapKey,
+                packed.slice(12),
+            );
+            plaintext = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: contentIv },
+                await importAesKey(new Uint8Array(contentKey)),
+                ciphertext,
+            );
+            return new TextDecoder().decode(plaintext);
+        }
     } catch {
         return null;
     }
@@ -807,6 +895,8 @@ function prioritizeKeysForDevice(keys, currentDeviceId) {
 }
 
 async function tryDecryptWithKeys(envelope, rawKeys, ephemeralPublicKey, contentIv, ciphertext) {
+    const isPhase1 = envelope?.p === 1;
+    const ephemeralB64 = envelope?.e;
     const keys = prioritizeKeysForDevice(rawKeys, getDeviceId());
 
     // The wrap key depends only on our private key and the sender's ephemeral public key — never on
@@ -842,7 +932,14 @@ async function tryDecryptWithKeys(envelope, rawKeys, ephemeralPublicKey, content
         if (!bucket) continue;
 
         for (const index of bucket) {
-            const plaintext = await openWrap(await wrapKeyFor(index), wrap, contentIv, ciphertext);
+            const plaintext = await openWrap(
+                await wrapKeyFor(index),
+                wrap,
+                contentIv,
+                ciphertext,
+                ephemeralB64,
+                isPhase1,
+            );
             if (plaintext !== null) return plaintext;
         }
     }
@@ -854,7 +951,14 @@ async function tryDecryptWithKeys(envelope, rawKeys, ephemeralPublicKey, content
     for (let index = 0; index < keys.length; index += 1) {
         const wrapKey = await wrapKeyFor(index);
         for (const wrap of envelope.w) {
-            const plaintext = await openWrap(wrapKey, wrap, contentIv, ciphertext);
+            const plaintext = await openWrap(
+                wrapKey,
+                wrap,
+                contentIv,
+                ciphertext,
+                ephemeralB64,
+                isPhase1,
+            );
             if (plaintext !== null) return plaintext;
         }
     }

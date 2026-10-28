@@ -9,7 +9,7 @@ import {
     useState,
 } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Check, CheckCheck, LoaderCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, Check, CheckCheck, LoaderCircle, Lock, ShieldAlert } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { toast } from "sonner";
 
@@ -19,7 +19,7 @@ import PresenceLabel from "./PresenceLabel";
 import SharedPostCard from "./SharedPostCard";
 import { formatMessageDate, formatMessageTime } from "@/lib/formatDate";
 import { useDecryptedContent } from "@/hooks/useDecryptedContent";
-import { peekDecrypted } from "@/services/messageCrypto";
+import { hasCachedRecipientDeviceKeys, peekDecrypted, prefetchRecipientDeviceKeys } from "@/services/messageCrypto";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 
 const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry }) {
@@ -224,6 +224,22 @@ export default function MessageThread({
     const [retryText, setRetryText] = useState(null);
     const [seen, setSeen] = useState({ conversationId: null, messageId: null });
     const [pendingMessage, setPendingMessage] = useState(null);
+    const [e2eeStatus, setE2eeStatus] = useState(() =>
+        hasCachedRecipientDeviceKeys(otherUser?.username)
+    );
+
+    useEffect(() => {
+        if (!otherUser?.username) return;
+        const cached = hasCachedRecipientDeviceKeys(otherUser.username);
+        if (cached !== null) {
+            setE2eeStatus(cached);
+        }
+        prefetchRecipientDeviceKeys(otherUser.username).then((status) => {
+            if (status !== null) {
+                setE2eeStatus(status);
+            }
+        });
+    }, [otherUser?.username]);
 
     const handleRetryPending = useCallback((msg) => {
         setRetryText(msg.content);
@@ -402,9 +418,27 @@ export default function MessageThread({
                             className="avatar-md shrink-0"
                         />
                         <div className="min-w-0">
-                            <p className="type-label-md truncate text-primary">
-                                {otherUser.name}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                                <p className="type-label-md truncate text-primary">
+                                    {otherUser.name}
+                                </p>
+                                {e2eeStatus === true && (
+                                    <Lock
+                                        size={13}
+                                        className="shrink-0 text-(--muted)"
+                                        title="End-to-end encrypted"
+                                        aria-label="End-to-end encrypted"
+                                    />
+                                )}
+                                {e2eeStatus === false && (
+                                    <ShieldAlert
+                                        size={13}
+                                        className="shrink-0 text-amber-500"
+                                        title="Plaintext fallback - recipient has no keys"
+                                        aria-label="Plaintext fallback - recipient has no keys"
+                                    />
+                                )}
+                            </div>
                             <PresenceLabel
                                 isOnline={otherUser.isOnline}
                                 lastSeenAt={otherUser.lastSeenAt}
