@@ -375,7 +375,7 @@ export async function importDeviceKey(deviceId, pkcs8Bytes, publicKeyB64) {
     return record;
 }
 
-export const DEVICE_KEY_CACHE_TTL_MS = 30 * 1000;
+export const DEVICE_KEY_CACHE_TTL_MS = 2 * 60 * 1000;
 
 const deviceKeyDirectoryCache = new Map();
 const deviceKeyInFlight = new Map();
