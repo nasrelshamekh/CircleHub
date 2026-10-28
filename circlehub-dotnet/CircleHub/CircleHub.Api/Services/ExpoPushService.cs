@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace CircleHub.Api.Services
@@ -79,58 +78,17 @@ namespace CircleHub.Api.Services
             foreach (var batch in devices.Chunk(MaxBatchSize))
             {
                 var payload = batch
-                    .Select(device =>
+                    .Select(device => new ExpoPushMessage
                     {
-                        if (string.Equals(device.Platform, "android", StringComparison.OrdinalIgnoreCase))
-                        {
-                            // On Android, omitting root notification fields (Title, Body, RichContent, Sound, ChannelId)
-                            // instructs Expo Push Service to send a high-priority FCM data-only message instead of an
-                            // FCM notification block. Google Play Services (GmsCore) intercepts any FCM notification
-                            // block in the background and renders its own BigPictureStyle (giant full-width avatar),
-                            // bypassing ExpoNotificationBuilder.kt completely. Sending a pure data payload wakes
-                            // ExpoFirebaseMessagingService -> ExpoNotificationBuilder.kt so Discord-style
-                            // NotificationCompat.MessagingStyle renders with a circular left avatar + stacked messages.
-                            var androidData = data is not null
-                                ? (JsonSerializer.SerializeToNode(data, JsonOptions) as JsonObject ?? new JsonObject())
-                                : new JsonObject();
-
-                            androidData["title"] = title;
-                            androidData["message"] = body;
-                            androidData["channelId"] = channelId;
-                            androidData["sound"] = "default";
-                            androidData["vibrate"] = true;
-                            androidData["autoDismiss"] = true;
-                            if (!string.IsNullOrWhiteSpace(tag))
-                            {
-                                androidData["tag"] = tag;
-                            }
-
-                            return new ExpoPushMessage
-                            {
-                                To = device.Token,
-                                Priority = "high",
-                                Data = androidData,
-                                Sound = null,
-                                Title = null,
-                                Body = null,
-                                ChannelId = null,
-                                Tag = null,
-                                RichContent = null
-                            };
-                        }
-
-                        return new ExpoPushMessage
-                        {
-                            To = device.Token,
-                            Sound = "default",
-                            Title = title,
-                            Body = body,
-                            Data = data,
-                            ChannelId = channelId,
-                            Priority = "high",
-                            Tag = tag,
-                            RichContent = !string.IsNullOrEmpty(imageUrl) ? new ExpoRichContent { Image = imageUrl } : null
-                        };
+                        To = device.Token,
+                        Sound = "default",
+                        Title = title,
+                        Body = body,
+                        Data = data,
+                        ChannelId = channelId,
+                        Priority = "high",
+                        Tag = tag,
+                        RichContent = !string.IsNullOrEmpty(imageUrl) ? new ExpoRichContent { Image = imageUrl } : null
                     })
                     .ToArray();
 
@@ -213,11 +171,11 @@ namespace CircleHub.Api.Services
         private sealed class ExpoPushMessage
         {
             public required string To { get; init; }
-            public string? Sound { get; init; } = "default";
+            public string Sound { get; init; } = "default";
             public string? Title { get; init; }
             public string? Body { get; init; }
             public object? Data { get; init; }
-            public string? ChannelId { get; init; } = "default";
+            public string ChannelId { get; init; } = "default";
             public string Priority { get; init; } = "high";
             public string? Tag { get; init; }
             public ExpoRichContent? RichContent { get; init; }

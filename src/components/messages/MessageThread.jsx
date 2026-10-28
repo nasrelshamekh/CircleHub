@@ -17,7 +17,6 @@ import Avatar from "@/components/profileimages/Avatar";
 import MessageComposer from "./MessageComposer";
 import PresenceLabel from "./PresenceLabel";
 import SharedPostCard from "./SharedPostCard";
-import TypingLabel from "./TypingLabel";
 import { formatMessageDate, formatMessageTime } from "@/lib/formatDate";
 import { useDecryptedContent } from "@/hooks/useDecryptedContent";
 import { peekDecrypted } from "@/services/messageCrypto";
@@ -406,15 +405,11 @@ export default function MessageThread({
                             <p className="type-label-md truncate text-primary">
                                 {otherUser.name}
                             </p>
-                            {isOtherTyping ? (
-                                <TypingLabel className="type-body-sm block truncate" />
-                            ) : (
-                                <PresenceLabel
-                                    isOnline={otherUser.isOnline}
-                                    lastSeenAt={otherUser.lastSeenAt}
-                                    className="type-body-sm block truncate"
-                                />
-                            )}
+                            <PresenceLabel
+                                isOnline={otherUser.isOnline}
+                                lastSeenAt={otherUser.lastSeenAt}
+                                className="type-body-sm block truncate"
+                            />
                         </div>
                     </Link>
                 ) : (
@@ -515,6 +510,21 @@ export default function MessageThread({
                     </button>
                 )}
             </div>
+
+            {isOtherTyping && otherUser && (
+                <div className="flex items-center gap-2 px-4 py-1.5 text-xs">
+                    <div className="flex items-center gap-1.5 rounded-full bg-(--surface-low) px-3 py-1">
+                        <span className="flex gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-(--primary) animate-bounce [animation-delay:-0.3s]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-(--primary) animate-bounce [animation-delay:-0.15s]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-(--primary) animate-bounce" />
+                        </span>
+                        <span className="ml-1 font-medium italic text-(--primary)">
+                            {otherUser.name} is typing…
+                        </span>
+                    </div>
+                </div>
+            )}
 
             {otherUser && (
                 <MessageComposer

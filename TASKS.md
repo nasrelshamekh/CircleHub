@@ -35,6 +35,8 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 29 | Real-time post creation broadcast across web & mobile with 'X New Posts' scroll indicator, plus foreground notification suppression | done, verified |
 | 30 | Align mobile app primary action buttons with web app 135° brand gradient design and dynamic theme contrast | done, verified |
 | 31 | Phase 1 Polish & Performance: WebP image assets, communities skeleton, profile media link, expo-image disk caching, theme persistence, binary gender selection | done, verified |
+| 37 | Web Chat Sent & Delivered Delivery Indicators | done, verified |
+| 38 | Conversation Typing Indicator Placement & Standard Expo Push Payload Restoration | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -1530,5 +1532,21 @@ Verification:
 - Web Linter: `npm run lint` passed (0 errors, 0 warnings).
 - Web Production Build: `npm run build` passed (0 errors).
 - Pushed commit `831a573`.
+
+### Step 38 — Conversation Typing Indicator Placement & Standard Expo Push Payload Restoration (verified)
+
+1. **Typing Indicator Placement (Web & Mobile):**
+   - **Web (`src/components/messages/MessageThread.jsx`):** Removed typing indicator from the thread header so `PresenceLabel` always renders online / last seen status cleanly. Rendered `isOtherTyping && otherUser` with bounce dots and `"{name} is typing…"` directly above `<MessageComposer>`.
+   - **Mobile (`src/app/(tabs)/messages/[id].tsx`, `src/components/messages/messagethread.tsx`):** Removed `isTyping` from the header `PresenceLabel`, removed `ListHeaderComponent` from the inverted message `FlatList`, and placed `TypingBubble` inside the composer container directly above the input box.
+2. **Standard Expo Push Payload Restoration (`CircleHub.Api`):**
+   - In `ExpoPushService.cs`, restored standard top-level `Title = title`, `Body = body`, `Sound = "default"`, `ChannelId = channelId`, `Priority = "high"`, `Tag = tag`, and `Data = data` across all devices (restoring notification delivery in Expo Go and system trays).
+   - In `MessageDeliveryService.cs`, maintained `imageUrl: null` so Expo Push never sets `RichContent.Image` (preventing Google Play Services from blowing up the avatar into a `BigPictureStyle` banner).
+   - In `circlehub-mobile`, restored `patches/expo-notifications+57.0.24.patch` to the verified `09b05bf` version where `ExpoNotificationBuilder.kt` formats `NotificationCompat.MessagingStyle` with a circular avatar on the left and stacked unread messages.
+
+Verification:
+- Web Production Build: `npm run build` passed (0 errors).
+- Backend Build: `dotnet build` passed (0 warnings, 0 errors).
+- Backend Publish: `dotnet publish -c Release` packaged to `circlehub-api-publish.zip` (pruned runtimes, ~41 MB).
+
 
 
