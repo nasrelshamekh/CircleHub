@@ -89,7 +89,7 @@ export default function Messages() {
                         </span>
                     </div>
 
-                    <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+                    <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 chat-scrollbar">
                         {isLoadingConversations ? (
                             <div className="flex items-center justify-center gap-2 p-6 text-secondary">
                                 <LoaderCircle size={18} className="animate-spin text-(--primary)" />
