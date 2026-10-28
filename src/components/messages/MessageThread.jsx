@@ -497,13 +497,13 @@ export default function MessageThread({
                         )}
 
                         {isOtherTyping && otherUser && (
-                            <div className="flex items-end gap-2">
+                            <div className="flex items-end gap-2 border-0 border-none">
                                 <Avatar
                                     src={otherUser.avatarUrl}
                                     alt={otherUser.name}
-                                    className="h-7 w-7 shrink-0 text-xs"
+                                    className="h-7 w-7 shrink-0 text-xs after:hidden after:border-none"
                                 />
-                                <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-xs bg-(--surface-lowest) px-3.5 py-2">
+                                <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-xs border-0 border-none bg-(--surface-lowest) px-3.5 py-2">
                                     <span className="flex gap-1">
                                         <span className="h-1.5 w-1.5 rounded-full bg-(--primary) animate-bounce [animation-delay:-0.3s]" />
                                         <span className="h-1.5 w-1.5 rounded-full bg-(--primary) animate-bounce [animation-delay:-0.15s]" />

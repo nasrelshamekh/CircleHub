@@ -33,23 +33,30 @@ export function resolveHubUrl(baseUrl = import.meta.env.VITE_BASE_URL) {
 }
 
 export function createChatConnection() {
-    return (
-        new HubConnectionBuilder()
-            .withUrl(resolveHubUrl(), {
-                // Browsers cannot set an Authorization header on a WebSocket, so the token goes in the
-                // query string. It is read on every negotiation, which also covers reconnects.
-                accessTokenFactory: () => localStorage.getItem("token") ?? "",
-            })
-            // The SignalR default gives up after ~30s and then stays silent, which is the wrong default
-            // for a chat client, so keep retrying and let a dropped tab recover on its own.
-            .withAutomaticReconnect({
-                nextRetryDelayInMilliseconds: () => 10_000,
-            })
-            .configureLogging(
-                import.meta.env.DEV ? LogLevel.Information : LogLevel.Warning
-            )
-            .build()
-    );
+    const connection = new HubConnectionBuilder()
+        .withUrl(resolveHubUrl(), {
+            // Browsers cannot set an Authorization header on a WebSocket, so the token goes in the
+            // query string. It is read on every negotiation, which also covers reconnects.
+            accessTokenFactory: () => localStorage.getItem("token") ?? "",
+        })
+        .withAutomaticReconnect({
+            nextRetryDelayInMilliseconds: (retryContext) => {
+                if (retryContext.previousRetryCount === 0) return 0;
+                if (retryContext.previousRetryCount === 1) return 1_000;
+                if (retryContext.previousRetryCount === 2) return 2_000;
+                if (retryContext.previousRetryCount === 3) return 5_000;
+                return 10_000;
+            },
+        })
+        .configureLogging(
+            import.meta.env.DEV ? LogLevel.Information : LogLevel.Warning
+        )
+        .build();
+
+    connection.keepAliveIntervalInMilliseconds = 10_000;
+    connection.serverTimeoutInMilliseconds = 60_000;
+
+    return connection;
 }
 
 /**
