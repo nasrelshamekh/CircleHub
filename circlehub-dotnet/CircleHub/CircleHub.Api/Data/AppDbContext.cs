@@ -1,4 +1,5 @@
 using CircleHub.Api.Entities;
+using CircleHub.Api.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace CircleHub.Api.Data
@@ -130,7 +131,7 @@ namespace CircleHub.Api.Data
             modelBuilder.Entity<DeviceToken>().Property(d => d.Platform).HasMaxLength(20);
 
             modelBuilder.Entity<User>().Property(u => u.ProfileVisibility).HasConversion<string>().HasMaxLength(20);
-            modelBuilder.Entity<User>().Property(u => u.MessagesFrom).HasConversion<string>().HasMaxLength(20);
+            modelBuilder.Entity<User>().Property(u => u.MessagesFrom).HasConversion<string>().HasMaxLength(20).HasDefaultValue(MessagesFrom.Followers);
             modelBuilder.Entity<Community>().Property(c => c.Visibility).HasConversion<string>();
             modelBuilder.Entity<CommunityMember>().Property(m => m.Role).HasConversion<string>();
             modelBuilder.Entity<CommunityJoinRequest>().Property(r => r.Status).HasConversion<string>();

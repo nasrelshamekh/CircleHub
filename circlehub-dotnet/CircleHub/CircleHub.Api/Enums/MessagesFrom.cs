@@ -2,8 +2,8 @@ namespace CircleHub.Api.Enums
 {
     public enum MessagesFrom
     {
-        Everyone,
-        Followers,
-        None
+        Followers = 0,
+        Everyone = 1,
+        None = 2
     }
 }

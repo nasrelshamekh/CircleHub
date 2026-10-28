@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.RateLimiting;
 ﻿using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
+using CircleHub.Api.Enums;
 using CircleHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -66,6 +67,7 @@ namespace CircleHub.Api.Controllers
                 Gender = dto.Gender,
                 DateOfBirth = dto.DateOfBirth,
                 Location = dto.Location,
+                MessagesFrom = MessagesFrom.Followers,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
