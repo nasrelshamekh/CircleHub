@@ -13,7 +13,7 @@ import {
     sendTyping,
     TYPING_CHANGED_EVENT,
 } from "@/services/chatHub";
-import { decryptMessageContent } from "@/services/messageCrypto";
+import { clearDeviceKeyCache, decryptMessageContent } from "@/services/messageCrypto";
 import { chimeForIncomingMessage } from "@/lib/messageChime";
 import {
     appendMessageToThreadCache,
@@ -246,6 +246,18 @@ export default function ChatConnectionContextProvider({ children }) {
         });
 
         connection.on(PRESENCE_CHANGED_EVENT, (presence) => {
+            const userId = presence?.userId ?? presence?.UserId;
+            if (userId) {
+                const partner = findConversationByPartner(queryClient, userId);
+                if (partner?.otherUser?.username) {
+                    clearDeviceKeyCache(partner.otherUser.username);
+                } else {
+                    clearDeviceKeyCache();
+                }
+            } else {
+                clearDeviceKeyCache();
+            }
+
             // Patched by hand so the dot and the wording flip the moment the event lands, without
             // waiting for a round trip. A refetch does still follow, because useConversation invalidates
             // the conversations prefix whenever its data changes — that is the confirmation, not the
