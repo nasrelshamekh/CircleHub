@@ -24,6 +24,7 @@ import { shouldToast, showMessageToast } from "@/lib/messageToast";
 import { chimeForIncomingNotification } from "@/lib/notificationChime";
 import { shouldToastNotification, showNotificationToast } from "@/lib/notificationToast";
 import { queryKeys } from "@/lib/queryKeys";
+import { updatePollInCache } from "@/hooks/mutations/useVotePoll";
 
 // `withAutomaticReconnect` only recovers a connection that was established once, so a tab opened while the
 // API is unreachable needs its own retry loop.
@@ -303,6 +304,14 @@ export default function ChatConnectionContextProvider({ children }) {
                 window.dispatchEvent(
                     new CustomEvent("circlehub:post-created", { detail: normalized })
                 );
+            }
+        });
+
+        connection.on("PollUpdated", (payload) => {
+            const postId = payload?.postId || payload?.PostId;
+            const poll = payload?.poll || payload?.Poll;
+            if (postId && poll) {
+                updatePollInCache(queryClient, postId, poll);
             }
         });
 

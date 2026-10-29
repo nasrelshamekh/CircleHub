@@ -16,7 +16,7 @@ export default function PollWidget({ postId, poll }) {
   const handleVote = (optionId) => {
     if (voteMutation.isPending) return;
     voteMutation.mutate(
-      { postId, optionId },
+      { postId, optionId, currentPoll: poll },
       {
         onSuccess: () => {
           setIsChangingVote(false);
@@ -40,17 +40,35 @@ export default function PollWidget({ postId, poll }) {
 
   return (
     <div
-      className="my-3 rounded-2xl bg-surface-lowest p-4 shadow-xs border-0"
+      className="my-3 rounded-2xl bg-surface-low/85 dark:bg-surface-low/70 p-4 sm:p-5 shadow-xs transition-colors"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <BarChart3 size={18} className="text-(--primary)" />
-        <h4 className="type-label-lg font-semibold text-text-primary">
-          {poll.question}
-        </h4>
+      {/* Header with Poll Badge & Timer */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-(--primary)/15 text-(--primary)">
+          <BarChart3 size={14} strokeWidth={2.5} />
+          <span>Community Poll</span>
+        </div>
+
+        <div className="flex items-center gap-1 text-xs text-text-secondary font-medium">
+          <Clock size={12} />
+          <span>{formatRemainingTime()}</span>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-2">
+      {/* Question */}
+      <h4 className="type-title-lg font-bold text-text-primary leading-snug mb-1">
+        {poll.question}
+      </h4>
+
+      {!showResults && (
+        <p className="type-label-sm text-text-secondary mb-3.5">
+          Select an option to cast your vote:
+        </p>
+      )}
+
+      {/* Poll Options */}
+      <div className="flex flex-col gap-2.5 mt-2">
         {poll.options.map((option) => {
           const isMyPick = poll.myVotedOptionId === option.id;
 
@@ -58,10 +76,10 @@ export default function PollWidget({ postId, poll }) {
             return (
               <div
                 key={option.id}
-                className={`group relative overflow-hidden rounded-xl border-0 p-3 transition-colors ${
+                className={`relative overflow-hidden rounded-xl p-3.5 shadow-xs transition-all ${
                   isMyPick
-                    ? "bg-(--primary)/10"
-                    : "bg-surface-low"
+                    ? "bg-surface-lowest ring-2 ring-(--primary)"
+                    : "bg-surface-lowest ring-1 ring-border/40"
                 }`}
               >
                 {/* Background percentage fill bar */}
@@ -74,8 +92,8 @@ export default function PollWidget({ postId, poll }) {
                   }`}
                 />
 
-                <div className="relative z-10 flex items-center justify-between gap-3 text-sm">
-                  <div className="flex items-center gap-2 min-w-0">
+                <div className="relative z-10 flex items-center justify-between gap-3 text-sm sm:text-base">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     {isMyPick && (
                       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full gradient-primary text-(--button-gradient-text) shadow-xs">
                         <Check size={12} strokeWidth={3} />
@@ -83,35 +101,47 @@ export default function PollWidget({ postId, poll }) {
                     )}
                     <span
                       className={`truncate ${
-                        isMyPick ? "font-semibold text-text-primary" : "text-text-primary"
+                        isMyPick
+                          ? "font-bold text-text-primary"
+                          : "font-medium text-text-primary"
                       }`}
                     >
                       {option.text}
                     </span>
                   </div>
 
-                  <div className="shrink-0 font-medium text-xs text-text-secondary flex items-center gap-1.5">
-                    <span>{option.votesCount} {option.votesCount === 1 ? "vote" : "votes"}</span>
+                  <div className="shrink-0 font-medium text-xs sm:text-sm text-text-secondary flex items-center gap-2">
+                    <span>
+                      {option.votesCount} {option.votesCount === 1 ? "vote" : "votes"}
+                    </span>
                     <span>•</span>
-                    <span className="font-semibold text-text-primary">{option.percentage}%</span>
+                    <span
+                      className={`font-bold ${
+                        isMyPick ? "text-(--primary)" : "text-text-primary"
+                      }`}
+                    >
+                      {option.percentage}%
+                    </span>
                   </div>
                 </div>
               </div>
             );
           }
 
-          // Interactive voting choice button with radio indicator
+          // Interactive voting choice button with distinct card styling & radio indicator
           return (
             <button
               key={option.id}
               type="button"
               disabled={voteMutation.isPending}
               onClick={() => handleVote(option.id)}
-              className="group flex items-center justify-between rounded-xl border-0 bg-surface-low hover:bg-surface-high px-4 py-3 text-left text-sm font-medium text-text-primary transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+              className="group relative flex items-center justify-between w-full rounded-xl bg-surface-lowest hover:bg-surface-lowest px-4 py-3.5 text-left text-sm sm:text-base font-medium text-text-primary shadow-xs hover:shadow-md transition-all duration-200 active:scale-[0.99] disabled:opacity-60 cursor-pointer ring-1 ring-border/40 hover:ring-2 hover:ring-(--primary)"
             >
-              <span>{option.text}</span>
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-high group-hover:bg-(--primary)/30 transition-colors">
-                <div className="h-2 w-2 rounded-full bg-transparent group-hover:bg-(--primary) transition-colors" />
+              <span className="pr-3 group-hover:text-(--primary) transition-colors">
+                {option.text}
+              </span>
+              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-1.5 ring-border group-hover:ring-(--primary) bg-surface-low transition-all">
+                <div className="h-2.5 w-2.5 rounded-full bg-transparent group-hover:bg-(--primary) transition-all scale-0 group-hover:scale-100" />
               </div>
             </button>
           );
@@ -120,14 +150,9 @@ export default function PollWidget({ postId, poll }) {
 
       {/* Footer bar */}
       <div className="mt-3.5 flex items-center justify-between text-xs text-text-secondary pt-1">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 font-medium">
           <span>
-            {poll.totalVotes} {poll.totalVotes === 1 ? "vote" : "votes"}
-          </span>
-          <span>•</span>
-          <span className="flex items-center gap-1">
-            <Clock size={12} />
-            {formatRemainingTime()}
+            {poll.totalVotes} {poll.totalVotes === 1 ? "vote cast" : "votes cast"}
           </span>
         </div>
 
@@ -135,9 +160,9 @@ export default function PollWidget({ postId, poll }) {
           <button
             type="button"
             onClick={() => setIsChangingVote((prev) => !prev)}
-            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-(--primary) hover:bg-surface-low transition-colors cursor-pointer"
+            className="px-3 py-1 rounded-full text-xs font-semibold bg-surface-lowest hover:bg-surface-high text-(--primary) transition-all shadow-xs cursor-pointer ring-1 ring-border/30 hover:ring-(--primary)/50"
           >
-            {isChangingVote ? "Cancel" : "Change vote"}
+            {isChangingVote ? "View results" : "Change vote"}
           </button>
         )}
       </div>
