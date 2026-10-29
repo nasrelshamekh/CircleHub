@@ -5,38 +5,20 @@ import { CreatePostModal } from '../createpost/CreatePostModal'
 import { useAuth } from '@/hooks/useAuth'
 import { useSidebar } from '@/hooks/useSidebar'
 import { AnimatePresence, motion } from 'motion/react'
-import { toast } from 'sonner'
-import { prepareUploadImage } from '@/lib/imageUpload'
 
 export default function Sidebar() {
 
-    const [open, setOpen] = useState(false)
-    const [previewUrl, setPreviewUrl] = useState(null)
-    const [imageFile, setImageFile] = useState(null)
+    const [open, setOpen] = useState(false);
+    const [images, setImages] = useState([]);
     const { userData } = useAuth();
     const { isSidebarExpanded, toggleSidebar } = useSidebar();
 
-    async function handlePhotoSelect(event) {
-        const file = event.target.files?.[0];
-        event.target.value = "";
-        if (!file) return;
-
-        const { file: processedFile, previewUrl: processedPreview, error } =
-            await prepareUploadImage(file);
-
-        if (error) {
-            toast.error(error);
-            return;
+    function handleRemovePhoto(index) {
+        if (typeof index === "number") {
+            setImages((prev) => prev.filter((_, idx) => idx !== index));
+        } else {
+            setImages([]);
         }
-
-        setPreviewUrl(processedPreview);
-        setImageFile(processedFile);
-        setOpen(true);
-    }
-
-    function handleRemovePhoto() {
-        setPreviewUrl(null);
-        setImageFile(null);
     }
 
     function handleOpenChange(isOpen) {
@@ -81,9 +63,8 @@ export default function Sidebar() {
                     open={open}
                     onOpenChange={handleOpenChange}
                     user={userData}
-                    previewUrl={previewUrl}
-                    imageFile={imageFile}
-                    handlePhotoSelect={handlePhotoSelect}
+                    images={images}
+                    setImages={setImages}
                     handleRemovePhoto={handleRemovePhoto}
                 />
                 <button

@@ -12,18 +12,31 @@ import { toast } from "sonner"
 
 import { useCreatePost } from "@/hooks/mutations/useCreatePost"
 import Avatar from "@/components/profileimages/Avatar"
-import { ACCEPTED_IMAGE_TYPES } from "@/lib/imageUpload"
+import { ACCEPTED_IMAGE_TYPES, prepareUploadImage } from "@/lib/imageUpload"
 
-export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFile, handlePhotoSelect, handleRemovePhoto, community }) {
+export function CreatePostModal({
+    open,
+    onOpenChange,
+    user,
+    images: externalImages,
+    setImages: externalSetImages,
+    handleRemovePhoto,
+    community
+}) {
     const [content, setContent] = useState("");
     const [showPoll, setShowPoll] = useState(false);
     const [pollQuestion, setPollQuestion] = useState("");
     const [pollOptions, setPollOptions] = useState(["", ""]);
     const [pollDurationDays, setPollDurationDays] = useState(1);
+    const [localImages, setLocalImages] = useState([]);
 
     const modalFileInput = useRef(null);
     const createPost = useCreatePost();
     const navigate = useNavigate();
+
+    // Sync external images if provided, or fallback to localImages
+    const images = externalImages ?? localImages;
+    const updateImages = externalSetImages ?? setLocalImages;
 
     function resetForm() {
         setContent("");
@@ -31,11 +44,18 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
         setPollQuestion("");
         setPollOptions(["", ""]);
         setPollDurationDays(1);
-        handleRemovePhoto();
+        updateImages([]);
+        handleRemovePhoto?.();
+    }
+
+    function removeSingleImage(index) {
+        updateImages(images.filter((_, idx) => idx !== index));
+        handleRemovePhoto?.(index);
     }
 
     function handleSubmit() {
         const trimmed = content.trim();
+        const filesToSend = images.map((i) => i.file).filter(Boolean);
 
         if (showPoll) {
             if (!pollQuestion.trim()) {
@@ -47,8 +67,8 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                 toast.error("A poll needs at least two options.");
                 return;
             }
-        } else if (!trimmed && !imageFile) {
-            toast.error("Please write something or add a photo first.");
+        } else if (!trimmed && filesToSend.length === 0) {
+            toast.error("Please write something, add a photo, or create a poll first.");
             return;
         }
 
@@ -64,7 +84,8 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
             {
                 content: trimmed || (showPoll ? pollQuestion.trim() : ""),
                 communityId: community?.id,
-                imageFile,
+                imageFiles: filesToSend,
+                imageFile: filesToSend[0] || null,
                 poll: pollPayload,
             },
             {
@@ -82,12 +103,44 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
     }
 
     function openModalFileInput() {
+        if (images.length >= 4) {
+            toast.error("Maximum 4 photos allowed per post.");
+            return;
+        }
         modalFileInput.current?.click();
     }
 
-    function handleModalPhotoSelect(event) {
-        handlePhotoSelect?.(event);
+    async function handleModalPhotoSelect(event) {
+        const files = Array.from(event.target.files || []);
         event.target.value = "";
+        if (files.length === 0) return;
+
+        const remaining = 4 - images.length;
+        if (remaining <= 0) {
+            toast.error("Maximum 4 photos allowed per post.");
+            return;
+        }
+
+        const toProcess = files.slice(0, remaining);
+        const processed = [];
+
+        for (const file of toProcess) {
+            const { file: processedFile, previewUrl: processedPreview, error } =
+                await prepareUploadImage(file);
+
+            if (error) {
+                toast.error(error);
+                return;
+            }
+
+            if (processedFile && processedPreview) {
+                processed.push({ file: processedFile, previewUrl: processedPreview });
+            }
+        }
+
+        if (processed.length > 0) {
+            updateImages([...images, ...processed].slice(0, 4));
+        }
     }
 
     const handleOptionChange = (index, value) => {
@@ -222,21 +275,56 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                     </div>
                 )}
 
-                {previewUrl && (
-                    <div className="relative overflow-hidden rounded-xl">
-                        <img
-                            src={previewUrl}
-                            alt="Selected preview"
-                            className="max-h-64 w-full object-contain sm:max-h-80"
-                        />
-                        <button
-                            type="button"
-                            onClick={handleRemovePhoto}
-                            aria-label="Remove selected photo"
-                            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-(--primary) transition hover:bg-(--background) cursor-pointer border-0"
-                        >
-                            <X size={18} />
-                        </button>
+                {/* Multi-Image Previews */}
+                {images.length > 0 && (
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs text-text-secondary px-1">
+                            <span className="font-medium">Photos ({images.length}/4)</span>
+                            {images.length < 4 && (
+                                <button
+                                    type="button"
+                                    onClick={openModalFileInput}
+                                    className="text-xs font-semibold text-(--primary) hover:underline cursor-pointer flex items-center gap-1"
+                                >
+                                    <Plus size={14} /> Add photo
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex gap-2.5 overflow-x-auto py-1 custom-scrollbar">
+                            {images.map((img, idx) => (
+                                <div
+                                    key={idx}
+                                    className="relative h-24 w-24 sm:h-28 sm:w-28 shrink-0 overflow-hidden rounded-xl bg-surface-low ring-1 ring-border/40 group"
+                                >
+                                    <img
+                                        src={img.previewUrl}
+                                        alt={`Selected preview ${idx + 1}`}
+                                        className="h-full w-full object-cover"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => removeSingleImage(idx)}
+                                        aria-label={`Remove photo ${idx + 1}`}
+                                        className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 transition-colors cursor-pointer border-0 shadow-xs"
+                                        title="Remove photo"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+
+                            {images.length < 4 && (
+                                <button
+                                    type="button"
+                                    onClick={openModalFileInput}
+                                    className="flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 flex-col items-center justify-center rounded-xl bg-surface-low hover:bg-surface-high border-2 border-dashed border-border/60 hover:border-(--primary) text-text-secondary hover:text-(--primary) transition-colors cursor-pointer"
+                                    title="Add another photo"
+                                >
+                                    <Plus size={20} />
+                                    <span className="text-[11px] font-medium mt-1">Add photo</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -262,15 +350,27 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                         <button
                             type="button"
                             onClick={openModalFileInput}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer border-0 bg-surface-low hover:bg-surface-high text-text-secondary hover:text-text-primary"
+                            disabled={images.length >= 4}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer border-0 ${
+                                images.length > 0
+                                    ? "bg-(--primary)/15 text-(--primary)"
+                                    : "bg-surface-low hover:bg-surface-high text-text-secondary hover:text-text-primary"
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
                             aria-label="Add photo"
-                            title="Add photo"
+                            title={images.length >= 4 ? "Maximum 4 photos reached" : "Add photos"}
                         >
                             <Images size={16} />
-                            <span>Photo</span>
+                            <span>Photo {images.length > 0 ? `(${images.length}/4)` : ""}</span>
                         </button>
                     </div>
-                    <input onChange={handleModalPhotoSelect} ref={modalFileInput} type="file" accept={ACCEPTED_IMAGE_TYPES} className="hidden" />
+                    <input
+                        onChange={handleModalPhotoSelect}
+                        ref={modalFileInput}
+                        type="file"
+                        multiple
+                        accept={ACCEPTED_IMAGE_TYPES}
+                        className="hidden"
+                    />
                 </div>
 
                 <button

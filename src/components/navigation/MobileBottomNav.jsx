@@ -7,16 +7,13 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useState } from "react";
-import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { CreatePostModal } from "@/components/createpost/CreatePostModal";
-import { prepareUploadImage } from "@/lib/imageUpload";
 
 export default function MobileBottomNav() {
     const { userData } = useAuth();
     const [open, setOpen] = useState(false);
-    const [previewUrl, setPreviewUrl] = useState(null);
-    const [imageFile, setImageFile] = useState(null);
+    const [images, setImages] = useState([]);
     const navItems = [
         {
             label: "Home",
@@ -45,27 +42,12 @@ export default function MobileBottomNav() {
         },
     ];
 
-    async function handlePhotoSelect(event) {
-        const file = event.target.files?.[0];
-        event.target.value = "";
-        if (!file) return;
-
-        const { file: processedFile, previewUrl: processedPreview, error } =
-            await prepareUploadImage(file);
-
-        if (error) {
-            toast.error(error);
-            return;
+    function handleRemovePhoto(index) {
+        if (typeof index === "number") {
+            setImages((prev) => prev.filter((_, idx) => idx !== index));
+        } else {
+            setImages([]);
         }
-
-        setPreviewUrl(processedPreview);
-        setImageFile(processedFile);
-        setOpen(true);
-    }
-
-    function handleRemovePhoto() {
-        setPreviewUrl(null);
-        setImageFile(null);
     }
 
     function handleOpenChange(isOpen) {
@@ -82,9 +64,8 @@ export default function MobileBottomNav() {
                 open={open}
                 onOpenChange={handleOpenChange}
                 user={userData}
-                previewUrl={previewUrl}
-                imageFile={imageFile}
-                handlePhotoSelect={handlePhotoSelect}
+                images={images}
+                setImages={setImages}
                 handleRemovePhoto={handleRemovePhoto}
             />
             <nav className="fixed bottom-0 left-0 right-0 z-50 shadow-sm bg-(--background) px-2 py-2 lg:hidden">
