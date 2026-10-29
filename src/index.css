@@ -256,7 +256,39 @@ img {
   opacity: 0.9;
 }
 
-/* Custom themed scrollbars matching CircleHub design tokens */
+/* Custom themed scrollbars matching CircleHub design tokens across the app */
+html,
+body,
+*,
+*::before,
+*::after {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: var(--radius-full);
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--outline);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .chat-scrollbar,
 .custom-scrollbar {
   scrollbar-width: thin;
