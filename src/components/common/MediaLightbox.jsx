@@ -121,7 +121,7 @@ function MediaLightboxModal({ src, alt, onClose }) {
         <button
           type="button"
           onClick={toggleZoom}
-          className="p-2 rounded-full hover:bg-white/15 transition-colors text-white"
+          className="p-2 rounded-full hover:bg-white/15 transition-colors text-white cursor-pointer"
           title={scale > 1 ? "Reset zoom (Esc)" : "Zoom in"}
         >
           {scale > 1 ? <ZoomOut size={18} /> : <ZoomIn size={18} />}
@@ -131,7 +131,7 @@ function MediaLightboxModal({ src, alt, onClose }) {
           href={src}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-2 rounded-full hover:bg-white/15 transition-colors text-white"
+          className="p-2 rounded-full hover:bg-white/15 transition-colors text-white cursor-pointer"
           title="Open original in new tab"
         >
           <ExternalLink size={18} />
@@ -140,7 +140,7 @@ function MediaLightboxModal({ src, alt, onClose }) {
         <button
           type="button"
           onClick={handleDownload}
-          className="p-2 rounded-full hover:bg-white/15 transition-colors text-white"
+          className="p-2 rounded-full hover:bg-white/15 transition-colors text-white cursor-pointer"
           title="Download image"
         >
           <Download size={18} />
@@ -151,7 +151,7 @@ function MediaLightboxModal({ src, alt, onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="p-2 rounded-full hover:bg-white/20 hover:text-white transition-colors text-white/80"
+          className="p-2 rounded-full hover:bg-white/20 hover:text-white transition-colors text-white/80 cursor-pointer"
           title="Close (Esc)"
         >
           <X size={20} />

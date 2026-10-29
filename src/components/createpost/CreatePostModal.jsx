@@ -139,16 +139,16 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
 
                 {/* Poll Builder */}
                 {showPoll && (
-                    <div className="rounded-xl border border-border/80 bg-surface-lowest/70 p-4 space-y-3">
+                    <div className="rounded-xl border border-border bg-surface-lowest p-4 space-y-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <BarChart3 size={18} className="text-(--primary)" />
-                                <span className="type-label-sm font-semibold">Community Poll</span>
+                                <span className="type-label-sm font-semibold text-text-primary">Community Poll</span>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setShowPoll(false)}
-                                className="text-secondary hover:text-primary p-1 rounded-md"
+                                className="icon-button-soft p-1 text-text-secondary hover:text-text-primary rounded-md"
                                 title="Remove poll"
                             >
                                 <X size={16} />
@@ -161,7 +161,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                             onChange={(e) => setPollQuestion(e.target.value)}
                             placeholder="Ask a question..."
                             maxLength={200}
-                            className="input-surface type-body-sm w-full rounded-lg px-3 py-2 text-primary"
+                            className="input-surface type-body-sm w-full rounded-lg px-3 py-2 text-text-primary"
                         />
 
                         <div className="space-y-2">
@@ -173,13 +173,13 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                                         onChange={(e) => handleOptionChange(idx, e.target.value)}
                                         placeholder={`Option ${idx + 1}`}
                                         maxLength={100}
-                                        className="input-surface type-body-sm flex-1 rounded-lg px-3 py-1.5 text-primary"
+                                        className="input-surface type-body-sm flex-1 rounded-lg px-3 py-1.5 text-text-primary"
                                     />
                                     {pollOptions.length > 2 && (
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveOption(idx)}
-                                            className="text-secondary hover:text-red-500 p-1"
+                                            className="icon-button-soft p-1 text-text-secondary hover:text-error transition-colors"
                                             title="Delete option"
                                         >
                                             <X size={16} />
@@ -193,14 +193,14 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                             <button
                                 type="button"
                                 onClick={handleAddOption}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-(--primary) hover:underline pt-1"
+                                className="flex items-center gap-1.5 text-xs font-semibold text-(--primary) hover:underline pt-1 cursor-pointer"
                             >
                                 <Plus size={14} />
-                                Add option
+                                Add option ({pollOptions.length}/6)
                             </button>
                         )}
 
-                        <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs text-secondary">
+                        <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs text-text-secondary">
                             <span>Poll duration:</span>
                             <div className="flex gap-1.5">
                                 {[1, 3, 7].map((days) => (
@@ -208,10 +208,10 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                                         key={days}
                                         type="button"
                                         onClick={() => setPollDurationDays(days)}
-                                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                                             pollDurationDays === days
-                                                ? "bg-(--primary) text-white"
-                                                : "bg-surface hover:bg-border/40 text-secondary"
+                                                ? "gradient-primary text-(--button-gradient-text) shadow-xs"
+                                                : "bg-surface-low hover:bg-surface-high text-text-secondary border border-border/50"
                                         }`}
                                     >
                                         {days} {days === 1 ? "day" : "days"}
@@ -240,32 +240,34 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                     </div>
                 )}
 
-                <div className="p-3 flex justify-between items-center gap-2 border-t border-border/40">
-                    <span className="type-label-md">
+                <div className="p-3 flex justify-between items-center gap-2 border-t border-border/50">
+                    <span className="type-label-md text-text-secondary">
                         Add to your post:
                     </span>
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
                             onClick={() => setShowPoll((prev) => !prev)}
-                            className={`p-2 rounded-xl transition-colors ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
                                 showPoll
-                                    ? "bg-(--primary)/15 text-(--primary)"
-                                    : "text-secondary hover:text-primary hover:bg-surface"
+                                    ? "border-(--primary) bg-(--primary)/10 text-(--primary)"
+                                    : "border-border/60 bg-surface-lowest text-text-secondary hover:text-text-primary hover:bg-surface-low"
                             }`}
-                            title="Add a poll"
+                            title={showPoll ? "Discard poll" : "Add a poll"}
                         >
-                            <BarChart3 size={20} />
+                            <BarChart3 size={16} />
+                            <span>Poll</span>
                         </button>
 
                         <button
                             type="button"
                             onClick={openModalFileInput}
-                            className="p-2 rounded-xl text-secondary hover:text-primary hover:bg-surface transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border border-border/60 bg-surface-lowest text-text-secondary hover:text-text-primary hover:bg-surface-low"
                             aria-label="Add photo"
                             title="Add photo"
                         >
-                            <Images size={20} />
+                            <Images size={16} />
+                            <span>Photo</span>
                         </button>
                     </div>
                     <input onChange={handleModalPhotoSelect} ref={modalFileInput} type="file" accept={ACCEPTED_IMAGE_TYPES} className="hidden" />

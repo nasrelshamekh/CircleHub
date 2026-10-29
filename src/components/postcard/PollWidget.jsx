@@ -40,12 +40,12 @@ export default function PollWidget({ postId, poll }) {
 
   return (
     <div
-      className="my-3 rounded-2xl border border-border/80 bg-surface-lowest/50 dark:bg-white/[0.02] p-4 shadow-sm"
+      className="my-3 rounded-2xl border border-border bg-surface-lowest p-4 shadow-xs"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-2 mb-3">
         <BarChart3 size={18} className="text-(--primary)" />
-        <h4 className="type-label-lg font-semibold text-primary">
+        <h4 className="type-label-lg font-semibold text-text-primary">
           {poll.question}
         </h4>
       </div>
@@ -58,63 +58,69 @@ export default function PollWidget({ postId, poll }) {
             return (
               <div
                 key={option.id}
-                className="group relative overflow-hidden rounded-xl border border-border/60 bg-surface-lowest p-3 transition-colors"
+                className={`group relative overflow-hidden rounded-xl border p-3 transition-colors ${
+                  isMyPick
+                    ? "border-(--primary)/50 bg-(--primary)/5"
+                    : "border-border/60 bg-surface-low/50"
+                }`}
               >
                 {/* Background percentage fill bar */}
                 <div
                   style={{ width: `${Math.min(Math.max(option.percentage, 0), 100)}%` }}
                   className={`absolute inset-y-0 left-0 transition-all duration-500 ease-out ${
                     isMyPick
-                      ? "bg-(--primary)/20 dark:bg-(--primary)/30"
-                      : "bg-black/5 dark:bg-white/10"
+                      ? "gradient-primary opacity-25"
+                      : "bg-surface-variant opacity-60"
                   }`}
                 />
 
                 <div className="relative z-10 flex items-center justify-between gap-3 text-sm">
                   <div className="flex items-center gap-2 min-w-0">
                     {isMyPick && (
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-(--primary) text-white shadow-sm">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full gradient-primary text-(--button-gradient-text) shadow-xs">
                         <Check size={12} strokeWidth={3} />
                       </span>
                     )}
                     <span
                       className={`truncate ${
-                        isMyPick ? "font-semibold text-primary" : "text-secondary"
+                        isMyPick ? "font-semibold text-text-primary" : "text-text-primary"
                       }`}
                     >
                       {option.text}
                     </span>
                   </div>
 
-                  <div className="shrink-0 font-medium text-xs text-secondary flex items-center gap-1.5">
+                  <div className="shrink-0 font-medium text-xs text-text-secondary flex items-center gap-1.5">
                     <span>{option.votesCount} {option.votesCount === 1 ? "vote" : "votes"}</span>
                     <span>•</span>
-                    <span className="font-semibold text-primary">{option.percentage}%</span>
+                    <span className="font-semibold text-text-primary">{option.percentage}%</span>
                   </div>
                 </div>
               </div>
             );
           }
 
-          // Interactive voting button
+          // Interactive voting choice button with radio indicator
           return (
             <button
               key={option.id}
               type="button"
               disabled={voteMutation.isPending}
               onClick={() => handleVote(option.id)}
-              className="flex items-center justify-between rounded-xl border border-border/80 bg-surface-lowest px-4 py-3 text-left text-sm font-medium text-secondary transition-all hover:border-(--primary) hover:bg-(--primary)/5 hover:text-primary active:scale-[0.99] disabled:opacity-50"
+              className="group flex items-center justify-between rounded-xl border border-border bg-surface-low px-4 py-3 text-left text-sm font-medium text-text-primary transition-all hover:border-(--primary) hover:bg-(--primary)/5 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
             >
               <span>{option.text}</span>
-              <span className="text-xs text-secondary/60">Vote</span>
+              <div className="flex h-5 w-5 items-center justify-center rounded-full border border-border group-hover:border-(--primary) bg-surface-lowest transition-colors">
+                <div className="h-2 w-2 rounded-full bg-transparent group-hover:bg-(--primary)/40 transition-colors" />
+              </div>
             </button>
           );
         })}
       </div>
 
       {/* Footer bar */}
-      <div className="mt-3 flex items-center justify-between text-xs text-secondary/80 pt-2 border-t border-border/40">
-        <div className="flex items-center gap-3">
+      <div className="mt-3.5 flex items-center justify-between text-xs text-text-secondary pt-2.5 border-t border-border/50">
+        <div className="flex items-center gap-2.5">
           <span>
             {poll.totalVotes} {poll.totalVotes === 1 ? "vote" : "votes"}
           </span>
@@ -129,9 +135,9 @@ export default function PollWidget({ postId, poll }) {
           <button
             type="button"
             onClick={() => setIsChangingVote((prev) => !prev)}
-            className="font-medium text-(--primary) hover:underline"
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-(--primary) hover:bg-surface-low transition-colors cursor-pointer"
           >
-            {isChangingVote ? "View results" : "Change vote"}
+            {isChangingVote ? "Cancel" : "Change vote"}
           </button>
         )}
       </div>
