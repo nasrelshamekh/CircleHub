@@ -1245,6 +1245,8 @@ namespace CircleHub.Api.Controllers
                 .Select(PostDto.Projection(currentUserId))
                 .ToListAsync();
 
+            posts.ForEach(p => p.ResolveRichData());
+
             return Ok(new ApiResponse<List<PostDto>>
             {
                 Count = posts.Count,
@@ -1285,25 +1287,75 @@ namespace CircleHub.Api.Controllers
                     "You must be a community member to create posts"
                 );
 
-            string? imageUrl;
+            string? primaryImageUrl = null;
+            var additionalUrls = new List<string>();
+            var savedUrls = new List<string>();
+
+            var imageFiles = new List<IFormFile>();
+            if (dto.Images != null && dto.Images.Count > 0)
+                imageFiles.AddRange(dto.Images.Where(f => f != null && f.Length > 0));
+            else if (dto.Image != null && dto.Image.Length > 0)
+                imageFiles.Add(dto.Image);
+
             try
             {
-                imageUrl = await _uploadService.SavePostImageAsync(dto.Image);
+                for (int i = 0; i < imageFiles.Count; i++)
+                {
+                    var saved = await _uploadService.SavePostImageAsync(imageFiles[i]);
+                    if (saved != null)
+                    {
+                        savedUrls.Add(saved);
+                        if (i == 0) primaryImageUrl = saved;
+                        else additionalUrls.Add(saved);
+                    }
+                }
             }
             catch (ArgumentException ex)
             {
+                foreach (var url in savedUrls)
+                    await _uploadService.DeleteImageAsync(url);
                 return Fail(StatusCodes.Status400BadRequest, ex.Message);
             }
 
             var post = new Post
             {
                 Content = dto.Content,
-                ImageUrl = imageUrl,
+                ImageUrl = primaryImageUrl,
+                AdditionalImageUrls = additionalUrls.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(additionalUrls) : null,
                 CommunityId = communityId,
                 AuthorId = currentUserId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
+
+            if (!string.IsNullOrWhiteSpace(dto.PollQuestion) && dto.PollOptions != null)
+            {
+                var validOptions = dto.PollOptions
+                    .Where(o => !string.IsNullOrWhiteSpace(o))
+                    .Select(o => o.Trim())
+                    .Distinct()
+                    .Take(6)
+                    .ToList();
+
+                if (validOptions.Count >= 2)
+                {
+                    var expiresAt = dto.PollDurationDays.HasValue && dto.PollDurationDays.Value > 0
+                        ? DateTime.UtcNow.AddDays(Math.Clamp(dto.PollDurationDays.Value, 1, 30))
+                        : (DateTime?)null;
+
+                    post.Poll = new Poll
+                    {
+                        Question = dto.PollQuestion.Trim(),
+                        ExpiresAt = expiresAt,
+                        CreatedAt = DateTime.UtcNow,
+                        Options = validOptions.Select((text, index) => new PollOption
+                        {
+                            Text = text,
+                            DisplayOrder = index
+                        }).ToList()
+                    };
+                }
+            }
 
             _db.Posts.Add(post);
 
@@ -1313,8 +1365,8 @@ namespace CircleHub.Api.Controllers
             }
             catch
             {
-                if (imageUrl is not null)
-                    await _uploadService.DeleteImageAsync(imageUrl);
+                foreach (var url in savedUrls)
+                    await _uploadService.DeleteImageAsync(url);
                 throw;
             }
 
@@ -1322,6 +1374,8 @@ namespace CircleHub.Api.Controllers
                 .Where(p => p.Id == post.Id)
                 .Select(PostDto.Projection(currentUserId, includeCommunity: true))
                 .FirstAsync();
+
+            created.ResolveRichData();
 
 
             if (community.Visibility == CommunityVisibility.Private)

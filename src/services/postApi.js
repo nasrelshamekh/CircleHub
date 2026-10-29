@@ -1,4 +1,4 @@
-﻿import { apiClient } from "./apiClient";
+import { apiClient } from "./apiClient";
 
 export async function getFeedPosts(page, pageSize) {
   const response = await apiClient.get("/posts", {
@@ -37,11 +37,22 @@ export async function getCommunityPosts(communityId) {
   return response.data;
 }
 
-export async function createPost({ content, communityId, imageFile }) {
+export async function createPost({ content, communityId, imageFile, imageFiles, poll }) {
   const formData = new FormData();
   formData.append("content", content);
-  if (imageFile) {
+
+  if (imageFiles && imageFiles.length > 0) {
+    imageFiles.forEach((file) => formData.append("images", file));
+  } else if (imageFile) {
     formData.append("image", imageFile);
+  }
+
+  if (poll && poll.question?.trim() && poll.options?.length >= 2) {
+    formData.append("pollQuestion", poll.question.trim());
+    poll.options.forEach((opt) => formData.append("pollOptions", opt.trim()));
+    if (poll.durationDays) {
+      formData.append("pollDurationDays", poll.durationDays);
+    }
   }
 
   const url = communityId
@@ -50,6 +61,11 @@ export async function createPost({ content, communityId, imageFile }) {
 
   const response = await apiClient.post(url, formData);
 
+  return response.data;
+}
+
+export async function votePoll(postId, optionId) {
+  const response = await apiClient.post(`/posts/${postId}/poll/vote`, { optionId });
   return response.data;
 }
 

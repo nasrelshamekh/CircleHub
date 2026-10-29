@@ -108,6 +108,8 @@ namespace CircleHub.Api.Controllers
                     .ToListAsync();
             }
 
+            posts.ForEach(p => p.ResolveRichData());
+
             return Ok(new ApiResponse<SearchResultDto>
             {
                 Data = new SearchResultDto

@@ -26,6 +26,9 @@ namespace CircleHub.Api.Data
         public DbSet<UserDeviceKey> UserDeviceKeys => Set<UserDeviceKey>();
         public DbSet<UserKeyBackup> UserKeyBackups => Set<UserKeyBackup>();
         public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
+        public DbSet<Poll> Polls => Set<Poll>();
+        public DbSet<PollOption> PollOptions => Set<PollOption>();
+        public DbSet<PollVote> PollVotes => Set<PollVote>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -164,6 +167,41 @@ namespace CircleHub.Api.Data
             modelBuilder.Entity<DeviceToken>().HasIndex(d => d.UserId);
             // The feed is always "this user's rows, newest first"; the unread count reads the same index.
             modelBuilder.Entity<Notification>().HasIndex(n => new { n.UserId, n.CreatedAt });
+
+            // Community Polls & Rich Post Types
+            modelBuilder.Entity<Poll>()
+                .HasOne(p => p.Post)
+                .WithOne(p => p.Poll)
+                .HasForeignKey<Poll>(p => p.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PollOption>()
+                .HasOne(o => o.Poll)
+                .WithMany(p => p.Options)
+                .HasForeignKey(o => o.PollId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PollVote>()
+                .HasOne(v => v.Poll)
+                .WithMany(p => p.Votes)
+                .HasForeignKey(v => v.PollId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PollVote>()
+                .HasOne(v => v.PollOption)
+                .WithMany(o => o.Votes)
+                .HasForeignKey(v => v.PollOptionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PollVote>()
+                .HasOne(v => v.User)
+                .WithMany()
+                .HasForeignKey(v => v.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PollVote>()
+                .HasIndex(v => new { v.PollId, v.UserId })
+                .IsUnique();
         }
     }
 }

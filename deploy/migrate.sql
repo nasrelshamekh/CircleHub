@@ -350,5 +350,53 @@ CREATE INDEX `IX_UserDeviceKeys_UserId_LastSeenAt` ON `UserDeviceKeys` (`UserId`
 INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
 VALUES ('20261021104523_AddUserDeviceKeyLastSeenAt', '9.0.0');
 
+ALTER TABLE `Users` MODIFY COLUMN `MessagesFrom` varchar(20) CHARACTER SET utf8mb4 NOT NULL DEFAULT 'Followers';
+
+ALTER TABLE `Posts` ADD `AdditionalImageUrls` longtext CHARACTER SET utf8mb4 NULL;
+
+CREATE TABLE `Polls` (
+    `Id` char(36) COLLATE ascii_general_ci NOT NULL,
+    `PostId` char(36) COLLATE ascii_general_ci NOT NULL,
+    `Question` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `ExpiresAt` datetime(6) NULL,
+    `CreatedAt` datetime(6) NOT NULL,
+    CONSTRAINT `PK_Polls` PRIMARY KEY (`Id`),
+    CONSTRAINT `FK_Polls_Posts_PostId` FOREIGN KEY (`PostId`) REFERENCES `Posts` (`Id`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `PollOptions` (
+    `Id` char(36) COLLATE ascii_general_ci NOT NULL,
+    `PollId` char(36) COLLATE ascii_general_ci NOT NULL,
+    `Text` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `DisplayOrder` int NOT NULL,
+    CONSTRAINT `PK_PollOptions` PRIMARY KEY (`Id`),
+    CONSTRAINT `FK_PollOptions_Polls_PollId` FOREIGN KEY (`PollId`) REFERENCES `Polls` (`Id`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `PollVotes` (
+    `Id` char(36) COLLATE ascii_general_ci NOT NULL,
+    `PollId` char(36) COLLATE ascii_general_ci NOT NULL,
+    `PollOptionId` char(36) COLLATE ascii_general_ci NOT NULL,
+    `UserId` char(36) COLLATE ascii_general_ci NOT NULL,
+    `VotedAt` datetime(6) NOT NULL,
+    CONSTRAINT `PK_PollVotes` PRIMARY KEY (`Id`),
+    CONSTRAINT `FK_PollVotes_PollOptions_PollOptionId` FOREIGN KEY (`PollOptionId`) REFERENCES `PollOptions` (`Id`) ON DELETE CASCADE,
+    CONSTRAINT `FK_PollVotes_Polls_PollId` FOREIGN KEY (`PollId`) REFERENCES `Polls` (`Id`) ON DELETE CASCADE,
+    CONSTRAINT `FK_PollVotes_Users_UserId` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_PollOptions_PollId` ON `PollOptions` (`PollId`);
+
+CREATE UNIQUE INDEX `IX_Polls_PostId` ON `Polls` (`PostId`);
+
+CREATE UNIQUE INDEX `IX_PollVotes_PollId_UserId` ON `PollVotes` (`PollId`, `UserId`);
+
+CREATE INDEX `IX_PollVotes_PollOptionId` ON `PollVotes` (`PollOptionId`);
+
+CREATE INDEX `IX_PollVotes_UserId` ON `PollVotes` (`UserId`);
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20261029010702_AddPollsAndRichPosts', '9.0.0');
+
 COMMIT;
 
