@@ -58,10 +58,10 @@ export default function PollWidget({ postId, poll }) {
             return (
               <div
                 key={option.id}
-                className={`group relative overflow-hidden rounded-xl border p-3 transition-colors ${
+                className={`group relative overflow-hidden rounded-xl border-0 p-3 transition-colors ${
                   isMyPick
-                    ? "border-(--primary)/50 bg-(--primary)/5"
-                    : "border-border/60 bg-surface-low/50"
+                    ? "bg-(--primary)/10"
+                    : "bg-surface-low"
                 }`}
               >
                 {/* Background percentage fill bar */}
