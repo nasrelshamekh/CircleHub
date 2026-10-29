@@ -161,7 +161,7 @@ export default function PostContent({ post, isDetailsPage = false }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {post.content && (
+      {post.content && (!post.poll || post.content.trim() !== post.poll.question?.trim()) && (
         isDetailsPage ? (
           contentElement
         ) : (

@@ -1,4 +1,4 @@
-﻿import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { createPost } from "@/services/postApi";
@@ -8,8 +8,7 @@ export function useCreatePost() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ content, communityId, imageFile }) =>
-            createPost({ content, communityId, imageFile }),
+        mutationFn: (variables) => createPost(variables),
 
         onSuccess: (response, { communityId }) => {
             const post = response.data;
