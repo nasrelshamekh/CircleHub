@@ -529,7 +529,7 @@ export async function prefetchRecipientDeviceKeys(recipientUsername) {
     }
     const cacheKey = normalizeUsernameKey(trimmed);
     const cached = deviceKeyDirectoryCache.get(cacheKey);
-    let hasKeys = null;
+    let hasKeys;
     if (cached && cached.expiresAt > Date.now() && cached.keys.length > 0) {
         hasKeys = true;
     } else {

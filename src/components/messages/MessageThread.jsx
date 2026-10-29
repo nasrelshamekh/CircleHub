@@ -230,10 +230,6 @@ export default function MessageThread({
 
     useEffect(() => {
         if (!otherUser?.username) return;
-        const cached = hasCachedRecipientDeviceKeys(otherUser.username);
-        if (cached !== null) {
-            setE2eeStatus(cached);
-        }
         prefetchRecipientDeviceKeys(otherUser.username).then((status) => {
             if (status !== null) {
                 setE2eeStatus(status);
