@@ -166,6 +166,11 @@ builder.Services
     .AddJwtBearer(options =>
     {
         options.MapInboundClaims = false;
+        var rawJwtKey = jwt["Key"];
+        var signingKeyBytes = !string.IsNullOrWhiteSpace(rawJwtKey) && Encoding.UTF8.GetByteCount(rawJwtKey) >= 32
+            ? Encoding.UTF8.GetBytes(rawJwtKey)
+            : new byte[32];
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -174,7 +179,7 @@ builder.Services
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwt["Issuer"],
             ValidAudience = jwt["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!))
+            IssuerSigningKey = new SymmetricSecurityKey(signingKeyBytes)
         };
 
         options.Events = new JwtBearerEvents
@@ -358,22 +363,48 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// Fail fast on a misconfigured host. An empty Jwt:Key otherwise only surfaces as
-// "IDX10703" on the first sign-in, which is much harder to diagnose on shared hosting.
+// Validate host environment configuration. Instead of throwing an uncaught exception
+// that causes IIS to crash with a generic "HTTP Error 500.30 - ASP.NET Core app failed to start",
+// start a diagnostic fallback responder so operators immediately see what setting is missing.
+var startupConfigErrors = new List<string>();
 if (!builder.Environment.IsDevelopment())
 {
     var jwtKey = builder.Configuration["Jwt:Key"];
     if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
     {
-        throw new InvalidOperationException(
-            "Jwt:Key is missing or shorter than 32 bytes. Configure it in the host's environment variables.");
+        startupConfigErrors.Add("Jwt:Key is missing or shorter than 32 bytes");
     }
 
     if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("DefaultConnection")))
     {
-        throw new InvalidOperationException(
-            "ConnectionStrings:DefaultConnection is missing. Configure it in the host's environment variables.");
+        startupConfigErrors.Add("ConnectionStrings:DefaultConnection is missing");
     }
+}
+
+if (startupConfigErrors.Count > 0)
+{
+    var diagnosticMsg = string.Join("; ", startupConfigErrors);
+    Console.Error.WriteLine($"[FATAL STARTUP CONFIG ERROR] {diagnosticMsg}");
+
+    var fallbackApp = builder.Build();
+    fallbackApp.UseCors("AllowAll");
+    fallbackApp.MapGet("/health", () => Results.Json(new
+    {
+        status = "config_error",
+        errors = startupConfigErrors,
+        instructions = "Set missing variables in MonsterASP Control Panel -> Websites -> Scripting -> Environment variables."
+    }, statusCode: StatusCodes.Status503ServiceUnavailable));
+
+    fallbackApp.MapFallback(() => Results.Json(new
+    {
+        success = false,
+        status = "config_error",
+        message = $"Application startup configuration error: {diagnosticMsg}",
+        instructions = "Set missing variables in MonsterASP Control Panel -> Websites -> Scripting -> Environment variables."
+    }, statusCode: StatusCodes.Status500InternalServerError));
+
+    fallbackApp.Run();
+    return;
 }
 
 var app = builder.Build();
