@@ -40,7 +40,7 @@ export default function PollWidget({ postId, poll }) {
 
   return (
     <div
-      className="my-3 rounded-2xl border border-border bg-surface-lowest p-4 shadow-xs"
+      className="my-3 rounded-2xl bg-surface-lowest p-4 shadow-xs border-0"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-2 mb-3">
@@ -110,8 +110,8 @@ export default function PollWidget({ postId, poll }) {
               className="group flex items-center justify-between rounded-xl border-0 bg-surface-low hover:bg-surface-high px-4 py-3 text-left text-sm font-medium text-text-primary transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
             >
               <span>{option.text}</span>
-              <div className="flex h-5 w-5 items-center justify-center rounded-full border border-border group-hover:border-(--primary) bg-surface-lowest transition-colors">
-                <div className="h-2 w-2 rounded-full bg-transparent group-hover:bg-(--primary)/40 transition-colors" />
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-high group-hover:bg-(--primary)/30 transition-colors">
+                <div className="h-2 w-2 rounded-full bg-transparent group-hover:bg-(--primary) transition-colors" />
               </div>
             </button>
           );
@@ -119,7 +119,7 @@ export default function PollWidget({ postId, poll }) {
       </div>
 
       {/* Footer bar */}
-      <div className="mt-3.5 flex items-center justify-between text-xs text-text-secondary pt-2.5 border-t border-border/50">
+      <div className="mt-3.5 flex items-center justify-between text-xs text-text-secondary pt-1">
         <div className="flex items-center gap-2.5">
           <span>
             {poll.totalVotes} {poll.totalVotes === 1 ? "vote" : "votes"}

@@ -134,12 +134,12 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder={community ? `Share something with ${community.name}` : `What's on your mind, ${user.name.split(" ")[0]}?`}
-                    className="input-surface type-body-sm min-h-28 w-full resize-none rounded-xl p-3 border border-border"
+                    className="input-surface type-body-sm min-h-28 w-full resize-none rounded-xl p-3 border-0"
                 />
 
                 {/* Poll Builder */}
                 {showPoll && (
-                    <div className="rounded-xl border border-border bg-surface-lowest p-4 space-y-3">
+                    <div className="rounded-xl bg-surface-low p-4 space-y-3 border-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <BarChart3 size={18} className="text-(--primary)" />
@@ -161,7 +161,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                             onChange={(e) => setPollQuestion(e.target.value)}
                             placeholder="Ask a question..."
                             maxLength={200}
-                            className="input-surface type-body-sm w-full rounded-lg px-3 py-2 text-text-primary border border-border"
+                            className="input-surface type-body-sm w-full rounded-lg px-3 py-2 text-text-primary bg-surface-lowest border-0"
                         />
 
                         <div className="space-y-2">
@@ -173,7 +173,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                                         onChange={(e) => handleOptionChange(idx, e.target.value)}
                                         placeholder={`Option ${idx + 1}`}
                                         maxLength={100}
-                                        className="input-surface type-body-sm flex-1 rounded-lg px-3 py-1.5 text-text-primary border border-border"
+                                        className="input-surface type-body-sm flex-1 rounded-lg px-3 py-1.5 text-text-primary bg-surface-lowest border-0"
                                     />
                                     {pollOptions.length > 2 && (
                                         <button
@@ -200,7 +200,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                             </button>
                         )}
 
-                        <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs text-text-secondary">
+                        <div className="flex items-center justify-between pt-2 text-xs text-text-secondary">
                             <span>Poll duration:</span>
                             <div className="flex gap-1.5">
                                 {[1, 3, 7].map((days) => (
@@ -240,7 +240,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                     </div>
                 )}
 
-                <div className="p-3 flex justify-between items-center gap-2 border-t border-border/50">
+                <div className="p-3 flex justify-between items-center gap-2">
                     <span className="type-label-md text-text-secondary">
                         Add to your post:
                     </span>
