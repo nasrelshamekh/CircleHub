@@ -33,79 +33,147 @@ namespace CircleHub.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Search([FromQuery] string? q = null)
+        public async Task<IActionResult> Search(
+            [FromQuery] string? q = null,
+            [FromQuery] string? type = null,
+            [FromQuery] string? sort = "latest",
+            [FromQuery] bool? mediaOnly = null)
         {
             var currentUserId = CurrentUserId!.Value;
             var query = q?.Trim();
 
-            List<SearchUserDto> users;
-            List<CommunityListItemDto> communities;
-            List<PostDto> posts;
+            List<SearchUserDto> users = [];
+            List<CommunityListItemDto> communities = [];
+            List<PostDto> posts = [];
+
+            var shouldIncludeUsers = string.IsNullOrEmpty(type) || type == "all" || type == "users" || type == "people";
+            var shouldIncludeCommunities = string.IsNullOrEmpty(type) || type == "all" || type == "communities";
+            var shouldIncludePosts = string.IsNullOrEmpty(type) || type == "all" || type == "posts" || type == "media";
+            var isMediaOnly = mediaOnly == true || string.Equals(type, "media", StringComparison.OrdinalIgnoreCase);
 
             if (!string.IsNullOrEmpty(query))
             {
-                users = await SearchUsersAsync(
-                    _db.Users
-                        .Where(u => u.Id != currentUserId)
-                        .Where(u =>
-                            EF.Functions.Like(u.Name, $"%{query}%") ||
-                            EF.Functions.Like(u.Username, $"%{query}%") ||
-                            EF.Functions.Like(u.JobTitle ?? "", $"%{query}%") ||
-                            EF.Functions.Like(u.Location ?? "", $"%{query}%") ||
-                            EF.Functions.Like(u.Bio ?? "", $"%{query}%"))
-                        .OrderBy(u => u.Name)
-                        .Take(ResultLimit),
-                    currentUserId);
+                var cleanQuery = query.TrimStart('@', '#');
 
-                communities = await _db.Communities
-                    .Where(c =>
-                        EF.Functions.Like(c.Name, $"%{query}%") ||
-                        EF.Functions.Like(c.Category, $"%{query}%") ||
-                        EF.Functions.Like(c.Description, $"%{query}%"))
-                    .OrderByDescending(c => c.CreatedAt)
-                    .Take(ResultLimit)
-                    .Select(CommunityListItemDto.Projection(currentUserId))
-                    .ToListAsync();
+                if (shouldIncludeUsers)
+                {
+                    users = await SearchUsersAsync(
+                        _db.Users
+                            .Where(u => u.Id != currentUserId)
+                            .Where(u =>
+                                EF.Functions.Like(u.Name, $"%{cleanQuery}%") ||
+                                EF.Functions.Like(u.Username, $"%{cleanQuery}%") ||
+                                EF.Functions.Like(u.JobTitle ?? "", $"%{cleanQuery}%") ||
+                                EF.Functions.Like(u.Location ?? "", $"%{cleanQuery}%") ||
+                                EF.Functions.Like(u.Bio ?? "", $"%{cleanQuery}%"))
+                            .OrderBy(u => u.Name)
+                            .Take(ResultLimit),
+                        currentUserId);
+                }
 
-                posts = await _db.Posts
-                    .WhereVisibleTo(currentUserId)
-                    .Where(p =>
-                        EF.Functions.Like(p.Content, $"%{query}%") ||
-                        EF.Functions.Like(p.Author.Name, $"%{query}%") ||
-                        EF.Functions.Like(p.Author.Username, $"%{query}%"))
-                    .OrderByDescending(p => p.CreatedAt)
-                    .Take(ResultLimit)
-                    .Select(PostDto.SearchProjection(currentUserId))
-                    .ToListAsync();
+                if (shouldIncludeCommunities)
+                {
+                    communities = await _db.Communities
+                        .Where(c =>
+                            EF.Functions.Like(c.Name, $"%{cleanQuery}%") ||
+                            EF.Functions.Like(c.Category, $"%{cleanQuery}%") ||
+                            EF.Functions.Like(c.Description, $"%{cleanQuery}%"))
+                        .OrderByDescending(c => c.CreatedAt)
+                        .Take(ResultLimit)
+                        .Select(CommunityListItemDto.Projection(currentUserId))
+                        .ToListAsync();
+                }
+
+                if (shouldIncludePosts)
+                {
+                    var postsQuery = _db.Posts
+                        .WhereVisibleTo(currentUserId)
+                        .Where(p =>
+                            EF.Functions.Like(p.Content, $"%{query}%") ||
+                            EF.Functions.Like(p.Author.Name, $"%{cleanQuery}%") ||
+                            EF.Functions.Like(p.Author.Username, $"%{cleanQuery}%"));
+
+                    if (isMediaOnly)
+                    {
+                        postsQuery = postsQuery.Where(p =>
+                            (p.ImageUrl != null && p.ImageUrl != "") ||
+                            (p.AdditionalImageUrls != null && p.AdditionalImageUrls != "" && p.AdditionalImageUrls != "[]"));
+                    }
+
+                    if (string.Equals(sort, "top", StringComparison.OrdinalIgnoreCase))
+                    {
+                        postsQuery = postsQuery
+                            .OrderByDescending(p => p.Likes.Count)
+                            .ThenByDescending(p => p.Comments.Count)
+                            .ThenByDescending(p => p.CreatedAt);
+                    }
+                    else
+                    {
+                        postsQuery = postsQuery.OrderByDescending(p => p.CreatedAt);
+                    }
+
+                    posts = await postsQuery
+                        .Take(ResultLimit)
+                        .Select(PostDto.SearchProjection(currentUserId))
+                        .ToListAsync();
+                }
             }
             else
             {
-                users = await SearchUsersAsync(
-                    _db.Users
-                        .Where(u =>
-                            u.Id != currentUserId &&
-                            !u.Followers.Any(f => f.FollowerId == currentUserId))
-                        .OrderByDescending(u => u.Followers.Count)
-                        .Take(ResultLimit),
-                    currentUserId);
+                if (shouldIncludeUsers)
+                {
+                    users = await SearchUsersAsync(
+                        _db.Users
+                            .Where(u =>
+                                u.Id != currentUserId &&
+                                !u.Followers.Any(f => f.FollowerId == currentUserId))
+                            .OrderByDescending(u => u.Followers.Count)
+                            .Take(ResultLimit),
+                        currentUserId);
+                }
 
-                communities = await _db.Communities
-                    .Where(c =>
-                        c.AdminId != currentUserId &&
-                        !c.Members.Any(m => m.UserId == currentUserId))
-                    .OrderByDescending(c => c.CreatedAt)
-                    .Take(ResultLimit)
-                    .Select(CommunityListItemDto.Projection(currentUserId))
-                    .ToListAsync();
+                if (shouldIncludeCommunities)
+                {
+                    communities = await _db.Communities
+                        .Where(c =>
+                            c.AdminId != currentUserId &&
+                            !c.Members.Any(m => m.UserId == currentUserId))
+                        .OrderByDescending(c => c.CreatedAt)
+                        .Take(ResultLimit)
+                        .Select(CommunityListItemDto.Projection(currentUserId))
+                        .ToListAsync();
+                }
 
-                posts = await _db.Posts
-                    .Where(p => p.AuthorId != currentUserId)
-                    .WhereVisibleTo(currentUserId)
-                    .OrderByDescending(p => p.Likes.Count)
-                    .ThenByDescending(p => p.CreatedAt)
-                    .Take(ResultLimit)
-                    .Select(PostDto.SearchProjection(currentUserId))
-                    .ToListAsync();
+                if (shouldIncludePosts)
+                {
+                    var postsQuery = _db.Posts
+                        .Where(p => p.AuthorId != currentUserId)
+                        .WhereVisibleTo(currentUserId);
+
+                    if (isMediaOnly)
+                    {
+                        postsQuery = postsQuery.Where(p =>
+                            (p.ImageUrl != null && p.ImageUrl != "") ||
+                            (p.AdditionalImageUrls != null && p.AdditionalImageUrls != "" && p.AdditionalImageUrls != "[]"));
+                    }
+
+                    if (string.Equals(sort, "latest", StringComparison.OrdinalIgnoreCase))
+                    {
+                        postsQuery = postsQuery.OrderByDescending(p => p.CreatedAt);
+                    }
+                    else
+                    {
+                        postsQuery = postsQuery
+                            .OrderByDescending(p => p.Likes.Count)
+                            .ThenByDescending(p => p.Comments.Count)
+                            .ThenByDescending(p => p.CreatedAt);
+                    }
+
+                    posts = await postsQuery
+                        .Take(ResultLimit)
+                        .Select(PostDto.SearchProjection(currentUserId))
+                        .ToListAsync();
+                }
             }
 
             posts.ForEach(p => p.ResolveRichData());
