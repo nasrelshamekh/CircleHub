@@ -37,6 +37,9 @@ encryption keys are out of scope (the server relays ciphertext it cannot read). 
 | 31 | Phase 1 Polish & Performance: WebP image assets, communities skeleton, profile media link, expo-image disk caching, theme persistence, binary gender selection | done, verified |
 | 37 | Web Chat Sent & Delivered Delivery Indicators | done, verified |
 | 38 | Conversation Typing Indicator Placement & Standard Expo Push Payload Restoration | done, verified |
+| 39 | Full-Screen Media Lightbox (Web & Mobile: Zoom, Swipe-to-Dismiss, Keyboard Navigation) | done, verified |
+| 40 | Community Polls, Multi-Image Rich Post Creation & Mobile Form Spinner Polish | done, verified |
+| 41 | Categorical Search Facets (All, Posts, Media, People, Communities), Sorting & Hashtag Discovery | done, verified |
 | - | Cleanup pass: unused `next-themes` dropped, a presence event no longer costs a refetch, dev verification rows deleted | done, verified |
 
 Step ordering is the owner's call: the web app is finished and handed over for testing first, then the push
@@ -1547,6 +1550,71 @@ Verification:
 - Web Production Build: `npm run build` passed (0 errors).
 - Backend Build: `dotnet build` passed (0 warnings, 0 errors).
 - Backend Publish: `dotnet publish -c Release` packaged to `circlehub-api-publish.zip` (pruned runtimes, ~41 MB).
+
+### Step 39 — Full-Screen Media Lightbox (Web & Mobile Parity) (verified)
+
+1. **Web Lightbox Experience (`MediaLightbox.jsx`):**
+   - High-performance modal overlay featuring backdrop blur and zoom controls (`1x`, `1.5x`, `2x`, `reset`).
+   - Multi-image carousel navigation with left/right buttons, image counters (`{index} / {total}`), and responsive thumbnail strips.
+   - Keyboard navigation shortcuts: `Escape` to close, `ArrowLeft` / `ArrowRight` to cycle through gallery images.
+   - Direct high-resolution image download preserving original filenames.
+   - Connected across feed post cards, post details view, and community media tabs.
+2. **Mobile Lightbox Experience (`medialightbox.tsx`):**
+   - Full-screen modal utilizing React Native gesture handling for smooth pinch-to-zoom and pan.
+   - Interactive vertical swipe-to-dismiss gesture with dynamic backdrop opacity fading.
+   - Bottom pagination indicators and top toolbar with close button.
+   - Integrated into `postcard.tsx`, post details view, and profile media grids.
+
+Verification:
+- Web Production Build: `npm run build` passed (0 errors).
+- Web Linter: `npm run lint` passed (0 errors).
+- Mobile TypeScript: `npx tsc --noEmit` passed (0 errors).
+- Mobile Tests: `npm test` passed (29/29 test suites, 166/166 tests).
+
+### Step 40 — Community Polls, Multi-Image Rich Post Creation & Mobile Form Spinner Overhaul (verified)
+
+1. **Community Polls (Backend, Web & Mobile):**
+   - **Backend API (`CircleHub.Api`)**: Poll voting endpoints, option validation, vote persistence, and real-time vote recalculation in post responses.
+   - **Web Component (`PollCard.jsx`, `CreatePollModal.jsx`)**: Poll creation dialog with dynamic options addition (up to 4 options), instant vote mutation with optimistic progress bars, percentage indicators, vote counts, and expired poll badges.
+   - **Mobile Component (`PollWidget.tsx`)**: Polished voting card with animated selection bars and real-time React Query cache synchronization.
+2. **Multi-Image Uploads & Validation (Web & Mobile):**
+   - **Web Composer (`CreatePost.jsx`, `CreatePostModal.jsx`, `Sidebar.jsx`, `MobileBottomNav.jsx`)**: Supports selecting up to 4 images at once or sequentially. Added horizontal preview carousel with individual `✕` remove buttons.
+   - **Mobile Composer (`compose.tsx`)**: Multi-image image picker supporting up to 4 images with thumbnail strip.
+   - **Post Text Validation & Error Handling**: Client-side enforcement preventing submitting photos without post text (with immediate input autofocus and error toast), preventing empty text 400 errors from ASP.NET backend.
+3. **Mobile Form Spinner Overhaul (`circlehub-mobile`):**
+   - Replaced frozen SVG `<LoaderCircle>` spinners with React Native native `<ActivityIndicator size="small" />` across all 11 mutation forms:
+     `compose.tsx`, `editpostmodal.tsx`, `commentform.tsx`, `createcommunityscreen.tsx`, `communitysettingsform.tsx`, `deletecommunitycard.tsx`, `communitymembersmanager.tsx`, `editprofileform.tsx`, `changepasswordform.tsx`, `profilesettingsform.tsx`, and `pollwidget.tsx`.
+
+Verification:
+- Web Production Build: `npm run build` passed (0 errors).
+- Web Linter: `npm run lint` passed (0 errors).
+- Mobile TypeScript: `npx tsc --noEmit` passed (0 errors).
+- Mobile Tests: `npm test` passed (29/29 test suites, 166/166 tests).
+
+### Step 41 — Categorical Search Facets, Sorting & Hashtag Discovery (verified)
+
+1. **Backend Search Controller Extensions (`SearchController.cs`):**
+   - Extended `GET /api/search` with `type` (`all`, `posts`, `users`, `communities`, `media`), `sort` (`latest`, `top`), and `mediaOnly` (bool).
+   - Prefix-aware hashtag/mention handling: stripped `@` and `#` symbols to match both usernames/names and hashtag content smoothly.
+   - Rebuilt backend with zero errors.
+2. **Web Search Facets & Discovery (`ExploreTabs.jsx`, `ExploreSearch.jsx`, `ExplorePostCard.jsx`, `Explore.jsx`):**
+   - 5 categorical tabs: `All`, `Posts`, `Media`, `People`, `Communities` with real-time count badges.
+   - Sorting pills for `Latest` and `Top`, plus a `Photos only` filter toggle.
+   - Quick trending hashtag discovery chips (`#technology`, `#announcements`, `#design`, `#general`, `#photos`).
+   - Multi-image badges (`+{count}`) on post thumbnails.
+   - Two-way URL search query synchronization (`/explore?q=...&type=...&sort=...&mediaOnly=...`).
+3. **Mobile Search Facets & Discovery (`exploretabs.tsx`, `exploresearch.tsx`, `explorepostcard.tsx`, `explorescreen.tsx`):**
+   - 5 horizontal scrollable facet tabs with indicator badges.
+   - `Latest` / `Top` sort pill selectors and `Photos only` toggle switch.
+   - Horizontal trending hashtag chips for one-tap search population.
+   - Multi-image indicator badge on post cards.
+
+Verification:
+- Web Production Build: `npm run build` passed (0 errors).
+- Web Linter: `npm run lint` passed (0 errors).
+- Mobile TypeScript: `npx tsc --noEmit` passed (0 errors).
+- Mobile Tests: `npm test` passed (29/29 test suites, 166/166 tests).
+
 
 
 

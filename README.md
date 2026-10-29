@@ -76,7 +76,23 @@ VITE_BASE_URL=https://circlehub.runasp.net
 
 ## Release History
 
-### v1.2.0 (Current Release)
+### v1.3.0 (Current Release)
+- **Full-Screen Media Lightbox (`MediaLightbox`)**:
+  - High-resolution modal image viewer with zoom controls (in, out, reset), backdrop blur, and pan interactions.
+  - Smooth multi-image carousel navigation with keyboard shortcuts (`Esc` to close, Left/Right arrow keys to cycle images).
+  - One-click image download with direct filename preservation.
+  - Seamless integration across feed post cards, post details, and community media grids.
+- **Community Polls & Multi-Image Rich Post Creation**:
+  - **Interactive Community Polls**: Dynamic voting cards with live percentage calculation, animated progress bars, total vote count, and expired poll state handling.
+  - **Multi-Image Uploads (up to 4 photos)**: Multi-selection and sequential picking in composer, responsive thumbnail preview strip with individual `✕` removal buttons.
+  - **Post Validation & Error Handling**: Real-time client enforcement requiring post text when attaching photos, descriptive toast feedback, and ASP.NET validation error parsing.
+- **Enhanced Search Filters & Discovery**:
+  - **Categorical Facets**: 5 search tabs (`All`, `Posts`, `Media`, `People`, `Communities`) with dynamic result counters.
+  - **Sorting & Filtering**: `Latest` and `Top` sort pill filters, plus an instant `Photos only` media toggle.
+  - **Trending Hashtag Chips**: Quick-discovery suggestion chips (`#technology`, `#announcements`, `#design`, `#general`, `#photos`) that auto-populate search.
+  - **URL Synchronization**: Direct URL query parameter binding (`/explore?q=...&type=...&sort=...&mediaOnly=...`) for shareable search views.
+
+### v1.2.0
 - **Universal Sharing & "Copy Link to Post"**:
   - Universal post dropdown menu (`...`) accessible to all users across the feed and post details.
   - One-click "Copy link" action with clipboard copy and toast notification.
@@ -101,13 +117,3 @@ VITE_BASE_URL=https://circlehub.runasp.net
 
 ### v1.0.0
 - Initial web release: Community network, accounts, profiles, post feed, likes, comments, communities, and light/dark theme.
-
----
-
-## Upcoming (v1.3.0 — Package 2: Media & Community Experience)
-
-The upcoming **v1.3.0** release will focus on rich media and community engagement:
-
-1. **Full-Screen Media Lightbox**: Pinch-to-zoom, high-res previews, and swipe-to-dismiss for post images.
-2. **Community Polls & Rich Post Types**: Interactive community polls and multi-image galleries.
-3. **Enhanced Search Filters**: Categorical search facets and advanced discovery tools.
