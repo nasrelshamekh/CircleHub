@@ -61,5 +61,27 @@ export function useCreatePost() {
                     : "Post created successfully"
             );
         },
+
+        onError: (error) => {
+            const data = error.response?.data;
+            let message = "Failed to create post. Please try again.";
+
+            if (data?.errors) {
+                const firstKey = Object.keys(data.errors)[0];
+                if (firstKey && data.errors[firstKey]?.length > 0) {
+                    message = data.errors[firstKey][0];
+                }
+            } else if (typeof data?.message === "string" && data.message.trim()) {
+                message = data.message;
+            } else if (typeof data?.title === "string" && data.title.trim()) {
+                message = data.title;
+            } else if (typeof data === "string" && data.trim()) {
+                message = data;
+            } else if (error.message) {
+                message = error.message;
+            }
+
+            toast.error(message);
+        },
     });
 }

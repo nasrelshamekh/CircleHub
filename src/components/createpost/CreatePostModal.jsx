@@ -31,6 +31,7 @@ export function CreatePostModal({
     const [localImages, setLocalImages] = useState([]);
 
     const modalFileInput = useRef(null);
+    const contentInputRef = useRef(null);
     const createPost = useCreatePost();
     const navigate = useNavigate();
 
@@ -67,9 +68,16 @@ export function CreatePostModal({
                 toast.error("A poll needs at least two options.");
                 return;
             }
-        } else if (!trimmed && filesToSend.length === 0) {
-            toast.error("Please write something, add a photo, or create a poll first.");
-            return;
+        } else {
+            if (!trimmed) {
+                if (filesToSend.length > 0) {
+                    toast.error("Please write something in your post before sharing photos.");
+                } else {
+                    toast.error("Please write something, add a photo, or create a poll first.");
+                }
+                contentInputRef.current?.focus();
+                return;
+            }
         }
 
         const pollPayload = showPoll
@@ -184,10 +192,15 @@ export function CreatePostModal({
                 </div>
 
                 <textarea
+                    ref={contentInputRef}
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder={community ? `Share something with ${community.name}` : `What's on your mind, ${user.name.split(" ")[0]}?`}
-                    className="input-surface type-body-sm min-h-28 w-full resize-none rounded-xl p-3 border-0"
+                    placeholder={
+                        images.length > 0
+                            ? "Add a caption or description for your photos..."
+                            : (community ? `Share something with ${community.name}` : `What's on your mind, ${user.name.split(" ")[0]}?`)
+                    }
+                    className="input-surface type-body-sm min-h-28 w-full resize-none rounded-xl p-3 border-0 focus-visible:ring-1 focus-visible:ring-(--primary)"
                 />
 
                 {/* Poll Builder */}
