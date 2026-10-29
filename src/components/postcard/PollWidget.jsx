@@ -107,7 +107,7 @@ export default function PollWidget({ postId, poll }) {
               type="button"
               disabled={voteMutation.isPending}
               onClick={() => handleVote(option.id)}
-              className="group flex items-center justify-between rounded-xl border border-border bg-surface-low px-4 py-3 text-left text-sm font-medium text-text-primary transition-all hover:border-(--primary) hover:bg-(--primary)/5 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+              className="group flex items-center justify-between rounded-xl border-0 bg-surface-low hover:bg-surface-high px-4 py-3 text-left text-sm font-medium text-text-primary transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
             >
               <span>{option.text}</span>
               <div className="flex h-5 w-5 items-center justify-center rounded-full border border-border group-hover:border-(--primary) bg-surface-lowest transition-colors">

@@ -134,7 +134,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder={community ? `Share something with ${community.name}` : `What's on your mind, ${user.name.split(" ")[0]}?`}
-                    className="input-surface type-body-sm min-h-28 w-full resize-none rounded-xl p-3"
+                    className="input-surface type-body-sm min-h-28 w-full resize-none rounded-xl p-3 border border-border"
                 />
 
                 {/* Poll Builder */}
@@ -148,7 +148,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                             <button
                                 type="button"
                                 onClick={() => setShowPoll(false)}
-                                className="icon-button-soft p-1 text-text-secondary hover:text-text-primary rounded-md"
+                                className="icon-button-soft p-1 text-text-secondary hover:text-text-primary rounded-md border-0"
                                 title="Remove poll"
                             >
                                 <X size={16} />
@@ -161,7 +161,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                             onChange={(e) => setPollQuestion(e.target.value)}
                             placeholder="Ask a question..."
                             maxLength={200}
-                            className="input-surface type-body-sm w-full rounded-lg px-3 py-2 text-text-primary"
+                            className="input-surface type-body-sm w-full rounded-lg px-3 py-2 text-text-primary border border-border"
                         />
 
                         <div className="space-y-2">
@@ -173,13 +173,13 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                                         onChange={(e) => handleOptionChange(idx, e.target.value)}
                                         placeholder={`Option ${idx + 1}`}
                                         maxLength={100}
-                                        className="input-surface type-body-sm flex-1 rounded-lg px-3 py-1.5 text-text-primary"
+                                        className="input-surface type-body-sm flex-1 rounded-lg px-3 py-1.5 text-text-primary border border-border"
                                     />
                                     {pollOptions.length > 2 && (
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveOption(idx)}
-                                            className="icon-button-soft p-1 text-text-secondary hover:text-error transition-colors"
+                                            className="icon-button-soft p-1 text-text-secondary hover:text-error transition-colors border-0"
                                             title="Delete option"
                                         >
                                             <X size={16} />
@@ -193,7 +193,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                             <button
                                 type="button"
                                 onClick={handleAddOption}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-(--primary) hover:underline pt-1 cursor-pointer"
+                                className="flex items-center gap-1.5 text-xs font-semibold text-(--primary) hover:underline pt-1 cursor-pointer border-0 bg-transparent"
                             >
                                 <Plus size={14} />
                                 Add option ({pollOptions.length}/6)
@@ -208,10 +208,10 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                                         key={days}
                                         type="button"
                                         onClick={() => setPollDurationDays(days)}
-                                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer border-0 ${
                                             pollDurationDays === days
                                                 ? "gradient-primary text-(--button-gradient-text) shadow-xs"
-                                                : "bg-surface-low hover:bg-surface-high text-text-secondary border border-border/50"
+                                                : "bg-surface-low hover:bg-surface-high text-text-secondary"
                                         }`}
                                     >
                                         {days} {days === 1 ? "day" : "days"}
@@ -233,7 +233,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                             type="button"
                             onClick={handleRemovePhoto}
                             aria-label="Remove selected photo"
-                            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-(--primary) transition hover:bg-(--background) cursor-pointer"
+                            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-(--primary) transition hover:bg-(--background) cursor-pointer border-0"
                         >
                             <X size={18} />
                         </button>
@@ -248,10 +248,10 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                         <button
                             type="button"
                             onClick={() => setShowPoll((prev) => !prev)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer border-0 ${
                                 showPoll
-                                    ? "border-(--primary) bg-(--primary)/10 text-(--primary)"
-                                    : "border-border/60 bg-surface-lowest text-text-secondary hover:text-text-primary hover:bg-surface-low"
+                                    ? "bg-(--primary)/15 text-(--primary)"
+                                    : "bg-surface-low hover:bg-surface-high text-text-secondary hover:text-text-primary"
                             }`}
                             title={showPoll ? "Discard poll" : "Add a poll"}
                         >
@@ -262,7 +262,7 @@ export function CreatePostModal({ open, onOpenChange, user, previewUrl, imageFil
                         <button
                             type="button"
                             onClick={openModalFileInput}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border border-border/60 bg-surface-lowest text-text-secondary hover:text-text-primary hover:bg-surface-low"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer border-0 bg-surface-low hover:bg-surface-high text-text-secondary hover:text-text-primary"
                             aria-label="Add photo"
                             title="Add photo"
                         >
