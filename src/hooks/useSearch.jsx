@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { search } from "@/services/searchApi";
@@ -13,14 +13,34 @@ function useDebouncedValue(value, delay) {
     return debounced;
 }
 
-export function useSearch(term) {
-    const debouncedTerm = useDebouncedValue(term, 300);
-    const isDebouncing = term !== debouncedTerm;
+export function useSearch(options) {
+    const parsedOptions =
+        typeof options === "string"
+            ? { q: options, type: "all", sort: "latest", mediaOnly: false }
+            : {
+                  q: options?.q ?? "",
+                  type: options?.type ?? "all",
+                  sort: options?.sort ?? "latest",
+                  mediaOnly: Boolean(options?.mediaOnly),
+              };
+
+    const debouncedTerm = useDebouncedValue(parsedOptions.q, 300);
+    const isDebouncing = parsedOptions.q !== debouncedTerm;
 
     const query = useQuery({
-        queryKey: queryKeys.search(debouncedTerm),
+        queryKey: queryKeys.search({
+            q: debouncedTerm.trim(),
+            type: parsedOptions.type,
+            sort: parsedOptions.sort,
+            mediaOnly: parsedOptions.mediaOnly,
+        }),
         queryFn: async () => {
-            const { data } = await search(debouncedTerm.trim());
+            const { data } = await search({
+                q: debouncedTerm.trim(),
+                type: parsedOptions.type,
+                sort: parsedOptions.sort,
+                mediaOnly: parsedOptions.mediaOnly,
+            });
             return data;
         },
     });

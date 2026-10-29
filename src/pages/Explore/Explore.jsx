@@ -8,16 +8,29 @@ import { useToggleCommunityMembership } from "@/hooks/mutations/useToggleCommuni
 import { useToggleLike } from "@/hooks/mutations/useToggleLike";
 
 export default function Explore() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlQuery = searchParams.get("q") || "";
+  const urlTab = searchParams.get("tab") || "all";
+  const urlSort = searchParams.get("sort") || "latest";
+
   const [searchQuery, setSearchQuery] = useState(urlQuery);
+  const [activeTab, setActiveTab] = useState(urlTab);
+  const [sort, setSort] = useState(urlSort);
+  const [mediaOnly, setMediaOnly] = useState(false);
+
   const [prevUrlQuery, setPrevUrlQuery] = useState(urlQuery);
   if (prevUrlQuery !== urlQuery) {
     setPrevUrlQuery(urlQuery);
     setSearchQuery(urlQuery);
   }
 
-  const { users, communities, posts, isLoading } = useSearch(searchQuery);
+  const { users, communities, posts, isLoading } = useSearch({
+    q: searchQuery,
+    type: activeTab,
+    sort,
+    mediaOnly: mediaOnly || activeTab === "media",
+  });
+
   const toggleMembership = useToggleCommunityMembership();
   const toggleLike = useToggleLike();
 
@@ -27,19 +40,52 @@ export default function Explore() {
     toggleMembership.mutate({ community });
   }
 
+  function handleQueryChange(query) {
+    setSearchQuery(query);
+    const params = new URLSearchParams(searchParams);
+    if (query) {
+      params.set("q", query);
+    } else {
+      params.delete("q");
+    }
+    setSearchParams(params, { replace: true });
+  }
+
+  function handleTabChange(tab) {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams);
+    if (tab && tab !== "all") {
+      params.set("tab", tab);
+    } else {
+      params.delete("tab");
+    }
+    setSearchParams(params, { replace: true });
+  }
+
+  function handleSortChange(newSort) {
+    setSort(newSort);
+    const params = new URLSearchParams(searchParams);
+    if (newSort && newSort !== "latest") {
+      params.set("sort", newSort);
+    } else {
+      params.delete("sort");
+    }
+    setSearchParams(params, { replace: true });
+  }
+
   return (
     <section className="content-stack max-w-7xl">
       <div className="text-center">
         <h1 className="type-headline-responsive text-primary">Explore</h1>
 
         <p className="type-body-md mt-2 text-secondary">
-          Search for posts, people, and communities across CircleHub.
+          Search for posts, people, communities, and media across CircleHub.
         </p>
       </div>
 
       <ExploreSearch
         searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
+        setSearchQuery={handleQueryChange}
       />
 
       <ExploreTabs
@@ -50,6 +96,12 @@ export default function Explore() {
         onToggleLike={(id) => toggleLike.mutate(id)}
         searchQuery={searchQuery}
         isLoading={isLoading}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        sort={sort}
+        onSortChange={handleSortChange}
+        mediaOnly={mediaOnly}
+        onMediaOnlyChange={setMediaOnly}
       />
     </section>
   );

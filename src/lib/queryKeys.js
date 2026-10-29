@@ -1,4 +1,4 @@
-﻿export const queryKeys = {
+export const queryKeys = {
     me: () => ["users", "me"],
 
     feed: () => ["feed"],
@@ -20,7 +20,17 @@
     communityPosts: (id) => ["community", id, "posts"],
     communityRequests: (id) => ["community", id, "requests"],
 
-    search: (query) => ["search", query],
+    search: (params) => [
+        "search",
+        typeof params === "string"
+            ? { q: params }
+            : {
+                  q: params?.q ?? "",
+                  type: params?.type ?? "all",
+                  sort: params?.sort ?? "latest",
+                  mediaOnly: Boolean(params?.mediaOnly),
+              },
+    ],
 
     conversations: () => ["messages", "conversations"],
     conversation: (id) => ["messages", "conversations", id],

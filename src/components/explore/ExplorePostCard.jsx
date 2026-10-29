@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Heart, MessageCircle } from "lucide-react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
@@ -21,10 +21,10 @@ export default function ExplorePostCard({ post, onToggleLike }) {
 
     return (
         <article className="content-card-padded flex min-w-0 flex-col gap-4 overflow-hidden">
-            {post.imageUrl && (
-                <Link to={`/post/${post.id}`} className="-m-5 mb-0 block">
+            {(post.imageUrls?.[0] || post.imageUrl) && (
+                <Link to={`/post/${post.id}`} className="-m-5 mb-0 block relative group">
                     <img
-                        src={post.imageUrl}
+                        src={post.imageUrls?.[0] || post.imageUrl}
                         alt="Post preview"
                         className="h-40 w-full object-cover"
                     />
