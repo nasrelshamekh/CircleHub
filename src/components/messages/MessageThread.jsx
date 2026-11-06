@@ -9,7 +9,7 @@ import {
     useState,
 } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Check, CheckCheck, LoaderCircle, Lock, ShieldAlert } from "lucide-react";
+import { ArrowLeft, AlertCircle, Check, CheckCheck, LoaderCircle, Lock, ShieldAlert, Smile } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -30,6 +30,8 @@ const QUICK_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
 
 const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry, onReaction }) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showReactionPicker, setShowReactionPicker] = useState(false);
+    const reactionPickerRef = useRef(null);
 
     const isMine = Boolean(message.isMine);
     const isPending = Boolean(message.pending);
@@ -49,6 +51,17 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
     // pending bubble never had it — that text came straight from the composer).
     const decryptedText = useDecryptedContent(message.plaintext ? null : message.content);
     const text = message.plaintext ?? decryptedText;
+
+    useEffect(() => {
+        if (!showReactionPicker) return;
+        function handleClickOutside(e) {
+            if (reactionPickerRef.current && !reactionPickerRef.current.contains(e.target)) {
+                setShowReactionPicker(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [showReactionPicker]);
 
     function toggleDetails() {
         setIsExpanded((expanded) => !expanded);
@@ -72,6 +85,63 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
         }
     }
 
+    const reactionTrigger = !isPending && !isFailed && onReaction && message.id && (
+        <div
+            ref={reactionPickerRef}
+            className="relative self-center shrink-0"
+            onClick={(e) => e.stopPropagation()}
+            onMouseEnter={() => setShowReactionPicker(true)}
+            onMouseLeave={() => setShowReactionPicker(false)}
+        >
+            <button
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setShowReactionPicker((prev) => !prev);
+                }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-(--surface-container-high) text-secondary hover:text-primary cursor-pointer"
+                title="React"
+                aria-label="React to message"
+            >
+                <Smile size={16} />
+            </button>
+
+            {showReactionPicker && (
+                <div
+                    className={`absolute bottom-full mb-2 z-30 flex items-center gap-1 rounded-full bg-(--surface-container-highest) px-2 py-1 shadow-xl border border-(--border) animate-in fade-in zoom-in-95 duration-150 ${
+                        message.isMine ? "right-0" : "left-0"
+                    }`}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {QUICK_EMOJIS.map((emoji) => {
+                        const hasReacted = message.reactions?.some(
+                            (r) => r.emoji === emoji && r.reactedByMe
+                        );
+                        return (
+                            <button
+                                key={emoji}
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onReaction(message.id, emoji);
+                                    setShowReactionPicker(false);
+                                }}
+                                title={`React ${emoji}`}
+                                className={`rounded-full p-1 text-base leading-none transition-transform hover:scale-130 active:scale-95 cursor-pointer ${
+                                    hasReacted
+                                        ? "bg-primary/20 scale-110"
+                                        : "hover:bg-(--surface-container-high)"
+                                }`}
+                            >
+                                {emoji}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <div
             role="button"
@@ -94,45 +164,14 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
                     />
                 )}
 
+                {/* For outgoing messages: Reaction button sits in the gutter to the left */}
+                {message.isMine && reactionTrigger}
+
                 <div
-                    className={`relative flex min-w-0 max-w-[80%] flex-col ${
+                    className={`flex min-w-0 max-w-[80%] flex-col ${
                         message.isMine ? "items-end" : "items-start"
                     }`}
                 >
-                    {/* Hover Reaction Bar (Desktop) */}
-                    {!isPending && !isFailed && onReaction && message.id && (
-                        <div
-                            className={`pointer-events-none absolute -top-4 z-10 hidden items-center gap-0.5 rounded-full bg-(--surface-container-highest) px-1.5 py-0.5 shadow-md border border-(--border) opacity-0 transition-opacity duration-150 md:group-hover:pointer-events-auto md:group-hover:flex md:group-hover:opacity-100 ${
-                                message.isMine ? "right-2" : "left-2"
-                            }`}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {QUICK_EMOJIS.map((emoji) => {
-                                const hasReacted = message.reactions?.some(
-                                    (r) => r.emoji === emoji && r.reactedByMe
-                                );
-                                return (
-                                    <button
-                                        key={emoji}
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onReaction(message.id, emoji);
-                                        }}
-                                        title={`React ${emoji}`}
-                                        className={`rounded-full p-1 text-sm leading-none transition-transform hover:scale-130 active:scale-95 cursor-pointer ${
-                                            hasReacted
-                                                ? "bg-primary/20 scale-110"
-                                                : "hover:bg-(--surface-container-high)"
-                                        }`}
-                                    >
-                                        {emoji}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-
                     {hasContent && (
                         <div
                             className={`type-body-sm min-w-0 max-w-full whitespace-pre-wrap break-words rounded-2xl px-4 py-2 [overflow-wrap:anywhere] ${
@@ -215,6 +254,9 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
                         </div>
                     )}
                 </div>
+
+                {/* For incoming messages: Reaction button sits in the gutter to the right */}
+                {!message.isMine && reactionTrigger}
             </div>
 
             {isExpanded && (
@@ -250,32 +292,6 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
                         >
                             Copy
                         </button>
-                    )}
-
-                    {/* Touch / Expanded Quick Reaction Emojis */}
-                    {!isPending && !isFailed && onReaction && message.id && (
-                        <div className="flex items-center gap-1.5 py-0.5">
-                            {QUICK_EMOJIS.map((emoji) => {
-                                const hasReacted = message.reactions?.some(
-                                    (r) => r.emoji === emoji && r.reactedByMe
-                                );
-                                return (
-                                    <button
-                                        key={emoji}
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onReaction(message.id, emoji);
-                                        }}
-                                        className={`rounded-full p-1 text-sm leading-none transition-transform hover:scale-125 cursor-pointer ${
-                                            hasReacted ? "bg-primary/20 scale-110" : ""
-                                        }`}
-                                    >
-                                        {emoji}
-                                    </button>
-                                );
-                            })}
-                        </div>
                     )}
                 </div>
             )}
