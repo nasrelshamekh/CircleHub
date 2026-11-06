@@ -32,6 +32,8 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
     const [isExpanded, setIsExpanded] = useState(false);
     const [showReactionPicker, setShowReactionPicker] = useState(false);
     const reactionPickerRef = useRef(null);
+    const isStickyRef = useRef(false);
+    const closeTimerRef = useRef(null);
 
     const isMine = Boolean(message.isMine);
     const isPending = Boolean(message.pending);
@@ -52,16 +54,54 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
     const decryptedText = useDecryptedContent(message.plaintext ? null : message.content);
     const text = message.plaintext ?? decryptedText;
 
+    const cancelCloseTimer = useCallback(() => {
+        if (closeTimerRef.current) {
+            clearTimeout(closeTimerRef.current);
+            closeTimerRef.current = null;
+        }
+    }, []);
+
+    const handleMouseEnterTrigger = useCallback(() => {
+        cancelCloseTimer();
+        setShowReactionPicker(true);
+    }, [cancelCloseTimer]);
+
+    const handleMouseLeaveTrigger = useCallback(() => {
+        if (isStickyRef.current) return;
+        cancelCloseTimer();
+        closeTimerRef.current = setTimeout(() => {
+            setShowReactionPicker(false);
+        }, 350);
+    }, [cancelCloseTimer]);
+
+    const handleTriggerClick = useCallback((e) => {
+        e.stopPropagation();
+        cancelCloseTimer();
+        setShowReactionPicker((prev) => {
+            const next = !prev;
+            isStickyRef.current = next;
+            return next;
+        });
+    }, [cancelCloseTimer]);
+
     useEffect(() => {
         if (!showReactionPicker) return;
         function handleClickOutside(e) {
             if (reactionPickerRef.current && !reactionPickerRef.current.contains(e.target)) {
+                cancelCloseTimer();
+                isStickyRef.current = false;
                 setShowReactionPicker(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [showReactionPicker]);
+    }, [showReactionPicker, cancelCloseTimer]);
+
+    useEffect(() => {
+        return () => {
+            cancelCloseTimer();
+        };
+    }, [cancelCloseTimer]);
 
     function toggleDetails() {
         setIsExpanded((expanded) => !expanded);
@@ -90,16 +130,15 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
             ref={reactionPickerRef}
             className="relative self-center shrink-0"
             onClick={(e) => e.stopPropagation()}
-            onMouseEnter={() => setShowReactionPicker(true)}
-            onMouseLeave={() => setShowReactionPicker(false)}
+            onMouseEnter={handleMouseEnterTrigger}
+            onMouseLeave={handleMouseLeaveTrigger}
         >
             <button
                 type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setShowReactionPicker((prev) => !prev);
-                }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-(--surface-container-high) text-secondary hover:text-primary cursor-pointer"
+                onClick={handleTriggerClick}
+                className={`p-1.5 rounded-full hover:bg-(--surface-container-high) text-secondary hover:text-primary cursor-pointer transition-opacity ${
+                    showReactionPicker ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                }`}
                 title="React"
                 aria-label="React to message"
             >
@@ -108,10 +147,12 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
 
             {showReactionPicker && (
                 <div
-                    className={`absolute bottom-full mb-2 z-30 flex items-center gap-1 rounded-full bg-(--surface-container-highest) px-2 py-1 shadow-xl border border-(--border) animate-in fade-in zoom-in-95 duration-150 ${
+                    className={`absolute bottom-full mb-1.5 z-30 flex items-center gap-1 rounded-full bg-(--surface-container-highest) px-2 py-1 shadow-xl border border-(--border) before:absolute before:inset-x-0 before:-bottom-3 before:h-3 animate-in fade-in zoom-in-95 duration-150 ${
                         message.isMine ? "right-0" : "left-0"
                     }`}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseEnter={handleMouseEnterTrigger}
+                    onMouseLeave={handleMouseLeaveTrigger}
                 >
                     {QUICK_EMOJIS.map((emoji) => {
                         const hasReacted = message.reactions?.some(
@@ -123,8 +164,10 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
                                 type="button"
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onReaction(message.id, emoji);
+                                    cancelCloseTimer();
+                                    isStickyRef.current = false;
                                     setShowReactionPicker(false);
+                                    onReaction(message.id, emoji);
                                 }}
                                 title={`React ${emoji}`}
                                 className={`rounded-full p-1 text-base leading-none transition-transform hover:scale-130 active:scale-95 cursor-pointer ${
