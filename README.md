@@ -117,3 +117,13 @@ VITE_BASE_URL=https://circlehub.runasp.net
 
 ### v1.0.0
 - Initial web release: Community network, accounts, profiles, post feed, likes, comments, communities, and light/dark theme.
+
+---
+
+## Upcoming (v1.4.0 — Rich Messaging & Community Depth)
+
+The upcoming **v1.4.0** release will focus on messaging richness, community engagement, and security polish:
+
+1. **Rich Direct Messaging**: Encrypted photo attachments in direct messages, emoji reactions on chat bubbles, and message deletion/unsend.
+2. **Community Discussion Depth**: Threaded comment replies, comment likes, and pinned community announcements.
+3. **Security & App Polish**: Contact verification Safety Numbers with QR screen, comment editing, and mobile App Links for email verification.
