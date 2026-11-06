@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace CircleHub.Api.Dtos
@@ -22,5 +24,6 @@ namespace CircleHub.Api.Dtos
         public DateTime CreatedAt { get; set; }
         public bool IsMine { get; set; }
         public AuthorDto Sender { get; set; } = null!;
+        public List<MessageReactionDto> Reactions { get; set; } = [];
     }
 }

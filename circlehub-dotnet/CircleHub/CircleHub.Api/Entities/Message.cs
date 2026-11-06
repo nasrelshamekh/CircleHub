@@ -15,5 +15,7 @@ namespace CircleHub.Api.Entities
         public Post? Post { get; set; }
 
         public DateTime CreatedAt { get; set; }
+
+        public List<MessageReaction> Reactions { get; set; } = [];
     }
 }

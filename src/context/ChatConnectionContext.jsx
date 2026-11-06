@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { chatConnectionContext } from "@/hooks/useChatConnection";
 import {
     createChatConnection,
+    MESSAGE_REACTION_UPDATED_EVENT,
     NOTIFICATION_CREATED_EVENT,
     NOTIFICATION_DELETED_EVENT,
     POST_CREATED_EVENT,
@@ -19,6 +20,7 @@ import {
     appendMessageToThreadCache,
     patchConversationListOnMessage,
     sameId,
+    updateMessageReactionsInThreadCache,
 } from "@/lib/messageCacheHelpers";
 import { shouldToast, showMessageToast } from "@/lib/messageToast";
 import { chimeForIncomingNotification } from "@/lib/notificationChime";
@@ -98,6 +100,10 @@ function findConversationByPartner(queryClient, senderId) {
  */
 export default function ChatConnectionContextProvider({ children }) {
     const { userData } = useAuth();
+    const currentUserIdRef = useRef(userData?.id);
+    useEffect(() => {
+        currentUserIdRef.current = userData?.id;
+    }, [userData?.id]);
     const queryClient = useQueryClient();
     const [status, setStatus] = useState("connecting");
     const [typingUsers, setTypingUsers] = useState({});
@@ -315,6 +321,21 @@ export default function ChatConnectionContextProvider({ children }) {
             }
         });
 
+        connection.on(MESSAGE_REACTION_UPDATED_EVENT, (payload) => {
+            const messageId = payload?.messageId || payload?.MessageId;
+            const conversationId = payload?.conversationId || payload?.ConversationId;
+            const reactions = payload?.reactions || payload?.Reactions || [];
+            if (messageId && conversationId) {
+                updateMessageReactionsInThreadCache(
+                    queryClient,
+                    conversationId,
+                    messageId,
+                    reactions,
+                    currentUserIdRef.current
+                );
+            }
+        });
+
         let wasOfflineOrClosed = false;
 
         function resyncMissedRealtimeData() {
@@ -395,6 +416,8 @@ export default function ChatConnectionContextProvider({ children }) {
             connection.off(NOTIFICATION_CREATED_EVENT);
             connection.off(NOTIFICATION_DELETED_EVENT);
             connection.off(POST_CREATED_EVENT);
+            connection.off("PollUpdated");
+            connection.off(MESSAGE_REACTION_UPDATED_EVENT);
             connection.stop().catch(() => { });
 
             // A claim belongs to the session that received it: the next one must not open on someone

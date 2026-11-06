@@ -20,6 +20,9 @@ export const NOTIFICATION_DELETED_EVENT = "NotificationDeleted";
 // Event the API raises when a new post is created (ChatHub.PostCreatedMethod).
 export const POST_CREATED_EVENT = "PostCreated";
 
+// Event the API raises for message reactions (ChatHub.MessageReactionUpdatedMethod).
+export const MESSAGE_REACTION_UPDATED_EVENT = "MessageReactionUpdated";
+
 // Hub method we invoke to say that we are (or are no longer) typing (ChatHub.SendTyping).
 export const SEND_TYPING_METHOD = "SendTyping";
 

@@ -46,3 +46,17 @@ export async function sendMessage({ recipientUsername, content, previewText, pos
 
   return response.data;
 }
+
+export async function setMessageReaction(messageId, emoji) {
+  const response = await apiClient.post(`/messages/${messageId}/reactions`, {
+    emoji,
+  });
+
+  return response.data;
+}
+
+export async function removeMessageReaction(messageId) {
+  const response = await apiClient.delete(`/messages/${messageId}/reactions`);
+
+  return response.data;
+}

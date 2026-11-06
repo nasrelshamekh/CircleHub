@@ -29,6 +29,7 @@ namespace CircleHub.Api.Data
         public DbSet<Poll> Polls => Set<Poll>();
         public DbSet<PollOption> PollOptions => Set<PollOption>();
         public DbSet<PollVote> PollVotes => Set<PollVote>();
+        public DbSet<MessageReaction> MessageReactions => Set<MessageReaction>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -202,6 +203,30 @@ namespace CircleHub.Api.Data
             modelBuilder.Entity<PollVote>()
                 .HasIndex(v => new { v.PollId, v.UserId })
                 .IsUnique();
+
+            // Message Reactions
+            modelBuilder.Entity<MessageReaction>()
+                .HasOne(r => r.Message)
+                .WithMany(m => m.Reactions)
+                .HasForeignKey(r => r.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<MessageReaction>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<MessageReaction>()
+                .Property(r => r.Emoji)
+                .HasMaxLength(32);
+
+            modelBuilder.Entity<MessageReaction>()
+                .HasIndex(r => new { r.MessageId, r.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<MessageReaction>()
+                .HasIndex(r => r.MessageId);
         }
     }
 }

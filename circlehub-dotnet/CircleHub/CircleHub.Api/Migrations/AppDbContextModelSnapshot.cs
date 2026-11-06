@@ -364,6 +364,38 @@ namespace CircleHub.Api.Migrations
                     b.ToTable("Messages");
                 });
 
+            modelBuilder.Entity("CircleHub.Api.Entities.MessageReaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Emoji")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("MessageId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("MessageReactions");
+                });
+
             modelBuilder.Entity("CircleHub.Api.Entities.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -900,6 +932,25 @@ namespace CircleHub.Api.Migrations
                     b.Navigation("Sender");
                 });
 
+            modelBuilder.Entity("CircleHub.Api.Entities.MessageReaction", b =>
+                {
+                    b.HasOne("CircleHub.Api.Entities.Message", "Message")
+                        .WithMany("Reactions")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CircleHub.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CircleHub.Api.Entities.Notification", b =>
                 {
                     b.HasOne("CircleHub.Api.Entities.User", "Actor")
@@ -1037,6 +1088,11 @@ namespace CircleHub.Api.Migrations
                     b.Navigation("Messages");
 
                     b.Navigation("Participants");
+                });
+
+            modelBuilder.Entity("CircleHub.Api.Entities.Message", b =>
+                {
+                    b.Navigation("Reactions");
                 });
 
             modelBuilder.Entity("CircleHub.Api.Entities.Poll", b =>

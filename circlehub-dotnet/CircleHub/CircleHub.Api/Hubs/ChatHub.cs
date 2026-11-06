@@ -47,6 +47,11 @@ namespace CircleHub.Api.Hubs
         public const string PostCreatedMethod = "PostCreated";
 
         /// <summary>
+        /// Client-side handler for message emoji reactions.
+        /// </summary>
+        public const string MessageReactionUpdatedMethod = "MessageReactionUpdated";
+
+        /// <summary>
         /// Cap on the encrypted payload. SignalR already rejects hub messages above
         /// <c>MaximumReceiveMessageSize</c> (32 KB by default); this keeps the application
         /// limit well below that so a single message can never crowd out the transport buffer.

@@ -84,6 +84,75 @@ export function appendMessageToThreadCache(
 }
 
 /**
+ * Updates reactions on a specific message in a cached conversation thread.
+ * Normalizes reactedByMe against the current user id.
+ */
+export function updateMessageReactionsInThreadCache(
+    queryClient,
+    conversationId,
+    messageId,
+    reactions,
+    currentUserId
+) {
+    if (!conversationId || !messageId) return false;
+
+    const matchingQueries = queryClient.getQueriesData({
+        queryKey: queryKeys.conversations(),
+    });
+
+    let updatedAny = false;
+
+    const normalizedReactions = (reactions || []).map((r) => ({
+        ...r,
+        reactedByMe: currentUserId
+            ? (r.users?.some((u) => sameId(u.id, currentUserId)) ?? r.reactedByMe ?? false)
+            : (r.reactedByMe ?? false),
+    }));
+
+    for (const [key] of matchingQueries) {
+        if (!Array.isArray(key) || key.length !== 3 || !sameId(key[2], conversationId)) {
+            continue;
+        }
+
+        queryClient.setQueryData(key, (current) => {
+            if (!current || !Array.isArray(current.pages) || current.pages.length === 0) {
+                return current;
+            }
+
+            let found = false;
+            const nextPages = current.pages.map((page) => {
+                if (!Array.isArray(page.messages)) return page;
+                const msgIndex = page.messages.findIndex((m) => sameId(m.id, messageId));
+                if (msgIndex === -1) return page;
+
+                found = true;
+                const nextMessages = [...page.messages];
+                nextMessages[msgIndex] = {
+                    ...nextMessages[msgIndex],
+                    reactions: normalizedReactions,
+                };
+                return {
+                    ...page,
+                    messages: nextMessages,
+                };
+            });
+
+            if (found) {
+                updatedAny = true;
+                return {
+                    ...current,
+                    pages: nextPages,
+                };
+            }
+
+            return current;
+        });
+    }
+
+    return updatedAny;
+}
+
+/**
  * Updates a conversation's preview, timestamp,unread count and moves it to index 0
  * in the cached conversations list. Returns false when the list or conversation is
  * not cached yet so the caller can fall back to an exact list invalidation.

@@ -4,9 +4,11 @@ using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
 using CircleHub.Api.Enums;
 using CircleHub.Api.Filters;
+using CircleHub.Api.Hubs;
 using CircleHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -30,17 +32,20 @@ namespace CircleHub.Api.Controllers
         private readonly MessagePolicyService _policy;
         private readonly MessageDeliveryService _delivery;
         private readonly PresenceService _presence;
+        private readonly IHubContext<ChatHub> _hub;
 
         public MessagesController(
             AppDbContext db,
             MessagePolicyService policy,
             MessageDeliveryService delivery,
-            PresenceService presence)
+            PresenceService presence,
+            IHubContext<ChatHub> hub)
         {
             _db = db;
             _policy = policy;
             _delivery = delivery;
             _presence = presence;
+            _hub = hub;
         }
 
         private Guid? CurrentUserId
@@ -289,7 +294,15 @@ namespace CircleHub.Api.Controllers
                     m.Content,
                     m.PostId,
                     m.CreatedAt,
-                    m.SenderId
+                    m.SenderId,
+                    Reactions = m.Reactions.Select(r => new
+                    {
+                        r.Emoji,
+                        r.UserId,
+                        UserName = r.User.Name,
+                        r.User.Username,
+                        r.User.AvatarUrl
+                    }).ToList()
                 })
                 .ToListAsync();
 
@@ -308,6 +321,25 @@ namespace CircleHub.Api.Controllers
             {
                 var m = rawMessages[i];
                 var isMine = m.SenderId == currentUserId;
+                var reactions = m.Reactions
+                    .GroupBy(r => r.Emoji)
+                    .Select(g => new MessageReactionDto
+                    {
+                        Emoji = g.Key,
+                        Count = g.Count(),
+                        ReactedByMe = g.Any(r => r.UserId == currentUserId),
+                        Users = g.Select(r => new AuthorDto
+                        {
+                            Id = r.UserId,
+                            Name = r.UserName,
+                            Username = r.Username,
+                            AvatarUrl = r.AvatarUrl
+                        }).ToList()
+                    })
+                    .OrderByDescending(r => r.Count)
+                    .ThenBy(r => r.Emoji)
+                    .ToList();
+
                 messages.Add(new MessageDto
                 {
                     Id = m.Id,
@@ -315,7 +347,8 @@ namespace CircleHub.Api.Controllers
                     PostId = m.PostId,
                     CreatedAt = m.CreatedAt,
                     IsMine = isMine,
-                    Sender = isMine ? meAuthor : otherAuthor
+                    Sender = isMine ? meAuthor : otherAuthor,
+                    Reactions = reactions
                 });
             }
 
@@ -588,6 +621,168 @@ namespace CircleHub.Api.Controllers
                 Count = recipients.Count,
                 Data = recipients
             });
+        }
+
+        [HttpPost("{messageId}/reactions")]
+        [HttpPut("{messageId}/reactions")]
+        [HttpPost("messages/{messageId}/reactions")]
+        [HttpPut("messages/{messageId}/reactions")]
+        public async Task<IActionResult> SetReaction(Guid messageId, [FromBody] SetMessageReactionDto dto)
+        {
+            var currentUserId = CurrentUserId!.Value;
+            var emoji = dto?.Emoji?.Trim();
+
+            if (string.IsNullOrEmpty(emoji))
+                return Fail(StatusCodes.Status400BadRequest, "Emoji is required");
+
+            if (emoji.Length > 32)
+                return Fail(StatusCodes.Status400BadRequest, "Emoji must be 32 characters or fewer");
+
+            var message = await _db.Messages
+                .Include(m => m.Conversation)
+                .ThenInclude(c => c.Participants)
+                .FirstOrDefaultAsync(m => m.Id == messageId);
+
+            if (message == null)
+                return Fail(StatusCodes.Status404NotFound, "Message not found");
+
+            var isParticipant = message.Conversation.Participants.Any(p => p.UserId == currentUserId);
+            if (!isParticipant)
+                return Fail(StatusCodes.Status403Forbidden, "You cannot react to messages in this conversation");
+
+            var existing = await _db.MessageReactions
+                .FirstOrDefaultAsync(r => r.MessageId == messageId && r.UserId == currentUserId);
+
+            if (existing != null && existing.Emoji == emoji)
+            {
+                // Tapping the same emoji toggles it off
+                _db.MessageReactions.Remove(existing);
+            }
+            else if (existing != null)
+            {
+                // Tapping a different emoji changes the reaction
+                existing.Emoji = emoji;
+                existing.CreatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                // New reaction
+                _db.MessageReactions.Add(new MessageReaction
+                {
+                    Id = Guid.NewGuid(),
+                    MessageId = messageId,
+                    UserId = currentUserId,
+                    Emoji = emoji,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await _db.SaveChangesAsync();
+
+            var reactions = await GetMessageReactionsAsync(messageId, currentUserId);
+
+            var participantIds = message.Conversation.Participants
+                .Select(p => p.UserId.ToString())
+                .ToList();
+
+            var eventDto = new MessageReactionUpdatedEventDto
+            {
+                MessageId = messageId,
+                ConversationId = message.ConversationId,
+                Reactions = reactions
+            };
+
+            await _hub.Clients.Users(participantIds)
+                .SendAsync(ChatHub.MessageReactionUpdatedMethod, eventDto);
+
+            return Ok(new ApiResponse<List<MessageReactionDto>>
+            {
+                Data = reactions
+            });
+        }
+
+        [HttpDelete("{messageId}/reactions")]
+        [HttpDelete("messages/{messageId}/reactions")]
+        public async Task<IActionResult> RemoveReaction(Guid messageId)
+        {
+            var currentUserId = CurrentUserId!.Value;
+
+            var message = await _db.Messages
+                .Include(m => m.Conversation)
+                .ThenInclude(c => c.Participants)
+                .FirstOrDefaultAsync(m => m.Id == messageId);
+
+            if (message == null)
+                return Fail(StatusCodes.Status404NotFound, "Message not found");
+
+            var isParticipant = message.Conversation.Participants.Any(p => p.UserId == currentUserId);
+            if (!isParticipant)
+                return Fail(StatusCodes.Status403Forbidden, "You cannot react to messages in this conversation");
+
+            var existing = await _db.MessageReactions
+                .FirstOrDefaultAsync(r => r.MessageId == messageId && r.UserId == currentUserId);
+
+            if (existing != null)
+            {
+                _db.MessageReactions.Remove(existing);
+                await _db.SaveChangesAsync();
+            }
+
+            var reactions = await GetMessageReactionsAsync(messageId, currentUserId);
+
+            var participantIds = message.Conversation.Participants
+                .Select(p => p.UserId.ToString())
+                .ToList();
+
+            var eventDto = new MessageReactionUpdatedEventDto
+            {
+                MessageId = messageId,
+                ConversationId = message.ConversationId,
+                Reactions = reactions
+            };
+
+            await _hub.Clients.Users(participantIds)
+                .SendAsync(ChatHub.MessageReactionUpdatedMethod, eventDto);
+
+            return Ok(new ApiResponse<List<MessageReactionDto>>
+            {
+                Data = reactions
+            });
+        }
+
+        private async Task<List<MessageReactionDto>> GetMessageReactionsAsync(Guid messageId, Guid currentUserId)
+        {
+            var raw = await _db.MessageReactions
+                .AsNoTracking()
+                .Where(r => r.MessageId == messageId)
+                .Select(r => new
+                {
+                    r.Emoji,
+                    r.UserId,
+                    UserName = r.User.Name,
+                    r.User.Username,
+                    r.User.AvatarUrl
+                })
+                .ToListAsync();
+
+            return raw
+                .GroupBy(r => r.Emoji)
+                .Select(g => new MessageReactionDto
+                {
+                    Emoji = g.Key,
+                    Count = g.Count(),
+                    ReactedByMe = g.Any(r => r.UserId == currentUserId),
+                    Users = g.Select(r => new AuthorDto
+                    {
+                        Id = r.UserId,
+                        Name = r.UserName,
+                        Username = r.Username,
+                        AvatarUrl = r.AvatarUrl
+                    }).ToList()
+                })
+                .OrderByDescending(r => r.Count)
+                .ThenBy(r => r.Emoji)
+                .ToList();
         }
 
         /// <summary>

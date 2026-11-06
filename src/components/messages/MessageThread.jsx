@@ -12,17 +12,23 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, AlertCircle, Check, CheckCheck, LoaderCircle, Lock, ShieldAlert } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 import Avatar from "@/components/profileimages/Avatar";
 import MessageComposer from "./MessageComposer";
 import PresenceLabel from "./PresenceLabel";
 import SharedPostCard from "./SharedPostCard";
 import { formatMessageDate, formatMessageTime } from "@/lib/formatDate";
+import { useAuth } from "@/hooks/useAuth";
 import { useDecryptedContent } from "@/hooks/useDecryptedContent";
 import { hasCachedRecipientDeviceKeys, peekDecrypted, prefetchRecipientDeviceKeys } from "@/services/messageCrypto";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
+import { setMessageReaction } from "@/services/messageApi";
+import { updateMessageReactionsInThreadCache } from "@/lib/messageCacheHelpers";
 
-const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry }) {
+const QUICK_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
+
+const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry, onReaction }) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     const isMine = Boolean(message.isMine);
@@ -73,7 +79,7 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry 
             aria-expanded={isExpanded}
             onClick={toggleDetails}
             onKeyDown={handleKeyDown}
-            className="flex cursor-pointer flex-col"
+            className="group relative flex cursor-pointer flex-col"
         >
             <div
                 className={`flex items-end gap-2 ${
@@ -89,10 +95,44 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry 
                 )}
 
                 <div
-                    className={`flex min-w-0 max-w-[80%] flex-col ${
+                    className={`relative flex min-w-0 max-w-[80%] flex-col ${
                         message.isMine ? "items-end" : "items-start"
                     }`}
                 >
+                    {/* Hover Reaction Bar (Desktop) */}
+                    {!isPending && !isFailed && onReaction && message.id && (
+                        <div
+                            className={`pointer-events-none absolute -top-4 z-10 hidden items-center gap-0.5 rounded-full bg-(--surface-container-highest) px-1.5 py-0.5 shadow-md border border-(--border) opacity-0 transition-opacity duration-150 md:group-hover:pointer-events-auto md:group-hover:flex md:group-hover:opacity-100 ${
+                                message.isMine ? "right-2" : "left-2"
+                            }`}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {QUICK_EMOJIS.map((emoji) => {
+                                const hasReacted = message.reactions?.some(
+                                    (r) => r.emoji === emoji && r.reactedByMe
+                                );
+                                return (
+                                    <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onReaction(message.id, emoji);
+                                        }}
+                                        title={`React ${emoji}`}
+                                        className={`rounded-full p-1 text-sm leading-none transition-transform hover:scale-130 active:scale-95 cursor-pointer ${
+                                            hasReacted
+                                                ? "bg-primary/20 scale-110"
+                                                : "hover:bg-(--surface-container-high)"
+                                        }`}
+                                    >
+                                        {emoji}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
                     {hasContent && (
                         <div
                             className={`type-body-sm min-w-0 max-w-full whitespace-pre-wrap break-words rounded-2xl px-4 py-2 [overflow-wrap:anywhere] ${
@@ -108,6 +148,38 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry 
                     )}
 
                     {message.postId && <SharedPostCard post={message.post} />}
+
+                    {/* Reaction Badges */}
+                    {message.reactions && message.reactions.length > 0 && (
+                        <div
+                            className={`mt-1 flex flex-wrap items-center gap-1 ${
+                                message.isMine ? "justify-end" : "justify-start"
+                            }`}
+                        >
+                            {message.reactions.map((reaction) => (
+                                <button
+                                    key={reaction.emoji}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onReaction) onReaction(message.id, reaction.emoji);
+                                    }}
+                                    title={
+                                        reaction.users?.map((u) => u.name).join(", ") ||
+                                        `${reaction.count} reaction(s)`
+                                    }
+                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs transition-colors cursor-pointer ${
+                                        reaction.reactedByMe
+                                            ? "bg-primary/15 text-primary border border-primary/30 font-medium"
+                                            : "bg-(--surface-container) hover:bg-(--surface-container-high) text-secondary"
+                                    }`}
+                                >
+                                    <span>{reaction.emoji}</span>
+                                    <span className="text-[11px] font-semibold">{reaction.count}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     {message.failed && (
                         <div className="mt-1 flex items-center gap-1.5 text-xs text-rose-500">
@@ -147,7 +219,7 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry 
 
             {isExpanded && (
                 <div
-                    className={`type-label-sm mt-1 flex items-center gap-3 text-secondary ${
+                    className={`type-label-sm mt-1 flex flex-wrap items-center gap-3 text-secondary ${
                         message.isMine ? "justify-end" : "pl-10"
                     }`}
                 >
@@ -178,6 +250,32 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry 
                         >
                             Copy
                         </button>
+                    )}
+
+                    {/* Touch / Expanded Quick Reaction Emojis */}
+                    {!isPending && !isFailed && onReaction && message.id && (
+                        <div className="flex items-center gap-1.5 py-0.5">
+                            {QUICK_EMOJIS.map((emoji) => {
+                                const hasReacted = message.reactions?.some(
+                                    (r) => r.emoji === emoji && r.reactedByMe
+                                );
+                                return (
+                                    <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onReaction(message.id, emoji);
+                                        }}
+                                        className={`rounded-full p-1 text-sm leading-none transition-transform hover:scale-125 cursor-pointer ${
+                                            hasReacted ? "bg-primary/20 scale-110" : ""
+                                        }`}
+                                    >
+                                        {emoji}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             )}
@@ -212,6 +310,10 @@ export default function MessageThread({
     onLoadOlder,
     isError = false,
 }) {
+    const queryClient = useQueryClient();
+    const { userData } = useAuth();
+    const currentUserId = userData?.id;
+
     const bottomRef = useRef(null);
     const scrollRef = useRef(null);
     const contentRef = useRef(null);
@@ -226,6 +328,28 @@ export default function MessageThread({
     const [pendingMessage, setPendingMessage] = useState(null);
     const [e2eeStatus, setE2eeStatus] = useState(() =>
         hasCachedRecipientDeviceKeys(otherUser?.username)
+    );
+
+    const handleReaction = useCallback(
+        async (messageId, emoji) => {
+            if (!messageId || !emoji) return;
+
+            try {
+                const response = await setMessageReaction(messageId, emoji);
+                if (response?.data) {
+                    updateMessageReactionsInThreadCache(
+                        queryClient,
+                        conversationId,
+                        messageId,
+                        response.data,
+                        currentUserId
+                    );
+                }
+            } catch {
+                toast.error("Could not update reaction");
+            }
+        },
+        [conversationId, currentUserId, queryClient]
     );
 
     useEffect(() => {
@@ -514,6 +638,7 @@ export default function MessageThread({
                                 <MessageBubble
                                     message={message}
                                     otherUser={otherUser}
+                                    onReaction={handleReaction}
                                 />
                             </Fragment>
                         ))}
