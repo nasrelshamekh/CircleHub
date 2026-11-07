@@ -1,63 +1,134 @@
-﻿import { useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { useState } from "react";
+import { LoaderCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAddComment } from "@/hooks/mutations/useAddComment";
 import Avatar from "@/components/profileimages/Avatar";
+import GifPicker from "@/components/common/GifPicker";
 
 export default function CommentForm({ user, postId }) {
     const [commentText, setCommentText] = useState("");
+    const [selectedGif, setSelectedGif] = useState(null);
+    const [showGifPicker, setShowGifPicker] = useState(false);
     const addComment = useAddComment();
 
     function handleSubmit(event) {
-        event.preventDefault();
+        event?.preventDefault?.();
 
         const trimmed = commentText.trim();
-        if (!trimmed) {
-            toast.error("Please write a comment first.");
+        if (!trimmed && !selectedGif) {
+            toast.error("Please write a comment or attach a GIF.");
             return;
         }
 
         if (addComment.isPending) return;
 
+        const content = trimmed
+            ? selectedGif
+                ? `${trimmed}\n${selectedGif.url}`
+                : trimmed
+            : selectedGif.url;
+
         addComment.mutate(
-            { postId, content: trimmed },
+            { postId, content },
             {
                 onSuccess: () => {
                     setCommentText("");
+                    setSelectedGif(null);
+                    setShowGifPicker(false);
                     toast.success("Comment added successfully");
                 },
             }
         );
     }
 
+    const canSubmit = Boolean(commentText.trim() || selectedGif);
+
     return (
-        <form onSubmit={handleSubmit} className="mb-5 flex w-full flex-col items-end gap-3">
+        <form onSubmit={handleSubmit} className="mb-5 flex w-full flex-col gap-3">
             <div className="flex gap-3 w-full">
                 <Avatar
                     src={user.avatarUrl}
                     alt={user.name}
                     className="avatar-md"
                 />
-                <textarea
-                    value={commentText}
-                    onChange={(event) => setCommentText(event.target.value)}
-                    onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); handleSubmit(event); } }}
-                    className="input-surface type-body-sm min-h-26 rounded-2xl p-3 w-full"
-                    placeholder="Add a comment..."
-                    disabled={addComment.isPending}
-                />
+                <div className="flex flex-1 flex-col gap-2">
+                    <textarea
+                        value={commentText}
+                        onChange={(event) => setCommentText(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter" && !event.shiftKey) {
+                                event.preventDefault();
+                                handleSubmit(event);
+                            }
+                        }}
+                        className="input-surface type-body-sm min-h-22 rounded-2xl p-3 w-full"
+                        placeholder="Add a comment..."
+                        disabled={addComment.isPending}
+                    />
+
+                    {/* Selected GIF preview */}
+                    {selectedGif && (
+                        <div className="relative inline-block self-start overflow-hidden rounded-xl border border-(--border) bg-(--surface-container) max-w-[200px]">
+                            <img
+                                src={selectedGif.previewUrl || selectedGif.url}
+                                alt="Selected GIF"
+                                className="h-28 w-full object-cover rounded-xl"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setSelectedGif(null)}
+                                aria-label="Remove GIF"
+                                className="absolute top-1.5 right-1.5 rounded-full bg-black/70 p-1 text-white hover:bg-black transition-colors"
+                            >
+                                <X size={14} />
+                            </button>
+                            <div className="absolute bottom-1 left-1.5 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider backdrop-blur-xs">
+                                GIF
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-            <button
-                type="submit"
-                disabled={addComment.isPending}
-                className="button-primary type-button flex items-center justify-center gap-2 px-5 py-2 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-                {addComment.isPending && (
-                    <LoaderCircle size={16} className="animate-spin" />
-                )}
-                {addComment.isPending ? "Posting..." : "Post"}
-            </button>
+
+            <div className="flex items-center justify-between w-full pl-12">
+                <div className="relative">
+                    <button
+                        type="button"
+                        onClick={() => setShowGifPicker((prev) => !prev)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                            selectedGif || showGifPicker
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-(--border) text-secondary hover:text-primary hover:bg-(--surface-low)"
+                        }`}
+                        aria-label="Add GIF to comment"
+                    >
+                        <span>GIF</span>
+                    </button>
+
+                    {showGifPicker && (
+                        <GifPicker
+                            onSelect={(gif) => {
+                                setSelectedGif(gif);
+                                setShowGifPicker(false);
+                            }}
+                            onClose={() => setShowGifPicker(false)}
+                            align="left"
+                        />
+                    )}
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={addComment.isPending || !canSubmit}
+                    className="button-primary type-button flex items-center justify-center gap-2 px-5 py-2 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    {addComment.isPending && (
+                        <LoaderCircle size={16} className="animate-spin" />
+                    )}
+                    {addComment.isPending ? "Posting..." : "Post"}
+                </button>
+            </div>
         </form>
     );
 }

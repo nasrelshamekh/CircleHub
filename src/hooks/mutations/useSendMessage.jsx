@@ -7,6 +7,7 @@ import {
 import { queryKeys } from "@/lib/queryKeys";
 import { sendMessage } from "@/services/messageApi";
 import { encryptMessageContent } from "@/services/messageCrypto";
+import { parseGifContent } from "@/services/gifService";
 
 export function useSendMessage() {
     const queryClient = useQueryClient();
@@ -15,16 +16,27 @@ export function useSendMessage() {
         // The one mutation both send paths use (composer, share-post dialog), so it is the one place
         // that turns text into ciphertext. A post-only send carries no body: nothing to encrypt, the
         // postId travels in the clear by design.
-        mutationFn: async ({ recipientUsername, content, postId }) =>
-            sendMessage({
+        mutationFn: async ({ recipientUsername, content, postId }) => {
+            let previewText;
+            if (content) {
+                const trimmed = content.trim();
+                const { text, gifUrl } = parseGifContent(trimmed);
+                if (gifUrl) {
+                    previewText = text ? `${text.slice(0, 100)} [GIF]` : "Sent a GIF";
+                } else {
+                    previewText = trimmed.slice(0, 150);
+                }
+            }
+            return sendMessage({
                 recipientUsername,
                 content: await encryptMessageContent({
                     recipientUsername,
                     plaintext: content,
                 }),
-                previewText: content ? content.trim().slice(0, 150) : undefined,
+                previewText,
                 postId,
-            }),
+            });
+        },
 
         onSuccess: (result, variables) => {
             const conversationId = result?.data?.conversationId;

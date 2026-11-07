@@ -15,6 +15,7 @@ import { useDecryptedContent } from "@/hooks/useDecryptedContent";
 import { isTypingNow, useTypingUsers } from "@/hooks/useTypingIndicator";
 import { formatShortTime } from "@/lib/formatDate";
 import { queryKeys } from "@/lib/queryKeys";
+import { parseGifContent } from "@/services/gifService";
 
 const IDLE_PREFETCH_COUNT = 3;
 
@@ -38,10 +39,18 @@ function ConversationPreview({ conversation }) {
 
     if (!parts) return <>No messages yet</>;
 
+    let displayBody = body;
+    if (body) {
+        const { text, gifUrl } = parseGifContent(body);
+        if (gifUrl) {
+            displayBody = text ? `${text} [GIF]` : "Sent a GIF";
+        }
+    }
+
     return (
         <>
             {parts.prefix}
-            {body}
+            {displayBody}
         </>
     );
 }

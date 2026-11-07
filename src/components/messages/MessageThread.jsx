@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 import Avatar from "@/components/profileimages/Avatar";
+import MediaLightbox from "@/components/common/MediaLightbox";
 import MessageComposer from "./MessageComposer";
 import PresenceLabel from "./PresenceLabel";
 import SharedPostCard from "./SharedPostCard";
@@ -25,10 +26,11 @@ import { hasCachedRecipientDeviceKeys, peekDecrypted, prefetchRecipientDeviceKey
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { setMessageReaction } from "@/services/messageApi";
 import { updateMessageReactionsInThreadCache } from "@/lib/messageCacheHelpers";
+import { parseGifContent } from "@/services/gifService";
 
 const QUICK_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
 
-const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry, onReaction }) {
+const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry, onReaction, onOpenMedia }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [showReactionPicker, setShowReactionPicker] = useState(false);
     const reactionPickerRef = useRef(null);
@@ -50,7 +52,8 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
     // The stored row is ciphertext; the reader only ever sees the decrypted body (the optimistic
     // pending bubble never had it — that text came straight from the composer).
     const decryptedText = useDecryptedContent(message.plaintext ? null : message.content);
-    const text = message.plaintext ?? decryptedText;
+    const rawText = message.plaintext ?? decryptedText;
+    const { text, gifUrl } = useMemo(() => parseGifContent(rawText), [rawText]);
 
     const handleTriggerClick = useCallback((e) => {
         e.stopPropagation();
@@ -83,7 +86,7 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
         event.stopPropagation();
 
         try {
-            await navigator.clipboard.writeText(text);
+            await navigator.clipboard.writeText(rawText);
             toast.success("Message copied");
         } catch {
             toast.error("Could not copy the message.");
@@ -175,16 +178,42 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
                     }`}
                 >
                     {hasContent && (
-                        <div
-                            className={`type-body-sm min-w-0 max-w-full whitespace-pre-wrap break-words rounded-2xl px-4 py-2 [overflow-wrap:anywhere] ${
-                                message.isMine
-                                    ? message.failed
-                                        ? "border border-rose-500/50 bg-rose-500/10 text-rose-300"
-                                        : "bg-(--primary) text-(--on-primary)"
-                                    : "bg-(--surface-container) text-primary"
-                            }${message.pending ? " opacity-70" : ""}`}
-                        >
-                            {text}
+                        <div className={`flex flex-col gap-1.5 max-w-full ${message.isMine ? "items-end" : "items-start"}`}>
+                            {text ? (
+                                <div
+                                    className={`type-body-sm min-w-0 max-w-full whitespace-pre-wrap break-words rounded-2xl px-4 py-2 [overflow-wrap:anywhere] ${
+                                        message.isMine
+                                            ? message.failed
+                                                ? "border border-rose-500/50 bg-rose-500/10 text-rose-300"
+                                                : "bg-(--primary) text-(--on-primary)"
+                                            : "bg-(--surface-container) text-primary"
+                                    }${message.pending ? " opacity-70" : ""}`}
+                                >
+                                    {text}
+                                </div>
+                            ) : null}
+
+                            {gifUrl && (
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onOpenMedia?.(gifUrl);
+                                    }}
+                                    className={`group relative overflow-hidden rounded-2xl border border-(--border)/50 bg-(--surface-container) cursor-zoom-in transition-transform duration-200 hover:scale-[1.01] max-w-[280px] sm:max-w-[340px] ${
+                                        message.pending ? "opacity-70" : ""
+                                    }`}
+                                >
+                                    <img
+                                        src={gifUrl}
+                                        alt="GIF"
+                                        loading="lazy"
+                                        className="h-auto max-h-[260px] w-full object-cover rounded-2xl"
+                                    />
+                                    <div className="absolute bottom-2 left-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-white tracking-wider backdrop-blur-xs">
+                                        GIF
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -386,6 +415,7 @@ export default function MessageThread({
     // The header's second line, while the other person is writing: presence gives way to "typing…" rather
     // than sitting underneath it, which is where the eye already looks for their state.
     const isOtherTyping = useTypingIndicator(otherUser?.id);
+    const [lightboxSrc, setLightboxSrc] = useState(null);
 
     const firstMessageId = messages[0]?.id;
     const lastMessageId = messages[messages.length - 1]?.id;
@@ -657,6 +687,7 @@ export default function MessageThread({
                                     message={message}
                                     otherUser={otherUser}
                                     onReaction={handleReaction}
+                                    onOpenMedia={setLightboxSrc}
                                 />
                             </Fragment>
                         ))}
@@ -666,6 +697,7 @@ export default function MessageThread({
                                 message={pendingMessage}
                                 otherUser={otherUser}
                                 onRetry={handleRetryPending}
+                                onOpenMedia={setLightboxSrc}
                             />
                         )}
 
@@ -713,6 +745,12 @@ export default function MessageThread({
                     onRetryHandled={() => setRetryText(null)}
                 />
             )}
+
+            <MediaLightbox
+                src={lightboxSrc}
+                isOpen={Boolean(lightboxSrc)}
+                onClose={() => setLightboxSrc(null)}
+            />
         </div>
     );
 }

@@ -3,6 +3,7 @@ import { Send, Smile } from "lucide-react";
 import { toast } from "sonner";
 
 import EmojiPicker from "./EmojiPicker";
+import GifPicker from "@/components/common/GifPicker";
 import { useSendMessage } from "@/hooks/mutations/useSendMessage";
 import { useTypingBroadcast } from "@/hooks/useTypingBroadcast";
 import { MAX_PLAINTEXT_LENGTH } from "@/services/messageCrypto";
@@ -16,6 +17,7 @@ export default function MessageComposer({
 }) {
     const [text, setText] = useState("");
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showGifPicker, setShowGifPicker] = useState(false);
     const textareaRef = useRef(null);
     const sendMessage = useSendMessage();
     const { reportTyping, stopTyping } = useTypingBroadcast(recipientId);
@@ -68,6 +70,15 @@ export default function MessageComposer({
         });
     }
 
+    function handleSelectGif(gif) {
+        setShowGifPicker(false);
+        if (!gif?.url) return;
+
+        const currentText = text.trim();
+        const payload = currentText ? `${currentText}\n${gif.url}` : gif.url;
+        sendContent(payload);
+    }
+
     function sendContent(contentToSend) {
         const content = contentToSend.trim();
 
@@ -83,6 +94,7 @@ export default function MessageComposer({
         // would keep the other end waiting for it to expire while the message sits in their thread.
         stopTyping();
         setShowEmojiPicker(false);
+        setShowGifPicker(false);
 
         const optimisticId = `pending-${Date.now()}`;
 
@@ -161,22 +173,52 @@ export default function MessageComposer({
                 />
             )}
 
+            {showGifPicker && (
+                <GifPicker
+                    onSelect={handleSelectGif}
+                    onClose={() => setShowGifPicker(false)}
+                />
+            )}
+
             <form
                 onSubmit={handleSubmit}
                 className="flex items-end gap-2 p-3"
             >
-                <button
-                    type="button"
-                    onClick={() => setShowEmojiPicker((prev) => !prev)}
-                    aria-label="Add emoji"
-                    className={`flex size-10 shrink-0 mb-0.5 items-center justify-center rounded-full transition-colors ${
-                        showEmojiPicker
-                            ? "bg-(--surface-high) text-(--primary)"
-                            : "text-secondary hover:bg-(--surface-low) hover:text-primary"
-                    }`}
-                >
-                    <Smile size={20} />
-                </button>
+                <div className="flex items-center gap-1 shrink-0 mb-0.5">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setShowEmojiPicker((prev) => !prev);
+                            setShowGifPicker(false);
+                        }}
+                        aria-label="Add emoji"
+                        className={`flex size-10 items-center justify-center rounded-full transition-colors ${
+                            showEmojiPicker
+                                ? "bg-(--surface-high) text-(--primary)"
+                                : "text-secondary hover:bg-(--surface-low) hover:text-primary"
+                        }`}
+                    >
+                        <Smile size={20} />
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setShowGifPicker((prev) => !prev);
+                            setShowEmojiPicker(false);
+                        }}
+                        aria-label="Add GIF"
+                        className={`flex size-10 items-center justify-center rounded-full transition-colors ${
+                            showGifPicker
+                                ? "bg-(--surface-high) text-(--primary)"
+                                : "text-secondary hover:bg-(--surface-low) hover:text-primary"
+                        }`}
+                    >
+                        <span className="text-[11px] font-bold border border-current rounded px-1 py-0.5 leading-none">
+                            GIF
+                        </span>
+                    </button>
+                </div>
 
                 <div className="relative flex min-w-0 flex-1 flex-col justify-center">
                     <textarea
