@@ -219,38 +219,6 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
 
                     {message.postId && <SharedPostCard post={message.post} />}
 
-                    {/* Reaction Badges */}
-                    {message.reactions && message.reactions.length > 0 && (
-                        <div
-                            className={`mt-1 flex flex-wrap items-center gap-1 ${
-                                message.isMine ? "justify-end" : "justify-start"
-                            }`}
-                        >
-                            {message.reactions.map((reaction) => (
-                                <button
-                                    key={reaction.emoji}
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (onReaction) onReaction(message.id, reaction.emoji);
-                                    }}
-                                    title={
-                                        reaction.users?.map((u) => u.name).join(", ") ||
-                                        `${reaction.count} reaction(s)`
-                                    }
-                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs transition-colors cursor-pointer ${
-                                        reaction.reactedByMe
-                                            ? "bg-primary/15 text-primary border border-primary/30 font-medium"
-                                            : "bg-(--surface-container) hover:bg-(--surface-container-high) text-secondary"
-                                    }`}
-                                >
-                                    <span>{reaction.emoji}</span>
-                                    <span className="text-[11px] font-semibold">{reaction.count}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
                     {message.failed && (
                         <div className="mt-1 flex items-center gap-1.5 text-xs text-rose-500">
                             <AlertCircle size={13} />
@@ -289,6 +257,38 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
                 {/* For incoming messages: Reaction button sits in the gutter to the right */}
                 {!message.isMine && reactionTrigger}
             </div>
+
+            {/* Reaction Badges placed directly under the bubble row to push the next message downwards */}
+            {message.reactions && message.reactions.length > 0 && (
+                <div
+                    className={`mt-1 flex flex-wrap items-center gap-1 ${
+                        message.isMine ? "justify-end pr-1" : "justify-start pl-10"
+                    }`}
+                >
+                    {message.reactions.map((reaction) => (
+                        <button
+                            key={reaction.emoji}
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onReaction) onReaction(message.id, reaction.emoji);
+                            }}
+                            title={
+                                reaction.users?.map((u) => u.name).join(", ") ||
+                                `${reaction.count} reaction(s)`
+                            }
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs transition-colors cursor-pointer ${
+                                reaction.reactedByMe
+                                    ? "bg-primary/20 text-primary font-medium"
+                                    : "bg-(--surface-container) hover:bg-(--surface-container-high) text-secondary"
+                            }`}
+                        >
+                            <span>{reaction.emoji}</span>
+                            <span className="text-[11px] font-semibold">{reaction.count}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {isExpanded && (
                 <div
