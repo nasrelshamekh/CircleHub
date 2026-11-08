@@ -59,6 +59,10 @@ namespace CircleHub.Api.Dtos
                 }
             }
 
+            // Top-level comments: Newest first (reverse chronological)
+            // Nested replies: Chronological (oldest first, preserved from flatComments OrderBy CreatedAt ASC)
+            rootComments.Reverse();
+
             return rootComments;
         }
     }
