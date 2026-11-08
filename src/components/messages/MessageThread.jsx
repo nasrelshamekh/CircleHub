@@ -9,7 +9,7 @@ import {
     useState,
 } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Ban, Check, CheckCheck, LoaderCircle, Lock, ShieldAlert, Smile, Trash2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, Ban, Check, CheckCheck, LoaderCircle, Lock, ShieldAlert, Smile } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -236,25 +236,8 @@ const MessageBubble = memo(function MessageBubble({
                     />
                 )}
 
-                {/* For outgoing messages: Reaction button and Unsend button sit in the gutter to the left */}
-                {message.isMine && (
-                    <div className="flex items-center gap-0.5">
-                        {!isPending && !isFailed && (
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDeleteMessage?.(message);
-                                }}
-                                title="Unsend message"
-                                className="hidden group-hover:inline-flex p-1 rounded-full text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                            >
-                                <Trash2 size={13} />
-                            </button>
-                        )}
-                        {reactionTrigger}
-                    </div>
-                )}
+                {/* For outgoing messages: Reaction button sits in the gutter to the left */}
+                {message.isMine && reactionTrigger}
 
                 <div
                     className={`flex min-w-0 max-w-[80%] flex-col ${
