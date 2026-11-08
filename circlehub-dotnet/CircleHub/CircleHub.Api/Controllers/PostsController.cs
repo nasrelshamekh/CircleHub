@@ -410,5 +410,59 @@ namespace CircleHub.Api.Controllers
                 Data = new { postId = id, likesCount, isLikedByMe }
             });
         }
+
+        [Authorize]
+        [HttpPost("{id:guid}/pin")]
+        public async Task<IActionResult> TogglePin(Guid id)
+        {
+            var currentUserId = CurrentUserId!.Value;
+            var post = await _db.Posts
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (post is null)
+                return Fail(StatusCodes.Status404NotFound, "Post not found");
+
+            if (post.CommunityId is null)
+                return Fail(StatusCodes.Status400BadRequest, "Only community posts can be pinned");
+
+            var community = await _db.Communities
+                .Where(c => c.Id == post.CommunityId.Value)
+                .Select(c => new
+                {
+                    c.Id,
+                    c.AdminId,
+                    IsModerator = c.Members.Any(m =>
+                        m.UserId == currentUserId &&
+                        m.Role == CommunityRole.Moderator)
+                })
+                .FirstOrDefaultAsync();
+
+            if (community is null)
+                return Fail(StatusCodes.Status404NotFound, "Community not found");
+
+            var isAdmin = community.AdminId == currentUserId;
+            var isModerator = community.IsModerator;
+
+            if (!isAdmin && !isModerator)
+                return Fail(StatusCodes.Status403Forbidden, "Only community admins and moderators can pin posts");
+
+            post.IsPinned = !post.IsPinned;
+            post.PinnedAt = post.IsPinned ? DateTime.UtcNow : null;
+            post.PinnedById = post.IsPinned ? currentUserId : null;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new ApiResponse<object>
+            {
+                Message = post.IsPinned ? "Post pinned to community" : "Post unpinned from community",
+                Data = new
+                {
+                    postId = post.Id,
+                    communityId = post.CommunityId,
+                    isPinned = post.IsPinned,
+                    pinnedAt = post.PinnedAt
+                }
+            });
+        }
     }
 }

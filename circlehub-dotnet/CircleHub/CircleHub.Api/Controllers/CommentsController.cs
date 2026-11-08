@@ -1,4 +1,4 @@
-﻿using CircleHub.Api.Data;
+using CircleHub.Api.Data;
 using CircleHub.Api.Dtos;
 using CircleHub.Api.Entities;
 using CircleHub.Api.Services;
@@ -45,16 +45,18 @@ namespace CircleHub.Api.Controllers
             if (!postVisible)
                 return Fail(StatusCodes.Status404NotFound, "Post not found");
 
-            var comments = await _db.Comments
+            var flat = await _db.Comments
                 .Where(c => c.PostId == postId)
                 .OrderBy(c => c.CreatedAt)
-                .Select(CommentDto.Projection)
+                .Select(CommentDto.ProjectionFor(CurrentUserId))
                 .ToListAsync();
+
+            var nested = CommentDto.NestComments(flat);
 
             return Ok(new ApiResponse<List<CommentDto>>
             {
-                Count = comments.Count,
-                Data = comments
+                Count = flat.Count,
+                Data = nested
             });
         }
 
@@ -81,14 +83,39 @@ namespace CircleHub.Api.Controllers
                 UpdatedAt = DateTime.UtcNow
             };
 
+            Guid? parentAuthorId = null;
+            if (dto.ParentCommentId.HasValue)
+            {
+                var parent = await _db.Comments
+                    .Where(c => c.Id == dto.ParentCommentId.Value && c.PostId == postId)
+                    .Select(c => new { c.Id, c.AuthorId })
+                    .FirstOrDefaultAsync();
+
+                if (parent is null)
+                    return Fail(StatusCodes.Status404NotFound, "Parent comment not found");
+
+                comment.ParentCommentId = dto.ParentCommentId.Value;
+                parentAuthorId = parent.AuthorId;
+            }
+
             _db.Comments.Add(comment);
             await _db.SaveChangesAsync();
 
-            await _notifications.NotifyPostCommentAsync(userId, postAuthorId.Value, postId);
+            // Notify post author if not self
+            if (postAuthorId.Value != userId)
+            {
+                await _notifications.NotifyPostCommentAsync(userId, postAuthorId.Value, postId);
+            }
+
+            // Also notify parent comment author if replying to someone else's comment
+            if (parentAuthorId.HasValue && parentAuthorId.Value != userId && parentAuthorId.Value != postAuthorId.Value)
+            {
+                await _notifications.NotifyPostCommentAsync(userId, parentAuthorId.Value, postId);
+            }
 
             var created = await _db.Comments
                 .Where(c => c.Id == comment.Id)
-                .Select(CommentDto.Projection)
+                .Select(CommentDto.ProjectionFor(userId))
                 .FirstAsync();
 
             var commentsCount = await _db.Comments.CountAsync(c => c.PostId == postId);
@@ -97,6 +124,63 @@ namespace CircleHub.Api.Controllers
             {
                 Message = "Comment added successfully",
                 Data = new { comment = created, postId, commentsCount }
+            });
+        }
+
+        [Authorize]
+        [HttpPost("{commentId}/like")]
+        public async Task<IActionResult> ToggleCommentLike(Guid postId, Guid commentId)
+        {
+            var userId = CurrentUserId!.Value;
+
+            var comment = await _db.Comments
+                .Where(c => c.Id == commentId && c.PostId == postId)
+                .Select(c => new { c.Id, c.AuthorId })
+                .FirstOrDefaultAsync();
+
+            if (comment is null)
+                return Fail(StatusCodes.Status404NotFound, "Comment not found");
+
+            var existingLike = await _db.CommentLikes
+                .FirstOrDefaultAsync(l => l.CommentId == commentId && l.UserId == userId);
+
+            bool isLiked;
+            if (existingLike != null)
+            {
+                _db.CommentLikes.Remove(existingLike);
+                isLiked = false;
+            }
+            else
+            {
+                var like = new CommentLike
+                {
+                    CommentId = commentId,
+                    UserId = userId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _db.CommentLikes.Add(like);
+                isLiked = true;
+            }
+
+            await _db.SaveChangesAsync();
+
+            if (isLiked && comment.AuthorId != userId)
+            {
+                await _notifications.NotifyCommentLikeAsync(userId, comment.AuthorId, postId);
+            }
+
+            var likesCount = await _db.CommentLikes.CountAsync(l => l.CommentId == commentId);
+
+            return Ok(new ApiResponse<object>
+            {
+                Message = isLiked ? "Comment liked" : "Comment unliked",
+                Data = new
+                {
+                    commentId,
+                    postId,
+                    isLiked,
+                    likesCount
+                }
             });
         }
 

@@ -1,4 +1,4 @@
-﻿import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { addPostComment } from "@/services/postApi";
@@ -12,22 +12,47 @@ function bumpCommentsCount(posts, postId, delta) {
     );
 }
 
+function insertReplyIntoTree(comments, parentCommentId, reply) {
+    return comments.map((comment) => {
+        if (comment.id === parentCommentId) {
+            return {
+                ...comment,
+                replies: [...(comment.replies || []), reply],
+            };
+        }
+        if (comment.replies && comment.replies.length > 0) {
+            return {
+                ...comment,
+                replies: insertReplyIntoTree(comment.replies, parentCommentId, reply),
+            };
+        }
+        return comment;
+    });
+}
+
 export function useAddComment() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ postId, content }) => addPostComment(postId, content),
+        mutationFn: ({ postId, content, parentCommentId }) =>
+            addPostComment(postId, content, parentCommentId),
 
-        onSuccess: (response, { postId }) => {
+        onSuccess: (response, { postId, parentCommentId }) => {
             const newComment = response.data.comment;
 
             queryClient.setQueryData(queryKeys.post(postId), (old) => {
                 if (!old) return old;
-                const updatedComments = [newComment, ...(old.comments || [])];
+                let updatedComments;
+                if (parentCommentId) {
+                    updatedComments = insertReplyIntoTree(old.comments || [], parentCommentId, newComment);
+                } else {
+                    updatedComments = [newComment, ...(old.comments || [])];
+                }
+
                 return {
                     ...old,
                     comments: updatedComments,
-                    commentsCount: updatedComments.length,
+                    commentsCount: (old.commentsCount || 0) + 1,
                 };
             });
 

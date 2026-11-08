@@ -1241,7 +1241,8 @@ namespace CircleHub.Api.Controllers
 
             var posts = await _db.Posts
                 .Where(p => p.CommunityId == communityId)
-                .OrderByDescending(p => p.CreatedAt)
+                .OrderByDescending(p => p.IsPinned)
+                .ThenByDescending(p => p.CreatedAt)
                 .Select(PostDto.Projection(currentUserId))
                 .ToListAsync();
 
@@ -1490,5 +1491,57 @@ namespace CircleHub.Api.Controllers
             !string.IsNullOrWhiteSpace(category) &&
             Enum.GetNames<CommunityCategory>().Any(name =>
                 string.Equals(name, category.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        [Authorize]
+        [HttpPost("{communityId:guid}/posts/{postId:guid}/pin")]
+        public async Task<IActionResult> ToggleCommunityPostPin(Guid communityId, Guid postId)
+        {
+            var currentUserId = CurrentUserId!.Value;
+
+            var community = await _db.Communities
+                .Where(c => c.Id == communityId)
+                .Select(c => new
+                {
+                    c.Id,
+                    c.AdminId,
+                    IsModerator = c.Members.Any(m =>
+                        m.UserId == currentUserId &&
+                        m.Role == CommunityRole.Moderator)
+                })
+                .FirstOrDefaultAsync();
+
+            if (community is null)
+                return Fail(StatusCodes.Status404NotFound, "Community not found");
+
+            var isAdmin = community.AdminId == currentUserId;
+            var isModerator = community.IsModerator;
+
+            if (!isAdmin && !isModerator)
+                return Fail(StatusCodes.Status403Forbidden, "Only community admins and moderators can pin posts");
+
+            var post = await _db.Posts
+                .FirstOrDefaultAsync(p => p.Id == postId && p.CommunityId == communityId);
+
+            if (post is null)
+                return Fail(StatusCodes.Status404NotFound, "Community post not found");
+
+            post.IsPinned = !post.IsPinned;
+            post.PinnedAt = post.IsPinned ? DateTime.UtcNow : null;
+            post.PinnedById = post.IsPinned ? currentUserId : null;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new ApiResponse<object>
+            {
+                Message = post.IsPinned ? "Post pinned to community" : "Post unpinned from community",
+                Data = new
+                {
+                    postId = post.Id,
+                    communityId,
+                    isPinned = post.IsPinned,
+                    pinnedAt = post.PinnedAt
+                }
+            });
+        }
     }
 }

@@ -16,6 +16,11 @@ namespace CircleHub.Api.Entities
         public Guid? CommunityId { get; set; }
         public Community? Community { get; set; }
 
+        public bool IsPinned { get; set; }
+        public DateTime? PinnedAt { get; set; }
+        public Guid? PinnedById { get; set; }
+        public User? PinnedBy { get; set; }
+
         public Poll? Poll { get; set; }
 
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();

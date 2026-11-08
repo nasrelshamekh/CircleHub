@@ -6,7 +6,15 @@ import { useAddComment } from "@/hooks/mutations/useAddComment";
 import Avatar from "@/components/profileimages/Avatar";
 import GifPicker from "@/components/common/GifPicker";
 
-export default function CommentForm({ user, postId }) {
+export default function CommentForm({
+    user,
+    postId,
+    parentCommentId = null,
+    replyingTo = null,
+    onCancelReply = null,
+    onSuccess = null,
+    compact = false,
+}) {
     const [commentText, setCommentText] = useState("");
     const [selectedGif, setSelectedGif] = useState(null);
     const [showGifPicker, setShowGifPicker] = useState(false);
@@ -30,13 +38,14 @@ export default function CommentForm({ user, postId }) {
             : selectedGif.url;
 
         addComment.mutate(
-            { postId, content },
+            { postId, content, parentCommentId },
             {
                 onSuccess: () => {
                     setCommentText("");
                     setSelectedGif(null);
                     setShowGifPicker(false);
-                    toast.success("Comment added successfully");
+                    toast.success(parentCommentId ? "Reply added successfully" : "Comment added successfully");
+                    onSuccess?.();
                 },
             }
         );
@@ -45,12 +54,30 @@ export default function CommentForm({ user, postId }) {
     const canSubmit = Boolean(commentText.trim() || selectedGif);
 
     return (
-        <form onSubmit={handleSubmit} className="mb-5 flex w-full flex-col gap-3">
+        <form onSubmit={handleSubmit} className={`${compact ? "mt-2" : "mb-5"} flex w-full flex-col gap-2.5`}>
+            {replyingTo && (
+                <div className="flex items-center justify-between rounded-xl bg-(--surface-container) px-3 py-1.5 text-xs text-secondary border border-(--border)/40">
+                    <span className="flex items-center gap-1">
+                        Replying to <span className="font-semibold text-primary">@{replyingTo.username || replyingTo.name}</span>
+                    </span>
+                    {onCancelReply && (
+                        <button
+                            type="button"
+                            onClick={onCancelReply}
+                            className="p-0.5 text-secondary hover:text-primary transition-colors"
+                            aria-label="Cancel reply"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
+                </div>
+            )}
+
             <div className="flex gap-3 w-full">
                 <Avatar
-                    src={user.avatarUrl}
-                    alt={user.name}
-                    className="avatar-md"
+                    src={user?.avatarUrl}
+                    alt={user?.name}
+                    className={compact ? "avatar-sm" : "avatar-md"}
                 />
                 <div className="flex flex-1 flex-col gap-2">
                     <textarea
@@ -62,9 +89,12 @@ export default function CommentForm({ user, postId }) {
                                 handleSubmit(event);
                             }
                         }}
-                        className="input-surface type-body-sm min-h-22 rounded-2xl p-3 w-full"
-                        placeholder="Add a comment..."
+                        className={`input-surface type-body-sm rounded-2xl p-3 w-full ${
+                            compact ? "min-h-16" : "min-h-22"
+                        }`}
+                        placeholder={parentCommentId ? "Write a reply..." : "Add a comment..."}
                         disabled={addComment.isPending}
+                        autoFocus={Boolean(parentCommentId)}
                     />
 
                     {/* Selected GIF preview */}
@@ -91,7 +121,7 @@ export default function CommentForm({ user, postId }) {
                 </div>
             </div>
 
-            <div className="flex items-center justify-between w-full pl-12">
+            <div className={`flex items-center justify-between w-full ${compact ? "pl-10" : "pl-12"}`}>
                 <div className="relative">
                     <button
                         type="button"
@@ -118,16 +148,27 @@ export default function CommentForm({ user, postId }) {
                     )}
                 </div>
 
-                <button
-                    type="submit"
-                    disabled={addComment.isPending || !canSubmit}
-                    className="button-primary type-button flex items-center justify-center gap-2 px-5 py-2 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                    {addComment.isPending && (
-                        <LoaderCircle size={16} className="animate-spin" />
+                <div className="flex items-center gap-2">
+                    {onCancelReply && (
+                        <button
+                            type="button"
+                            onClick={onCancelReply}
+                            className="px-3 py-1.5 text-xs font-semibold text-secondary hover:text-primary transition-colors"
+                        >
+                            Cancel
+                        </button>
                     )}
-                    {addComment.isPending ? "Posting..." : "Post"}
-                </button>
+                    <button
+                        type="submit"
+                        disabled={addComment.isPending || !canSubmit}
+                        className="button-primary type-button flex items-center justify-center gap-2 px-5 py-2 disabled:cursor-not-allowed disabled:opacity-60 text-xs font-semibold"
+                    >
+                        {addComment.isPending && (
+                            <LoaderCircle size={14} className="animate-spin" />
+                        )}
+                        {addComment.isPending ? "Posting..." : parentCommentId ? "Reply" : "Post"}
+                    </button>
+                </div>
             </div>
         </form>
     );

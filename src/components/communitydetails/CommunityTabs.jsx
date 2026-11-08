@@ -95,6 +95,8 @@ export default function CommunityTabs({
                                 onDelete={canDeletePost ? onDeletePost : undefined}
                                 canDelete={canDeletePost}
                                 onToggleLike={onToggleLike}
+                                canManagePosts={canManagePosts}
+                                communityId={community.id}
                             />
                         );
                     })

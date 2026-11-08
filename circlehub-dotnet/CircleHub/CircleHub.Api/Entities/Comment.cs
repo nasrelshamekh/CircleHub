@@ -1,4 +1,4 @@
-﻿namespace CircleHub.Api.Entities
+namespace CircleHub.Api.Entities
 {
     public class Comment
     {
@@ -12,5 +12,11 @@
 
         public Guid AuthorId { get; set; }
         public User Author { get; set; } = null!;
+
+        public Guid? ParentCommentId { get; set; }
+        public Comment? ParentComment { get; set; }
+
+        public ICollection<Comment> Replies { get; set; } = new List<Comment>();
+        public ICollection<CommentLike> Likes { get; set; } = new List<CommentLike>();
     }
 }

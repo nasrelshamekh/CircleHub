@@ -16,6 +16,9 @@ namespace CircleHub.Api.Enums
         /// <summary>The actor commented on the recipient's post.</summary>
         PostComment,
 
+        /// <summary>The actor liked the recipient's comment.</summary>
+        CommentLike,
+
         /// <summary>The actor asked to join a community the recipient administers or moderates.</summary>
         CommunityJoinRequested,
 

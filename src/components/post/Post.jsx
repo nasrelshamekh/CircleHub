@@ -4,13 +4,20 @@ import PostContent from "../postcard/PostContent";
 import PostActions from "../postcard/PostActions";
 import { EditPostModal } from "../editpost/EditPostModal";
 
-export default function Post({ post, onDelete, canDelete, onToggleLike, isDetailsPage = false }) {
+export default function Post({ post, onDelete, canDelete, onToggleLike, isDetailsPage = false, canManagePosts, communityId }) {
     const [editOpen, setEditOpen] = useState(false);
 
     return (
         <>
             <div className="content-card-padded gap-4 flex flex-col">
-                <PostHeader post={post} onDelete={onDelete} canDelete={canDelete} onEdit={() => setEditOpen(true)} />
+                <PostHeader
+                    post={post}
+                    onDelete={onDelete}
+                    canDelete={canDelete}
+                    onEdit={() => setEditOpen(true)}
+                    canManagePosts={canManagePosts}
+                    communityId={communityId}
+                />
 
                 <PostContent post={post} isDetailsPage={isDetailsPage} />
 

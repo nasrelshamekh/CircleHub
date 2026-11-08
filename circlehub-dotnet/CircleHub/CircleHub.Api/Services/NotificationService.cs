@@ -50,6 +50,9 @@ namespace CircleHub.Api.Services
 
         public Task NotifyPostCommentAsync(Guid actorId, Guid recipientId, Guid postId) =>
             NotifyAsync(actorId, new[] { recipientId }, NotificationType.PostComment, postId: postId);
+        public Task NotifyCommentLikeAsync(Guid actorId, Guid recipientId, Guid postId) =>
+            NotifyAsync(actorId, new[] { recipientId }, NotificationType.CommentLike, postId: postId, dedupe: true);
+
 
         /// <summary>
         /// Tells everyone who can review join requests — the administrator and the moderators — that someone
@@ -225,6 +228,7 @@ namespace CircleHub.Api.Services
                 NotificationType.Follow => "started following you.",
                 NotificationType.PostLike => "liked your post.",
                 NotificationType.PostComment => "commented on your post.",
+                NotificationType.CommentLike => "liked your comment.",
                 NotificationType.CommunityJoinRequested => $"asked to join {community}.",
                 NotificationType.CommunityJoinRequestApproved => $"approved your request to join {community}.",
                 NotificationType.CommunityJoinRequestRejected => $"declined your request to join {community}.",

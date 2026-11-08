@@ -14,6 +14,7 @@ namespace CircleHub.Api.Data
         public DbSet<Community> Communities => Set<Community>();
         public DbSet<Post> Posts => Set<Post>();
         public DbSet<Comment> Comments => Set<Comment>();
+        public DbSet<CommentLike> CommentLikes => Set<CommentLike>();
         public DbSet<Like> Likes => Set<Like>();
         public DbSet<CommunityMember> CommunityMembers => Set<CommunityMember>();
         public DbSet<CommunityJoinRequest> CommunityJoinRequests => Set<CommunityJoinRequest>();
@@ -227,6 +228,40 @@ namespace CircleHub.Api.Data
 
             modelBuilder.Entity<MessageReaction>()
                 .HasIndex(r => r.MessageId);
+
+            // Threaded Comments
+            modelBuilder.Entity<Comment>()
+                .HasOne(c => c.ParentComment)
+                .WithMany(c => c.Replies)
+                .HasForeignKey(c => c.ParentCommentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Comment Likes
+            modelBuilder.Entity<CommentLike>()
+                .HasOne(l => l.Comment)
+                .WithMany(c => c.Likes)
+                .HasForeignKey(l => l.CommentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CommentLike>()
+                .HasOne(l => l.User)
+                .WithMany()
+                .HasForeignKey(l => l.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CommentLike>()
+                .HasIndex(l => new { l.CommentId, l.UserId })
+                .IsUnique();
+
+            // Pinned Community Posts
+            modelBuilder.Entity<Post>()
+                .HasOne(p => p.PinnedBy)
+                .WithMany()
+                .HasForeignKey(p => p.PinnedById)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Post>()
+                .HasIndex(p => p.IsPinned);
         }
     }
 }

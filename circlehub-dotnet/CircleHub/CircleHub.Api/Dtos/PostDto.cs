@@ -19,6 +19,8 @@ namespace CircleHub.Api.Dtos
         public int LikesCount { get; set; }
         public int CommentsCount { get; set; }
         public bool IsLikedByMe { get; set; }
+        public bool IsPinned { get; set; }
+        public DateTime? PinnedAt { get; set; }
         public AuthorDto Author { get; set; } = null!;
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<CommentDto>? Comments { get; set; }
@@ -85,6 +87,8 @@ namespace CircleHub.Api.Dtos
                 LikesCount = p.Likes.Count,
                 CommentsCount = p.Comments.Count,
                 IsLikedByMe = p.Likes.Any(l => l.UserId == currentUserId),
+                IsPinned = p.IsPinned,
+                PinnedAt = p.PinnedAt,
                 Poll = p.Poll != null
                     ? new PollDto
                     {
@@ -136,6 +140,8 @@ namespace CircleHub.Api.Dtos
                 LikesCount = p.Likes.Count,
                 CommentsCount = p.Comments.Count,
                 IsLikedByMe = p.Likes.Any(l => l.UserId == currentUserId),
+                IsPinned = p.IsPinned,
+                PinnedAt = p.PinnedAt,
                 Poll = p.Poll != null
                     ? new PollDto
                     {

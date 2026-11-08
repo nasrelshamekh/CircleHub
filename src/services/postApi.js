@@ -19,8 +19,24 @@ export async function toggleLikePost(postId) {
   return response.data;
 }
 
-export async function addPostComment(postId, content) {
-  const response = await apiClient.post(`/posts/${postId}/comments`, { content });
+export async function addPostComment(postId, content, parentCommentId = null) {
+  const payload = { content };
+  if (parentCommentId) {
+    payload.parentCommentId = parentCommentId;
+  }
+  const response = await apiClient.post(`/posts/${postId}/comments`, payload);
+
+  return response.data;
+}
+
+export async function toggleCommentLike(postId, commentId) {
+  const response = await apiClient.post(`/posts/${postId}/comments/${commentId}/like`);
+
+  return response.data;
+}
+
+export async function togglePinPost(postId) {
+  const response = await apiClient.post(`/posts/${postId}/pin`);
 
   return response.data;
 }

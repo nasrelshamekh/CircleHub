@@ -38,6 +38,9 @@ namespace CircleHub.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<Guid?>("ParentCommentId")
+                        .HasColumnType("char(36)");
+
                     b.Property<Guid>("PostId")
                         .HasColumnType("char(36)");
 
@@ -48,9 +51,36 @@ namespace CircleHub.Api.Migrations
 
                     b.HasIndex("AuthorId");
 
+                    b.HasIndex("ParentCommentId");
+
                     b.HasIndex("PostId");
 
                     b.ToTable("Comments");
+                });
+
+            modelBuilder.Entity("CircleHub.Api.Entities.CommentLike", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("CommentId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("CommentId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("CommentLikes");
                 });
 
             modelBuilder.Entity("CircleHub.Api.Entities.Community", b =>
@@ -546,6 +576,15 @@ namespace CircleHub.Api.Migrations
                     b.Property<string>("ImageUrl")
                         .HasColumnType("longtext");
 
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("PinnedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("PinnedById")
+                        .HasColumnType("char(36)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -554,6 +593,10 @@ namespace CircleHub.Api.Migrations
                     b.HasIndex("AuthorId");
 
                     b.HasIndex("CommunityId");
+
+                    b.HasIndex("IsPinned");
+
+                    b.HasIndex("PinnedById");
 
                     b.ToTable("Posts");
                 });
@@ -759,6 +802,11 @@ namespace CircleHub.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("CircleHub.Api.Entities.Comment", "ParentComment")
+                        .WithMany("Replies")
+                        .HasForeignKey("ParentCommentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("CircleHub.Api.Entities.Post", "Post")
                         .WithMany("Comments")
                         .HasForeignKey("PostId")
@@ -767,7 +815,28 @@ namespace CircleHub.Api.Migrations
 
                     b.Navigation("Author");
 
+                    b.Navigation("ParentComment");
+
                     b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("CircleHub.Api.Entities.CommentLike", b =>
+                {
+                    b.HasOne("CircleHub.Api.Entities.Comment", "Comment")
+                        .WithMany("Likes")
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CircleHub.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Comment");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CircleHub.Api.Entities.Community", b =>
@@ -1045,9 +1114,16 @@ namespace CircleHub.Api.Migrations
                         .WithMany("Posts")
                         .HasForeignKey("CommunityId");
 
+                    b.HasOne("CircleHub.Api.Entities.User", "PinnedBy")
+                        .WithMany()
+                        .HasForeignKey("PinnedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Author");
 
                     b.Navigation("Community");
+
+                    b.Navigation("PinnedBy");
                 });
 
             modelBuilder.Entity("CircleHub.Api.Entities.UserDeviceKey", b =>
@@ -1070,6 +1146,13 @@ namespace CircleHub.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CircleHub.Api.Entities.Comment", b =>
+                {
+                    b.Navigation("Likes");
+
+                    b.Navigation("Replies");
                 });
 
             modelBuilder.Entity("CircleHub.Api.Entities.Community", b =>
