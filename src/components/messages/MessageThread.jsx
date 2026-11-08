@@ -180,7 +180,7 @@ const MessageBubble = memo(function MessageBubble({
 
             {showReactionPicker && (
                 <div
-                    className={`absolute bottom-full mb-1.5 z-30 flex items-center gap-1 rounded-full bg-(--surface-container-highest) px-2 py-1 shadow-xl border border-(--border) animate-in fade-in zoom-in-95 duration-150 ${
+                    className={`absolute bottom-full mb-1.5 z-30 flex items-center gap-1 rounded-full bg-(--surface-container-highest) px-2 py-1 shadow-xl border border-(--border)/30 animate-in fade-in zoom-in-95 duration-150 ${
                         message.isMine ? "right-0" : "left-0"
                     }`}
                     onClick={(e) => e.stopPropagation()}
@@ -439,11 +439,11 @@ const MessageBubble = memo(function MessageBubble({
 function DateDivider({ value }) {
     return (
         <div className="flex items-center gap-3">
-            <span className="h-px flex-1 bg-(--border)" />
+            <span className="h-px flex-1 bg-(--border)/40" />
             <span className="type-label-sm text-secondary">
                 {formatMessageDate(value)}
             </span>
-            <span className="h-px flex-1 bg-(--border)" />
+            <span className="h-px flex-1 bg-(--border)/40" />
         </div>
     );
 }
@@ -696,7 +696,7 @@ export default function MessageThread({
 
     return (
         <div className="flex h-full flex-col">
-            <div className="flex items-center gap-3 border-b border-(--border) px-5 py-4">
+            <div className="flex items-center gap-3 border-b border-(--border)/40 px-5 py-4">
                 <Link
                     to="/messages"
                     aria-label="Back to conversations"

@@ -85,14 +85,14 @@ export default function GifPicker({ onSelect, onClose, align = "left", className
     return (
         <div
             ref={pickerRef}
-            className={`absolute bottom-full mb-2 z-50 flex h-96 w-84 sm:w-96 flex-col rounded-2xl border border-(--border) bg-(--surface-lowest) shadow-2xl backdrop-blur-md overflow-hidden ${
+            className={`absolute bottom-full mb-2 z-50 flex h-96 w-84 sm:w-96 flex-col rounded-2xl border border-(--border)/40 bg-(--surface-lowest) shadow-2xl backdrop-blur-md overflow-hidden ${
                 align === "right" ? "right-0" : "left-0"
             } ${className}`}
             role="dialog"
             aria-label="GIF Picker"
         >
             {/* Header with Search and Close */}
-            <div className="p-2.5 pb-1 border-b border-(--border) bg-(--surface-low)/40">
+            <div className="p-2.5 pb-1 border-b border-(--border)/40 bg-(--surface-low)/40">
                 <div className="flex items-center gap-2 mb-2">
                     <div className="relative flex-1">
                         <Search
@@ -105,7 +105,7 @@ export default function GifPicker({ onSelect, onClose, align = "left", className
                             onChange={handleSearchChange}
                             placeholder="Search GIFs via GIPHY..."
                             autoFocus
-                            className="w-full rounded-xl border border-(--border) bg-(--surface-container) py-1.5 pl-9 pr-8 text-xs text-primary placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary"
+                            className="w-full rounded-xl border border-(--border)/40 bg-(--surface-container) py-1.5 pl-9 pr-8 text-xs text-primary placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary"
                         />
                         {search && (
                             <button
@@ -198,7 +198,7 @@ export default function GifPicker({ onSelect, onClose, align = "left", className
             </div>
 
             {/* Footer with GIPHY Attribution */}
-            <div className="flex items-center justify-between border-t border-(--border) bg-(--surface-low)/50 px-3 py-1.5 text-[10px] text-secondary">
+            <div className="flex items-center justify-between border-t border-(--border)/40 bg-(--surface-low)/50 px-3 py-1.5 text-[10px] text-secondary">
                 <span className="font-medium tracking-wide">GIFs</span>
                 <span className="font-semibold text-primary/80">Powered by GIPHY</span>
             </div>

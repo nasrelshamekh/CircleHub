@@ -1,7 +1,6 @@
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
 function Dialog({
@@ -55,17 +54,18 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-6 rounded-xl bg-(--surface-lowest) border border-(--border) p-6 text-sm text-(--text-primary) shadow-xl duration-100 outline-none sm:max-w-md data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-6 rounded-2xl bg-(--surface-lowest) border-0 p-6 text-sm text-(--text-primary) shadow-2xl duration-100 outline-none sm:max-w-md data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}>
         {children}
         {showCloseButton && (
-          <DialogPrimitive.Close data-slot="dialog-close" asChild>
-            <Button variant="default" className="absolute top-4 right-4 cursor-pointer hover:bg-(--background)" size="icon">
-              <XIcon className="text-(--primary)" />
-              <span className="sr-only">Close</span>
-            </Button>
+          <DialogPrimitive.Close
+            data-slot="dialog-close"
+            className="absolute top-4 right-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-secondary hover:text-primary hover:bg-(--surface-high) transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            aria-label="Close"
+          >
+            <XIcon size={18} />
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
@@ -99,7 +99,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <span className="rounded-full px-5 py-2.5 text-sm font-medium text-secondary hover:text-primary hover:bg-(--surface-container) transition-colors cursor-pointer outline-none">Close</span>
         </DialogPrimitive.Close>
       )}
     </div>

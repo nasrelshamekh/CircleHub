@@ -168,14 +168,14 @@ export default function NewMessageDialog({
                             maxLength={MAX_PLAINTEXT_LENGTH}
                             placeholder={`Write a message to ${selectedRecipient.name}...`}
                             autoFocus
-                            className="input-surface type-body-sm w-full resize-none rounded-xl border border-(--border) p-3 focus:outline-none"
+                            className="input-surface type-body-sm w-full resize-none rounded-xl border border-(--border)/40 p-3 focus:outline-none"
                         />
 
                         <div className="flex justify-end gap-2">
                             <button
                                 type="button"
                                 onClick={() => handleOpenChange(false)}
-                                className="type-button rounded-full px-4 py-2 text-secondary hover:bg-(--hover)"
+                                className="type-button rounded-full px-5 py-2 text-secondary hover:text-primary hover:bg-(--surface-container) transition-colors cursor-pointer"
                             >
                                 Cancel
                             </button>
@@ -185,7 +185,7 @@ export default function NewMessageDialog({
                                     !firstMessage.trim() ||
                                     sendMessage.isPending
                                 }
-                                className="button-primary flex items-center gap-2 rounded-full px-4 py-2 disabled:opacity-50"
+                                className="button-primary flex items-center gap-2 rounded-full px-5 py-2 cursor-pointer disabled:opacity-50"
                             >
                                 <Send size={16} />
                                 {sendMessage.isPending ? "Sending…" : "Send"}
@@ -205,7 +205,7 @@ export default function NewMessageDialog({
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Search people by name or @username..."
                                 aria-label="Search people"
-                                className="input-surface type-body-sm w-full rounded-full border border-(--border) py-2 pr-4 pl-9"
+                                className="input-surface type-body-sm w-full rounded-full border border-(--border)/40 py-2 pr-4 pl-9"
                             />
                         </div>
 

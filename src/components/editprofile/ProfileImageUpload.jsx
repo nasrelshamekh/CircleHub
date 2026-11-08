@@ -109,7 +109,7 @@ export default function ProfileImageUpload({
                 {isCover && <span className="hidden lg:inline">Edit Cover Photo</span>}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 bg-(--surface) text-primary shadow-lg border border-(--border)">
+            <DropdownMenuContent align="end" className="w-44 bg-(--surface) text-primary shadow-xl">
               <DropdownMenuItem
                 onClick={openFilePicker}
                 className="cursor-pointer gap-2"

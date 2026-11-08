@@ -101,7 +101,7 @@ export default function RecoveryRestoreDialog({ open, onOpenChange, onSuccess })
                             value={rawInput}
                             onChange={(e) => handleInput(e.target.value)}
                             placeholder="paste or type your 12 words separated by spaces..."
-                            className="w-full resize-none rounded-xl border border-(--border) bg-(--surface-low) p-3 font-mono text-sm text-primary placeholder:text-muted focus:border-(--primary) focus:outline-none"
+                            className="w-full resize-none rounded-xl border border-(--border)/40 bg-(--surface-low) p-3 font-mono text-sm text-primary placeholder:text-muted focus:border-(--primary) focus:outline-none"
                             autoComplete="off"
                             autoCorrect="off"
                             autoCapitalize="off"
@@ -151,7 +151,7 @@ export default function RecoveryRestoreDialog({ open, onOpenChange, onSuccess })
                     <button
                         type="button"
                         onClick={() => handleOpenChange(false)}
-                        className="rounded-xl px-4 py-2 text-sm font-medium text-secondary hover:text-primary"
+                        className="rounded-full px-5 py-2.5 text-sm font-medium text-secondary hover:text-primary hover:bg-(--surface-container) transition-colors cursor-pointer"
                     >
                         Cancel
                     </button>
@@ -159,7 +159,7 @@ export default function RecoveryRestoreDialog({ open, onOpenChange, onSuccess })
                         type="button"
                         onClick={handleRestore}
                         disabled={wordCount !== 12 || isRestoring}
-                        className="button-primary flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                        className="button-primary rounded-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                     >
                         {isRestoring ? (
                             <>

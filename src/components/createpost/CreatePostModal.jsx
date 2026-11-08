@@ -390,7 +390,7 @@ export function CreatePostModal({
                     type="button"
                     onClick={handleSubmit}
                     disabled={createPost.isPending}
-                    className="button-primary flex justify-center items-center gap-2 py-3 disabled:opacity-60"
+                    className="button-primary rounded-full flex justify-center items-center gap-2 py-3 px-6 cursor-pointer disabled:opacity-60"
                 >
                     <CirclePlus size={20} />
                     {createPost.isPending ? "Posting…" : "Post"}

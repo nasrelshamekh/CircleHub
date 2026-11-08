@@ -228,7 +228,7 @@ export default function CreateCommunityModal({ open, onOpenChange }) {
                     <button
                         type="submit"
                         disabled={createCommunity.isPending}
-                        className="button-primary flex items-center justify-center gap-2 py-3 disabled:opacity-60"
+                        className="button-primary rounded-full flex items-center justify-center gap-2 py-3 px-6 cursor-pointer disabled:opacity-60"
                     >
                         <CirclePlus size={20} />
                         {createCommunity.isPending ? "Creating..." : "Create Community"}
