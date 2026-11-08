@@ -425,7 +425,7 @@ const MessageBubble = memo(function MessageBubble({
                                 e.stopPropagation();
                                 onDeleteMessage?.(message);
                             }}
-                            className="font-semibold text-rose-500 hover:text-rose-600 hover:underline cursor-pointer"
+                            className="font-semibold text-(--primary) hover:underline cursor-pointer"
                         >
                             Unsend
                         </button>
@@ -895,7 +895,7 @@ export default function MessageThread({
                 description="Are you sure you want to unsend this message? It will be removed for everyone in this chat."
                 confirmText="Unsend"
                 cancelText="Cancel"
-                confirmVariant="destructive"
+                confirmVariant="default"
                 isLoading={isDeletingMessage}
                 onConfirm={handleConfirmDelete}
             />

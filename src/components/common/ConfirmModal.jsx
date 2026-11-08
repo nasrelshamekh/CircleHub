@@ -15,13 +15,16 @@ export default function ConfirmModal({
     description = "This action cannot be undone.",
     confirmText = "Confirm",
     cancelText = "Cancel",
-    confirmVariant = "destructive",
+    confirmVariant = "default",
     onConfirm,
     isLoading = false,
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent
+                showCloseButton={false}
+                className="content-card bg-(--surface-lowest) border border-(--border) text-primary sm:max-w-md shadow-2xl p-6"
+            >
                 <DialogHeader className="items-start text-left">
                     <DialogTitle className="text-lg font-semibold text-primary">
                         {title}
