@@ -26,4 +26,17 @@ namespace CircleHub.Api.Dtos
         public AuthorDto Sender { get; set; } = null!;
         public List<MessageReactionDto> Reactions { get; set; } = [];
     }
+
+    public class MessageDeletedEventDto
+    {
+        public Guid MessageId { get; set; }
+        public Guid ConversationId { get; set; }
+    }
+
+    public class ConversationReadEventDto
+    {
+        public Guid ConversationId { get; set; }
+        public Guid ReaderId { get; set; }
+        public DateTime ReadAt { get; set; }
+    }
 }

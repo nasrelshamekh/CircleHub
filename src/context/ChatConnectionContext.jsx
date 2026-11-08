@@ -5,6 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { chatConnectionContext } from "@/hooks/useChatConnection";
 import {
     createChatConnection,
+    CONVERSATION_READ_EVENT,
+    MESSAGE_DELETED_EVENT,
     MESSAGE_REACTION_UPDATED_EVENT,
     NOTIFICATION_CREATED_EVENT,
     NOTIFICATION_DELETED_EVENT,
@@ -18,7 +20,9 @@ import { clearDeviceKeyCache, decryptMessageContent } from "@/services/messageCr
 import { chimeForIncomingMessage } from "@/lib/messageChime";
 import {
     appendMessageToThreadCache,
+    markConversationReadInThreadCache,
     patchConversationListOnMessage,
+    removeMessageFromThreadCache,
     sameId,
     updateMessageReactionsInThreadCache,
 } from "@/lib/messageCacheHelpers";
@@ -333,6 +337,22 @@ export default function ChatConnectionContextProvider({ children }) {
                     reactions,
                     currentUserIdRef.current
                 );
+            }
+        });
+
+        connection.on(MESSAGE_DELETED_EVENT, (payload) => {
+            const messageId = payload?.messageId || payload?.MessageId;
+            const conversationId = payload?.conversationId || payload?.ConversationId;
+            if (messageId && conversationId) {
+                removeMessageFromThreadCache(queryClient, conversationId, messageId);
+            }
+        });
+
+        connection.on(CONVERSATION_READ_EVENT, (payload) => {
+            const conversationId = payload?.conversationId || payload?.ConversationId;
+            const readAt = payload?.readAt || payload?.ReadAt;
+            if (conversationId && readAt) {
+                markConversationReadInThreadCache(queryClient, conversationId, readAt);
             }
         });
 

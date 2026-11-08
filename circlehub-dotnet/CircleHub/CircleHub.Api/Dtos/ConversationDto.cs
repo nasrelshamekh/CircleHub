@@ -36,5 +36,6 @@ namespace CircleHub.Api.Dtos
         public ConversationUserDto OtherUser { get; set; } = null!;
         public List<MessageDto> Messages { get; set; } = new();
         public bool HasMore { get; set; }
+        public DateTime? OtherUserLastReadAt { get; set; }
     }
 }

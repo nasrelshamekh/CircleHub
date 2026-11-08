@@ -20,6 +20,7 @@ export default function Messages() {
     const {
         messages,
         otherUser,
+        otherUserLastReadAt,
         isLoading: isLoadingThread,
         isLoadingOlder,
         loadOlder,
@@ -115,6 +116,7 @@ export default function Messages() {
                         <MessageThread
                             conversationId={id}
                             otherUser={resolvedOtherUser}
+                            otherUserLastReadAt={otherUserLastReadAt}
                             messages={messages}
                             isLoading={isLoadingThread}
                             isLoadingOlder={isLoadingOlder}

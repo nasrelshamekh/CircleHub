@@ -60,3 +60,9 @@ export async function removeMessageReaction(messageId) {
 
   return response.data;
 }
+
+export async function deleteMessage(messageId) {
+  const response = await apiClient.delete(`/messages/${messageId}`);
+
+  return response.data;
+}

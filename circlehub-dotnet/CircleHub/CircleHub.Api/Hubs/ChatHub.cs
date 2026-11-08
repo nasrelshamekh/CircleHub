@@ -52,6 +52,16 @@ namespace CircleHub.Api.Hubs
         public const string MessageReactionUpdatedMethod = "MessageReactionUpdated";
 
         /// <summary>
+        /// Client-side handler for message deletion (unsend).
+        /// </summary>
+        public const string MessageDeletedMethod = "MessageDeleted";
+
+        /// <summary>
+        /// Client-side handler for conversation read receipts.
+        /// </summary>
+        public const string ConversationReadMethod = "ConversationRead";
+
+        /// <summary>
         /// Cap on the encrypted payload. SignalR already rejects hub messages above
         /// <c>MaximumReceiveMessageSize</c> (32 KB by default); this keeps the application
         /// limit well below that so a single message can never crowd out the transport buffer.

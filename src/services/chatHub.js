@@ -23,6 +23,12 @@ export const POST_CREATED_EVENT = "PostCreated";
 // Event the API raises for message reactions (ChatHub.MessageReactionUpdatedMethod).
 export const MESSAGE_REACTION_UPDATED_EVENT = "MessageReactionUpdated";
 
+// Event the API raises when a message is unsent/deleted (ChatHub.MessageDeletedMethod).
+export const MESSAGE_DELETED_EVENT = "MessageDeleted";
+
+// Event the API raises when a conversation is read by the other participant (ChatHub.ConversationReadMethod).
+export const CONVERSATION_READ_EVENT = "ConversationRead";
+
 // Hub method we invoke to say that we are (or are no longer) typing (ChatHub.SendTyping).
 export const SEND_TYPING_METHOD = "SendTyping";
 

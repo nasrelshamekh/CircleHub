@@ -361,6 +361,18 @@ namespace CircleHub.Api.Controllers
                     .Where(p => p.Id == mine.Id)
                     .ExecuteUpdateAsync(s => s.SetProperty(p => p.LastReadAt, readNow));
                 _delivery.ClearUnreadPreviews(id, currentUserId);
+
+                if (other != null && other.UserId != Guid.Empty)
+                {
+                    var eventDto = new ConversationReadEventDto
+                    {
+                        ConversationId = id,
+                        ReaderId = currentUserId,
+                        ReadAt = readNow
+                    };
+                    await _hub.Clients.User(other.UserId.ToString())
+                        .SendAsync(ChatHub.ConversationReadMethod, eventDto);
+                }
             }
 
             return Ok(new ApiResponse<ConversationThreadDto>
@@ -370,7 +382,8 @@ namespace CircleHub.Api.Controllers
                     Id = id,
                     OtherUser = otherUser,
                     Messages = messages,
-                    HasMore = hasMore
+                    HasMore = hasMore,
+                    OtherUserLastReadAt = other?.LastReadAt
                 }
             });
         }
@@ -389,6 +402,25 @@ namespace CircleHub.Api.Controllers
                 return Fail(StatusCodes.Status404NotFound, "Conversation not found");
 
             _delivery.ClearUnreadPreviews(id, currentUserId);
+
+            var otherUserId = await _db.ConversationParticipants
+                .AsNoTracking()
+                .Where(p => p.ConversationId == id && p.UserId != currentUserId)
+                .Select(p => p.UserId)
+                .FirstOrDefaultAsync();
+
+            if (otherUserId != Guid.Empty)
+            {
+                var eventDto = new ConversationReadEventDto
+                {
+                    ConversationId = id,
+                    ReaderId = currentUserId,
+                    ReadAt = readNow
+                };
+                await _hub.Clients.User(otherUserId.ToString())
+                    .SendAsync(ChatHub.ConversationReadMethod, eventDto);
+            }
+
             return NoContent();
         }
 
@@ -698,6 +730,63 @@ namespace CircleHub.Api.Controllers
             return Ok(new ApiResponse<List<MessageReactionDto>>
             {
                 Data = reactions
+            });
+        }
+
+        [HttpDelete("{id}")]
+        [HttpDelete("messages/{id}")]
+        public async Task<IActionResult> DeleteMessage(Guid id)
+        {
+            var currentUserId = CurrentUserId!.Value;
+
+            var message = await _db.Messages
+                .Include(m => m.Conversation)
+                .ThenInclude(c => c.Participants)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (message == null)
+                return Fail(StatusCodes.Status404NotFound, "Message not found");
+
+            var isParticipant = message.Conversation.Participants.Any(p => p.UserId == currentUserId);
+            if (!isParticipant)
+                return Fail(StatusCodes.Status403Forbidden, "You do not have access to this conversation");
+
+            if (message.SenderId != currentUserId)
+                return Fail(StatusCodes.Status403Forbidden, "You can only unsend your own messages");
+
+            var conversationId = message.ConversationId;
+            var participantIds = message.Conversation.Participants
+                .Select(p => p.UserId.ToString())
+                .ToList();
+
+            _db.Messages.Remove(message);
+            await _db.SaveChangesAsync();
+
+            var latestMessage = await _db.Messages
+                .Where(m => m.ConversationId == conversationId)
+                .OrderByDescending(m => m.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            var newLastMessageAt = latestMessage?.CreatedAt ?? message.Conversation.CreatedAt;
+            if (message.Conversation.LastMessageAt != newLastMessageAt)
+            {
+                message.Conversation.LastMessageAt = newLastMessageAt;
+                await _db.SaveChangesAsync();
+            }
+
+            var eventDto = new MessageDeletedEventDto
+            {
+                MessageId = id,
+                ConversationId = conversationId
+            };
+
+            await _hub.Clients.Users(participantIds)
+                .SendAsync(ChatHub.MessageDeletedMethod, eventDto);
+
+            return Ok(new ApiResponse<MessageDeletedEventDto>
+            {
+                Message = "Message deleted successfully",
+                Data = eventDto
             });
         }
 

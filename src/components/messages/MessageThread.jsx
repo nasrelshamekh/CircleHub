@@ -9,7 +9,7 @@ import {
     useState,
 } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Check, CheckCheck, LoaderCircle, Lock, ShieldAlert, Smile } from "lucide-react";
+import { ArrowLeft, AlertCircle, Check, CheckCheck, LoaderCircle, Lock, ShieldAlert, Smile, Trash2 } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,13 +24,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDecryptedContent } from "@/hooks/useDecryptedContent";
 import { hasCachedRecipientDeviceKeys, peekDecrypted, prefetchRecipientDeviceKeys } from "@/services/messageCrypto";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
-import { setMessageReaction } from "@/services/messageApi";
-import { updateMessageReactionsInThreadCache } from "@/lib/messageCacheHelpers";
+import { deleteMessage, setMessageReaction } from "@/services/messageApi";
+import { removeMessageFromThreadCache, updateMessageReactionsInThreadCache } from "@/lib/messageCacheHelpers";
 import { parseGifContent } from "@/services/gifService";
 
 const QUICK_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
 
-const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry, onReaction, onOpenMedia }) {
+const MessageBubble = memo(function MessageBubble({
+    message,
+    otherUser,
+    otherUserLastReadAt,
+    onRetry,
+    onReaction,
+    onDeleteMessage,
+    onOpenMedia,
+}) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [showReactionPicker, setShowReactionPicker] = useState(false);
     const reactionPickerRef = useRef(null);
@@ -44,7 +52,13 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
         if (message.deliveryStatus === "sent") {
             deliveryState = "sent";
         } else {
-            deliveryState = "delivered";
+            const readAt = otherUserLastReadAt ? new Date(otherUserLastReadAt).getTime() : 0;
+            const msgTime = message.createdAt ? new Date(message.createdAt).getTime() : 0;
+            if (readAt && msgTime && msgTime <= readAt) {
+                deliveryState = "seen";
+            } else {
+                deliveryState = "delivered";
+            }
         }
     }
 
@@ -169,8 +183,25 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
                     />
                 )}
 
-                {/* For outgoing messages: Reaction button sits in the gutter to the left */}
-                {message.isMine && reactionTrigger}
+                {/* For outgoing messages: Reaction button and Unsend button sit in the gutter to the left */}
+                {message.isMine && (
+                    <div className="flex items-center gap-0.5">
+                        {!isPending && !isFailed && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteMessage?.(message);
+                                }}
+                                title="Unsend message"
+                                className="hidden group-hover:inline-flex p-1 rounded-full text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            >
+                                <Trash2 size={13} />
+                            </button>
+                        )}
+                        {reactionTrigger}
+                    </div>
+                )}
 
                 <div
                     className={`flex min-w-0 max-w-[80%] flex-col ${
@@ -241,9 +272,12 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
                     {isMine && deliveryState && !isExpanded && (
                         <div
                             className="mt-0.5 flex items-center justify-end pr-1 text-secondary"
-                            aria-label={deliveryState === "delivered" ? "Delivered" : "Sent"}
-                            title={deliveryState === "delivered" ? "Delivered" : "Sent"}
+                            aria-label={deliveryState === "seen" ? "Seen" : deliveryState === "delivered" ? "Delivered" : "Sent"}
+                            title={deliveryState === "seen" ? "Seen" : deliveryState === "delivered" ? "Delivered" : "Sent"}
                         >
+                            {deliveryState === "seen" && (
+                                <CheckCheck size={14} className="text-sky-500 dark:text-sky-400" />
+                            )}
                             {deliveryState === "delivered" && (
                                 <CheckCheck size={14} className="text-(--primary)" />
                             )}
@@ -300,6 +334,12 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
 
                     {isMine && deliveryState && (
                         <span className="flex items-center gap-1">
+                            {deliveryState === "seen" && (
+                                <>
+                                    <CheckCheck size={14} className="text-sky-500 dark:text-sky-400" />
+                                    <span className="font-medium text-sky-500 dark:text-sky-400">Seen</span>
+                                </>
+                            )}
                             {deliveryState === "delivered" && (
                                 <>
                                     <CheckCheck size={14} className="text-(--primary)" />
@@ -319,9 +359,22 @@ const MessageBubble = memo(function MessageBubble({ message, otherUser, onRetry,
                         <button
                             type="button"
                             onClick={handleCopy}
-                            className="font-semibold text-(--primary) hover:underline"
+                            className="font-semibold text-(--primary) hover:underline cursor-pointer"
                         >
                             Copy
+                        </button>
+                    )}
+
+                    {isMine && !isPending && !isFailed && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteMessage?.(message);
+                            }}
+                            className="font-semibold text-rose-500 hover:text-rose-600 hover:underline cursor-pointer"
+                        >
+                            Unsend
                         </button>
                     )}
                 </div>
@@ -351,6 +404,7 @@ function isNewDay(current, previous) {
 export default function MessageThread({
     conversationId,
     otherUser,
+    otherUserLastReadAt,
     messages,
     isLoading,
     isLoadingOlder,
@@ -375,6 +429,25 @@ export default function MessageThread({
     const [pendingMessage, setPendingMessage] = useState(null);
     const [e2eeStatus, setE2eeStatus] = useState(() =>
         hasCachedRecipientDeviceKeys(otherUser?.username)
+    );
+
+    const handleDeleteMessage = useCallback(
+        async (msg) => {
+            if (!msg?.id) return;
+            const confirmed = window.confirm(
+                "Unsend this message? It will be removed for everyone in this chat."
+            );
+            if (!confirmed) return;
+
+            try {
+                await deleteMessage(msg.id);
+                removeMessageFromThreadCache(queryClient, conversationId, msg.id);
+                toast.success("Message unsent");
+            } catch {
+                toast.error("Could not unsend message");
+            }
+        },
+        [conversationId, queryClient]
     );
 
     const handleReaction = useCallback(
@@ -686,7 +759,9 @@ export default function MessageThread({
                                 <MessageBubble
                                     message={message}
                                     otherUser={otherUser}
+                                    otherUserLastReadAt={otherUserLastReadAt}
                                     onReaction={handleReaction}
+                                    onDeleteMessage={handleDeleteMessage}
                                     onOpenMedia={setLightboxSrc}
                                 />
                             </Fragment>
@@ -696,7 +771,9 @@ export default function MessageThread({
                             <MessageBubble
                                 message={pendingMessage}
                                 otherUser={otherUser}
+                                otherUserLastReadAt={otherUserLastReadAt}
                                 onRetry={handleRetryPending}
+                                onDeleteMessage={handleDeleteMessage}
                                 onOpenMedia={setLightboxSrc}
                             />
                         )}
