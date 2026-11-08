@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Heart, MoreHorizontal, Reply } from "lucide-react";
+import { ChevronDown, ChevronUp, Heart, MoreHorizontal, Reply } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 import { useDeleteComment } from "@/hooks/mutations/useDeleteComment";
@@ -31,6 +31,7 @@ export default function CommentItem({
   const toggleLike = useToggleCommentLike();
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [isReplying, setIsReplying] = useState(false);
+  const [showReplies, setShowReplies] = useState(false);
 
   const { name = "", avatarUrl = null, username = "" } = author || {};
   const { text, gifUrl } = useMemo(() => parseGifContent(content), [content]);
@@ -163,23 +164,58 @@ export default function CommentItem({
             parentCommentId={id}
             replyingTo={{ name, username }}
             onCancelReply={() => setIsReplying(false)}
-            onSuccess={() => setIsReplying(false)}
+            onSuccess={() => {
+              setIsReplying(false);
+              setShowReplies(true);
+            }}
             compact
           />
         </div>
       )}
 
-      {/* Nested Replies */}
+      {/* Collapsible Nested Replies */}
       {replies && replies.length > 0 && (
-        <div className="pl-6 md:pl-9 border-l-2 border-(--border)/60 mt-3 ml-4 space-y-3">
-          {replies.map((reply) => (
-            <CommentItem
-              key={reply.id}
-              {...reply}
-              postId={postId}
-              depth={depth + 1}
-            />
-          ))}
+        <div className="pl-12 mt-2 w-full">
+          {!showReplies ? (
+            <button
+              type="button"
+              onClick={() => setShowReplies(true)}
+              className="flex items-center gap-2 text-xs font-semibold text-secondary hover:text-primary transition-colors py-1 group"
+              aria-expanded={false}
+            >
+              <div className="w-5 h-[1.5px] bg-(--border) group-hover:bg-primary transition-colors" />
+              <ChevronDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
+              <span>
+                View {replies.length} {replies.length === 1 ? "reply" : "replies"}
+              </span>
+            </button>
+          ) : (
+            <div className="flex flex-col">
+              <button
+                type="button"
+                onClick={() => setShowReplies(false)}
+                className="flex items-center gap-2 text-xs font-semibold text-secondary hover:text-primary transition-colors py-1 mb-2 group"
+                aria-expanded={true}
+              >
+                <div className="w-5 h-[1.5px] bg-(--border) group-hover:bg-primary transition-colors" />
+                <ChevronUp size={14} className="group-hover:-translate-y-0.5 transition-transform" />
+                <span>
+                  Hide {replies.length === 1 ? "reply" : "replies"}
+                </span>
+              </button>
+
+              <div className="pl-4 md:pl-6 border-l-2 border-(--border)/60 space-y-3">
+                {replies.map((reply) => (
+                  <CommentItem
+                    key={reply.id}
+                    {...reply}
+                    postId={postId}
+                    depth={depth + 1}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
