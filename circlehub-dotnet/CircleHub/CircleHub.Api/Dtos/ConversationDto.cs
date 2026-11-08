@@ -27,6 +27,7 @@ namespace CircleHub.Api.Dtos
 
         public bool HasPost { get; set; }
         public bool IsMine { get; set; }
+        public bool IsDeleted { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 

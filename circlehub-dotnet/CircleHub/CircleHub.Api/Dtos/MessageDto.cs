@@ -23,6 +23,7 @@ namespace CircleHub.Api.Dtos
 
         public DateTime CreatedAt { get; set; }
         public bool IsMine { get; set; }
+        public bool IsDeleted { get; set; }
         public AuthorDto Sender { get; set; } = null!;
         public List<MessageReactionDto> Reactions { get; set; } = [];
     }

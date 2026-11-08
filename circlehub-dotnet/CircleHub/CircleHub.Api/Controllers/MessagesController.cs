@@ -97,6 +97,7 @@ namespace CircleHub.Api.Controllers
                             Content = m.Content,
                             HasPost = m.PostId != null,
                             IsMine = m.SenderId == currentUserId,
+                            IsDeleted = m.Content == null && m.PostId == null,
                             CreatedAt = m.CreatedAt
                         })
                         .FirstOrDefault()
@@ -321,32 +322,36 @@ namespace CircleHub.Api.Controllers
             {
                 var m = rawMessages[i];
                 var isMine = m.SenderId == currentUserId;
-                var reactions = m.Reactions
-                    .GroupBy(r => r.Emoji)
-                    .Select(g => new MessageReactionDto
-                    {
-                        Emoji = g.Key,
-                        Count = g.Count(),
-                        ReactedByMe = g.Any(r => r.UserId == currentUserId),
-                        Users = g.Select(r => new AuthorDto
+                var isDeleted = m.Content == null && m.PostId == null;
+                var reactions = isDeleted
+                    ? new List<MessageReactionDto>()
+                    : m.Reactions
+                        .GroupBy(r => r.Emoji)
+                        .Select(g => new MessageReactionDto
                         {
-                            Id = r.UserId,
-                            Name = r.UserName,
-                            Username = r.Username,
-                            AvatarUrl = r.AvatarUrl
-                        }).ToList()
-                    })
-                    .OrderByDescending(r => r.Count)
-                    .ThenBy(r => r.Emoji)
-                    .ToList();
+                            Emoji = g.Key,
+                            Count = g.Count(),
+                            ReactedByMe = g.Any(r => r.UserId == currentUserId),
+                            Users = g.Select(r => new AuthorDto
+                            {
+                                Id = r.UserId,
+                                Name = r.UserName,
+                                Username = r.Username,
+                                AvatarUrl = r.AvatarUrl
+                            }).ToList()
+                        })
+                        .OrderByDescending(r => r.Count)
+                        .ThenBy(r => r.Emoji)
+                        .ToList();
 
                 messages.Add(new MessageDto
                 {
                     Id = m.Id,
-                    Content = m.Content,
-                    PostId = m.PostId,
+                    Content = isDeleted ? null : m.Content,
+                    PostId = isDeleted ? null : m.PostId,
                     CreatedAt = m.CreatedAt,
                     IsMine = isMine,
+                    IsDeleted = isDeleted,
                     Sender = isMine ? meAuthor : otherAuthor,
                     Reactions = reactions
                 });
@@ -759,7 +764,13 @@ namespace CircleHub.Api.Controllers
                 .Select(p => p.UserId.ToString())
                 .ToList();
 
-            _db.Messages.Remove(message);
+            // WhatsApp-style soft delete: wipe content, post, and reactions
+            message.Content = null;
+            message.PostId = null;
+            if (message.Reactions.Count > 0)
+            {
+                _db.MessageReactions.RemoveRange(message.Reactions);
+            }
             await _db.SaveChangesAsync();
 
             var latestMessage = await _db.Messages

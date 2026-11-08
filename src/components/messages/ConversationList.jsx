@@ -24,20 +24,35 @@ function previewParts(conversation) {
 
     if (!last) return null;
 
+    const isDeleted = Boolean(last.isDeleted || (!last.content && !last.hasPost));
+    const prefix = last.isMine ? "You: " : "";
+
+    if (isDeleted) {
+        return { isDeleted: true, prefix, body: "Message has been deleted" };
+    }
+
     const body = last.hasPost
         ? last.content || "Shared a post"
         : last.content || "";
 
-    return { body, prefix: last.isMine ? "You: " : "" };
+    return { isDeleted: false, body, prefix };
 }
 
 // Its own component because the preview body may be ciphertext and decrypting it is a hook: the row
 // map can't call a hook per row from the list itself.
 function ConversationPreview({ conversation }) {
     const parts = previewParts(conversation);
-    const body = useDecryptedContent(parts ? parts.body : "");
+    const body = useDecryptedContent(parts && !parts.isDeleted ? parts.body : "");
 
     if (!parts) return <>No messages yet</>;
+
+    if (parts.isDeleted) {
+        return (
+            <span className="italic text-secondary">
+                {parts.prefix}Message has been deleted
+            </span>
+        );
+    }
 
     let displayBody = body;
     if (body) {

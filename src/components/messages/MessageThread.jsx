@@ -9,12 +9,13 @@ import {
     useState,
 } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Check, CheckCheck, LoaderCircle, Lock, ShieldAlert, Smile, Trash2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, Ban, Check, CheckCheck, LoaderCircle, Lock, ShieldAlert, Smile, Trash2 } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 import Avatar from "@/components/profileimages/Avatar";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import MediaLightbox from "@/components/common/MediaLightbox";
 import MessageComposer from "./MessageComposer";
 import PresenceLabel from "./PresenceLabel";
@@ -25,7 +26,7 @@ import { useDecryptedContent } from "@/hooks/useDecryptedContent";
 import { hasCachedRecipientDeviceKeys, peekDecrypted, prefetchRecipientDeviceKeys } from "@/services/messageCrypto";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { deleteMessage, setMessageReaction } from "@/services/messageApi";
-import { removeMessageFromThreadCache, updateMessageReactionsInThreadCache } from "@/lib/messageCacheHelpers";
+import { markMessageDeletedInThreadCache, updateMessageReactionsInThreadCache } from "@/lib/messageCacheHelpers";
 import { parseGifContent } from "@/services/gifService";
 
 const QUICK_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🔥"];
@@ -105,6 +106,58 @@ const MessageBubble = memo(function MessageBubble({
         } catch {
             toast.error("Could not copy the message.");
         }
+    }
+
+    const isDeleted = Boolean(
+        message.isDeleted || (!message.content && !message.postId && !message.plaintext)
+    );
+
+    if (isDeleted) {
+        return (
+            <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={isExpanded}
+                onClick={toggleDetails}
+                onKeyDown={handleKeyDown}
+                className="group relative flex cursor-pointer flex-col"
+            >
+                <div
+                    className={`flex items-end gap-2 ${
+                        message.isMine ? "justify-end" : "justify-start"
+                    }`}
+                >
+                    {!message.isMine && (
+                        <Avatar
+                            src={otherUser?.avatarUrl}
+                            alt={otherUser?.name}
+                            className="avatar-sm shrink-0"
+                        />
+                    )}
+
+                    <div
+                        className={`flex min-w-0 max-w-[80%] flex-col ${
+                            message.isMine ? "items-end" : "items-start"
+                        }`}
+                    >
+                        <div className="type-body-sm flex items-center gap-2 rounded-2xl px-4 py-2 border border-(--border)/60 bg-(--surface-container-low)/60 text-secondary italic select-none">
+                            <Ban size={14} className="shrink-0 text-secondary opacity-70" />
+                            <span>Message has been deleted</span>
+                        </div>
+                    </div>
+                </div>
+
+                {isExpanded && (
+                    <div
+                        className={`type-label-sm mt-1 flex flex-wrap items-center gap-3 text-secondary ${
+                            message.isMine ? "justify-end" : "pl-10"
+                        }`}
+                    >
+                        <span>{formatMessageTime(message.createdAt)}</span>
+                    </div>
+                )}
+            </div>
+        );
     }
 
     const reactionTrigger = !isPending && !isFailed && onReaction && message.id && (
@@ -431,24 +484,28 @@ export default function MessageThread({
         hasCachedRecipientDeviceKeys(otherUser?.username)
     );
 
-    const handleDeleteMessage = useCallback(
-        async (msg) => {
-            if (!msg?.id) return;
-            const confirmed = window.confirm(
-                "Unsend this message? It will be removed for everyone in this chat."
-            );
-            if (!confirmed) return;
+    const [messageToDelete, setMessageToDelete] = useState(null);
+    const [isDeletingMessage, setIsDeletingMessage] = useState(false);
 
-            try {
-                await deleteMessage(msg.id);
-                removeMessageFromThreadCache(queryClient, conversationId, msg.id);
-                toast.success("Message unsent");
-            } catch {
-                toast.error("Could not unsend message");
-            }
-        },
-        [conversationId, queryClient]
-    );
+    const handleDeleteMessage = useCallback((msg) => {
+        if (!msg?.id) return;
+        setMessageToDelete(msg);
+    }, []);
+
+    const handleConfirmDelete = useCallback(async () => {
+        if (!messageToDelete?.id) return;
+        setIsDeletingMessage(true);
+        try {
+            await deleteMessage(messageToDelete.id);
+            markMessageDeletedInThreadCache(queryClient, conversationId, messageToDelete.id);
+            toast.success("Message unsent");
+            setMessageToDelete(null);
+        } catch {
+            toast.error("Could not unsend message");
+        } finally {
+            setIsDeletingMessage(false);
+        }
+    }, [conversationId, messageToDelete, queryClient]);
 
     const handleReaction = useCallback(
         async (messageId, emoji) => {
@@ -827,6 +884,20 @@ export default function MessageThread({
                 src={lightboxSrc}
                 isOpen={Boolean(lightboxSrc)}
                 onClose={() => setLightboxSrc(null)}
+            />
+
+            <ConfirmModal
+                open={Boolean(messageToDelete)}
+                onOpenChange={(open) => {
+                    if (!open && !isDeletingMessage) setMessageToDelete(null);
+                }}
+                title="Unsend Message"
+                description="Are you sure you want to unsend this message? It will be removed for everyone in this chat."
+                confirmText="Unsend"
+                cancelText="Cancel"
+                confirmVariant="destructive"
+                isLoading={isDeletingMessage}
+                onConfirm={handleConfirmDelete}
             />
         </div>
     );
