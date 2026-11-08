@@ -120,10 +120,23 @@ VITE_BASE_URL=https://circlehub.runasp.net
 
 ---
 
-## Upcoming (v1.4.0 — Rich Messaging & Community Depth)
+## 🚀 Upcoming Roadmap
 
-The upcoming **v1.4.0** release will focus on messaging richness, community engagement, and security polish:
-
-1. **Rich Direct Messaging & Media**: Encrypted photo & GIF attachments in direct messages, inline GIF picker/search (Tenor / Giphy), emoji reactions on chat bubbles, and message deletion/unsend.
-2. **Community Discussion Depth**: Threaded comment replies, comment likes, GIF support in comments, and pinned community announcements.
+### **v1.4.0 — Rich Messaging & Community Depth**
+1. **Rich Direct Messaging & Media**: Encrypted photo & GIF attachments in direct messages, inline GIF picker/search (GIPHY), emoji reactions on chat bubbles, and WhatsApp-style message deletion/unsend with "Seen" read receipts.
+2. **Community Discussion Depth**: Threaded comment replies, comment likes, and pinned community announcements.
 3. **Security & App Polish**: Contact verification Safety Numbers with QR screen, comment editing, and mobile App Links for email verification.
+
+### **v1.5.0 — Real-Time Community Spaces & Group Channels**
+1. **Community Chat Channels**: Dedicated real-time chat rooms inside communities (`#general`, `#announcements`, `#media`) with slow-mode and role-based permissions.
+2. **Multi-User Group Direct Messaging**: Create private group chats (3–50 members) with custom avatars, member rosters, admin controls, and group read receipts.
+3. **Voice Notes / Audio Messages**: Press-to-record voice memos with interactive waveform scrubbing and variable playback speeds (`1x`, `1.5x`, `2x`).
+4. **Rich Link Previews (OpenGraph)**: Automatic card unfurling for shared links (YouTube, Twitter/X, GitHub, articles) with titles, descriptions, and media thumbnails.
+5. **Community Flairs & Member Badges**: Post category flairs (`[Question]`, `[Discussion]`, `[Guide]`) and custom member tags (`Founder`, `Top Contributor`).
+
+### **v1.6.0 — Discovery, Stories & Security Polish**
+1. **Stories / 24-Hour Moments**: Ephemeral photo/video stories from followed users and communities with direct messaging replies and view counts.
+2. **Advanced Security & Session Management**: Two-Factor Authentication (2FA / TOTP authenticator apps), active sessions device manager with remote revocation, and mobile biometric lock (Face ID / Fingerprint).
+3. **Smart "For You" Feed & Trending Topics**: Personalized recommendation feed blending followed users and trending discussions with real-time hot hashtag discovery.
+4. **Native OS Notification Quick Actions**: Direct notification inline replies from the Android/iOS notification shade and one-tap "Mark as Read".
+5. **Live Audio Stages / Spaces**: Real-time live audio stages in communities with speaker/listener roles and "raise hand" participation.
