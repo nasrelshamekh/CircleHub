@@ -1,3 +1,4 @@
+import { LoaderCircle } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -6,7 +7,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 
 export default function ConfirmModal({
     open,
@@ -23,7 +23,7 @@ export default function ConfirmModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 showCloseButton={false}
-                className="content-card bg-(--surface-lowest) border border-(--border) text-primary sm:max-w-md shadow-2xl p-6"
+                className="content-card border-0 bg-(--surface-lowest) text-primary sm:max-w-md shadow-2xl p-6"
             >
                 <DialogHeader className="items-start text-left">
                     <DialogTitle className="text-lg font-semibold text-primary">
@@ -36,26 +36,31 @@ export default function ConfirmModal({
                     ) : null}
                 </DialogHeader>
 
-                <DialogFooter className="mt-4 flex flex-row justify-end gap-2">
-                    <Button
+                <DialogFooter className="mt-5 flex flex-row items-center justify-end gap-3">
+                    <button
                         type="button"
-                        variant="outline"
                         onClick={() => onOpenChange?.(false)}
                         disabled={isLoading}
+                        className="rounded-full px-5 py-2.5 text-sm font-medium text-secondary hover:text-primary hover:bg-(--surface-container) transition-colors cursor-pointer disabled:opacity-50"
                     >
                         {cancelText}
-                    </Button>
-                    <Button
+                    </button>
+                    <button
                         type="button"
-                        variant={confirmVariant}
                         onClick={async () => {
                             await onConfirm?.();
                             onOpenChange?.(false);
                         }}
                         disabled={isLoading}
+                        className={`${
+                            confirmVariant === "destructive"
+                                ? "bg-(--error) text-white hover:opacity-90 cursor-pointer"
+                                : "button-primary"
+                        } flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50`}
                     >
-                        {confirmText}
-                    </Button>
+                        {isLoading && <LoaderCircle size={15} className="animate-spin" />}
+                        <span>{confirmText}</span>
+                    </button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
