@@ -93,11 +93,13 @@ namespace CircleHub.Api.Controllers
             if (post is null)
                 return Fail(StatusCodes.Status404NotFound, "Post not found");
 
-            post.Comments = await _db.Comments
+            var flatComments = await _db.Comments
                 .Where(c => c.PostId == id)
                 .OrderBy(c => c.CreatedAt)
-                .Select(CommentDto.Projection)
+                .Select(CommentDto.ProjectionFor(CurrentUserId))
                 .ToListAsync();
+
+            post.Comments = CommentDto.NestComments(flatComments);
 
             post.ResolveRichData();
 
