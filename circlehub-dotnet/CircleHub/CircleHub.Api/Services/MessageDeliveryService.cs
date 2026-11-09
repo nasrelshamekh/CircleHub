@@ -138,7 +138,9 @@ namespace CircleHub.Api.Services
                     messageId = envelope.MessageId,
                     senderId = envelope.SenderId,
                     senderName = baseTitle,
+                    senderUsername = envelope.SenderUsername,
                     senderAvatarUrl = resolvedAvatarUrl,
+                    text = singleBody,
                     unreadCount = safeUnreadCount,
                     messages = previewsSnapshot,
                     tag = conversationTag,
@@ -147,6 +149,7 @@ namespace CircleHub.Api.Services
                 channelId: "messages",
                 tag: conversationTag,
                 imageUrl: null,
+                dataOnly: true,
                 cancellationToken: cancellationToken);
         }
     }

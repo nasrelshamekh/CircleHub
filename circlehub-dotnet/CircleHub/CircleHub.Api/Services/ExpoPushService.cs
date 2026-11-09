@@ -53,6 +53,7 @@ namespace CircleHub.Api.Services
             string channelId = "default",
             string? tag = null,
             string? imageUrl = null,
+            bool dataOnly = false,
             CancellationToken cancellationToken = default)
         {
             var devices = await _db.DeviceTokens
@@ -81,14 +82,15 @@ namespace CircleHub.Api.Services
                     .Select(device => new ExpoPushMessage
                     {
                         To = device.Token,
-                        Sound = "default",
-                        Title = title,
-                        Body = body,
+                        Sound = dataOnly ? null : "default",
+                        Title = dataOnly ? null : title,
+                        Body = dataOnly ? null : body,
                         Data = data,
                         ChannelId = channelId,
                         Priority = "high",
                         Tag = tag,
-                        RichContent = !string.IsNullOrEmpty(imageUrl) ? new ExpoRichContent { Image = imageUrl } : null
+                        RichContent = (!dataOnly && !string.IsNullOrEmpty(imageUrl)) ? new ExpoRichContent { Image = imageUrl } : null,
+                        ContentAvailable = dataOnly ? true : null
                     })
                     .ToArray();
 
@@ -171,7 +173,7 @@ namespace CircleHub.Api.Services
         private sealed class ExpoPushMessage
         {
             public required string To { get; init; }
-            public string Sound { get; init; } = "default";
+            public string? Sound { get; init; } = "default";
             public string? Title { get; init; }
             public string? Body { get; init; }
             public object? Data { get; init; }
@@ -179,6 +181,9 @@ namespace CircleHub.Api.Services
             public string Priority { get; init; } = "high";
             public string? Tag { get; init; }
             public ExpoRichContent? RichContent { get; init; }
+
+            [JsonPropertyName("_contentAvailable")]
+            public bool? ContentAvailable { get; init; }
         }
 
         private sealed class ExpoRichContent
