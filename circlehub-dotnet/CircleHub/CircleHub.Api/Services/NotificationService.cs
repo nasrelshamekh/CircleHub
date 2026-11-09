@@ -196,12 +196,13 @@ namespace CircleHub.Api.Services
                 }
 
                 var notificationTag = $"notif_{dto.Id}";
+                var bodyText = $"{dto.Actor.Name} {BuildSentence(type, dto.CommunityName)}";
 
                 // Send push notification to any registered mobile devices
                 await _push.SendToUserAsync(
                     recipientId,
                     dto.Actor.Name,
-                    $"{dto.Actor.Name} {BuildSentence(type, dto.CommunityName)}",
+                    bodyText,
                     new
                     {
                         type = "notification",
@@ -212,11 +213,15 @@ namespace CircleHub.Api.Services
                         actorUsername = dto.Actor.Username,
                         senderName = dto.Actor.Name,
                         senderAvatarUrl = resolvedActorAvatar,
-                        tag = notificationTag
+                        tag = notificationTag,
+                        title = dto.Actor.Name,
+                        text = bodyText,
+                        body = bodyText
                     },
-                    channelId: "default",
+                    channelId: "activity",
                     tag: notificationTag,
-                    imageUrl: null);
+                    imageUrl: null,
+                    dataOnly: true);
             }
         }
 
