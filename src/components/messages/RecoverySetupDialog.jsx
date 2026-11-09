@@ -131,7 +131,7 @@ export default function RecoverySetupDialog({ open, onOpenChange, onSuccess }) {
                             {words.map((word, index) => (
                                 <div
                                     key={index}
-                                    className="flex items-center gap-2 rounded-lg border border-(--border)/40 bg-(--surface-lowest) px-3 py-2 text-sm"
+                                    className="flex items-center gap-2 rounded-lg border border-(--border) bg-(--surface-lowest) px-3 py-2 text-sm"
                                 >
                                     <span className="w-5 select-none font-mono text-xs text-secondary">
                                         {index + 1}.
@@ -145,7 +145,7 @@ export default function RecoverySetupDialog({ open, onOpenChange, onSuccess }) {
                         <button
                             type="button"
                             onClick={handleCopy}
-                            className="flex items-center justify-center gap-2 rounded-full border border-(--border)/40 bg-(--surface-low) py-2.5 text-sm font-medium text-primary hover:bg-(--surface-high) transition-colors cursor-pointer"
+                            className="flex items-center justify-center gap-2 rounded-lg border border-(--border) bg-(--surface-low) py-2.5 text-sm font-medium text-primary hover:bg-(--surface-high)"
                         >
                             {isCopied ? (
                                 <>
@@ -182,7 +182,7 @@ export default function RecoverySetupDialog({ open, onOpenChange, onSuccess }) {
                             <button
                                 type="button"
                                 onClick={() => handleOpenChange(false)}
-                                className="rounded-full px-5 py-2.5 text-sm font-medium text-secondary hover:text-primary hover:bg-(--surface-container) transition-colors cursor-pointer"
+                                className="rounded-xl px-4 py-2 text-sm font-medium text-secondary hover:text-primary"
                             >
                                 Cancel
                             </button>
@@ -190,7 +190,7 @@ export default function RecoverySetupDialog({ open, onOpenChange, onSuccess }) {
                                 type="button"
                                 onClick={handleStart}
                                 disabled={isGenerating}
-                                className="button-primary rounded-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium cursor-pointer"
+                                className="button-primary flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium"
                             >
                                 Generate Phrase
                             </button>
@@ -201,7 +201,7 @@ export default function RecoverySetupDialog({ open, onOpenChange, onSuccess }) {
                                 type="button"
                                 onClick={handleFinish}
                                 disabled={!confirmed}
-                                className="button-primary rounded-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                                className="button-primary flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Done
                             </button>

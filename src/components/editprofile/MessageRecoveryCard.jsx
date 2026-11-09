@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import { Key, KeyRound, LoaderCircle, RefreshCw, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import ConfirmModal from "@/components/common/ConfirmModal";
 import RecoveryRestoreDialog from "@/components/messages/RecoveryRestoreDialog";
 import RecoverySetupDialog from "@/components/messages/RecoverySetupDialog";
 import { getBackupInfo, removeBackup } from "@/services/keyRecovery";
@@ -14,7 +13,6 @@ export default function MessageRecoveryCard() {
     const [isRemoving, setIsRemoving] = useState(false);
     const [setupOpen, setSetupOpen] = useState(false);
     const [restoreOpen, setRestoreOpen] = useState(false);
-    const [removeModalOpen, setRemoveModalOpen] = useState(false);
 
     const refreshStatus = () => {
         setIsLoading(true);
@@ -43,14 +41,17 @@ export default function MessageRecoveryCard() {
         };
     }, []);
 
-    async function handleConfirmRemove() {
+    async function handleRemove() {
+        if (!window.confirm("Are you sure you want to remove your message recovery backup? If you lose access to this device, old messages cannot be recovered.")) {
+            return;
+        }
+
         setIsRemoving(true);
         try {
             await removeBackup();
             setBackup(null);
             localStorage.removeItem("circlehub-recovery-restored");
             localStorage.removeItem("circlehub-recovery-prompt-dismissed");
-            setRemoveModalOpen(false);
             toast.success("Recovery backup removed");
         } catch (error) {
             toast.error(
@@ -113,7 +114,7 @@ export default function MessageRecoveryCard() {
                             <button
                                 type="button"
                                 onClick={() => setRestoreOpen(true)}
-                                className="flex items-center gap-2 rounded-full border border-(--border)/40 bg-(--surface-low) px-5 py-2.5 text-sm font-medium text-primary hover:bg-(--surface-high) transition-colors cursor-pointer"
+                                className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--surface-low) px-4 py-2.5 text-sm font-medium text-primary hover:bg-(--surface-high)"
                             >
                                 <KeyRound size={16} />
                                 <span>Unlock on this device</span>
@@ -122,7 +123,7 @@ export default function MessageRecoveryCard() {
                             <button
                                 type="button"
                                 onClick={() => setSetupOpen(true)}
-                                className="flex items-center gap-2 rounded-full border border-(--border)/40 bg-(--surface-low) px-5 py-2.5 text-sm font-medium text-primary hover:bg-(--surface-high) transition-colors cursor-pointer"
+                                className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--surface-low) px-4 py-2.5 text-sm font-medium text-primary hover:bg-(--surface-high)"
                             >
                                 <RefreshCw size={16} />
                                 <span>Regenerate phrase</span>
@@ -130,9 +131,9 @@ export default function MessageRecoveryCard() {
 
                             <button
                                 type="button"
-                                onClick={() => setRemoveModalOpen(true)}
+                                onClick={handleRemove}
                                 disabled={isRemoving}
-                                className="flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 px-5 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-500/20 transition-colors cursor-pointer disabled:opacity-50"
+                                className="flex items-center gap-2 rounded-xl border border-rose-500/20 px-4 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-500/10 disabled:opacity-50"
                             >
                                 {isRemoving ? (
                                     <LoaderCircle size={16} className="animate-spin" />
@@ -145,7 +146,7 @@ export default function MessageRecoveryCard() {
                     </div>
                 ) : (
                     <div className="flex flex-col gap-4">
-                        <div className="rounded-xl border border-dashed border-(--border)/50 p-5 text-sm">
+                        <div className="rounded-xl border border-dashed border-(--border) p-5 text-sm">
                             <div className="flex items-start gap-3">
                                 <Key className="mt-0.5 shrink-0 text-(--primary)" size={20} />
                                 <div className="space-y-1">
@@ -164,7 +165,7 @@ export default function MessageRecoveryCard() {
                             <button
                                 type="button"
                                 onClick={() => setSetupOpen(true)}
-                                className="button-primary rounded-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-medium cursor-pointer"
+                                className="button-primary flex items-center justify-center gap-2 px-5 py-3 text-sm font-medium"
                             >
                                 <Key size={16} />
                                 <span>Set Up Recovery Phrase</span>
@@ -184,18 +185,6 @@ export default function MessageRecoveryCard() {
                 open={restoreOpen}
                 onOpenChange={setRestoreOpen}
                 onSuccess={refreshStatus}
-            />
-
-            <ConfirmModal
-                open={removeModalOpen}
-                onOpenChange={setRemoveModalOpen}
-                title="Turn off key backup?"
-                description="Removing your server backup prevents new devices from restoring your message history with your recovery phrase."
-                confirmText="Turn Off"
-                cancelText="Cancel"
-                confirmVariant="destructive"
-                isLoading={isRemoving}
-                onConfirm={handleConfirmRemove}
             />
         </section>
     );

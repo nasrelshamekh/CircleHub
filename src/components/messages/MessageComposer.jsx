@@ -165,7 +165,7 @@ export default function MessageComposer({
     const isNearLimit = text.length > 2500;
 
     return (
-        <div className="relative border-t border-(--border)/40 bg-(--surface-lowest)">
+        <div className="relative border-t border-(--border) bg-(--surface-lowest)">
             {showEmojiPicker && (
                 <EmojiPicker
                     onSelect={handleSelectEmoji}
@@ -231,7 +231,7 @@ export default function MessageComposer({
                         aria-label="Message"
                         maxLength={MAX_PLAINTEXT_LENGTH}
                         style={{ height: "42px" }}
-                        className={`input-surface type-body-sm min-w-0 w-full resize-none overflow-y-auto rounded-2xl border border-(--border)/40 px-4 py-2.5 leading-relaxed focus:outline-none ${
+                        className={`input-surface type-body-sm min-w-0 w-full resize-none overflow-y-auto rounded-2xl border border-(--border) px-4 py-2.5 leading-relaxed focus:outline-none ${
                             isNearLimit ? "pr-24" : ""
                         }`}
                     />

@@ -99,7 +99,7 @@ export default function CommentForm({
 
                     {/* Selected GIF preview */}
                     {selectedGif && (
-                        <div className="relative inline-block self-start overflow-hidden rounded-xl border border-(--border)/40 bg-(--surface-container) max-w-[200px]">
+                        <div className="relative inline-block self-start overflow-hidden rounded-xl border border-(--border) bg-(--surface-container) max-w-[200px]">
                             <img
                                 src={selectedGif.previewUrl || selectedGif.url}
                                 alt="Selected GIF"
@@ -129,7 +129,7 @@ export default function CommentForm({
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
                             selectedGif || showGifPicker
                                 ? "border-primary bg-primary/10 text-primary"
-                                : "border-(--border)/40 text-secondary hover:text-primary hover:bg-(--surface-low)"
+                                : "border-(--border) text-secondary hover:text-primary hover:bg-(--surface-low)"
                         }`}
                         aria-label="Add GIF to comment"
                     >

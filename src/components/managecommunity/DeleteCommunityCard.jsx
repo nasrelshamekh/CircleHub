@@ -46,7 +46,7 @@ export default function DeleteCommunityCard({ community }) {
                     type="button"
                     onClick={handleDelete}
                     disabled={!isConfirmed || deleteCommunity.isPending}
-                    className="flex w-fit cursor-pointer items-center justify-center gap-2 rounded-full bg-(--error) px-5 py-2.5 font-medium text-(--on-error) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex w-fit cursor-pointer items-center justify-center gap-2 rounded-xl bg-(--error) px-4 py-2 text-(--on-error) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     <Trash2 size={16} />
                     {deleteCommunity.isPending ? "Deleting..." : "Delete Community"}

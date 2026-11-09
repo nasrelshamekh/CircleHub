@@ -250,12 +250,12 @@ export default function EmojiPicker({ onSelect, onClose }) {
     return (
         <div
             ref={pickerRef}
-            className="absolute bottom-full mb-2 left-2 z-50 flex h-80 w-72 sm:w-80 flex-col rounded-2xl border border-(--border)/40 bg-(--surface-lowest) shadow-xl duration-150 animate-in fade-in zoom-in-95"
+            className="absolute bottom-full mb-2 left-2 z-50 flex h-80 w-72 sm:w-80 flex-col rounded-2xl border border-(--border) bg-(--surface-lowest) shadow-xl duration-150 animate-in fade-in zoom-in-95"
             role="dialog"
             aria-label="Emoji picker"
         >
             {/* Search header */}
-            <div className="flex items-center gap-2 border-b border-(--border)/40 p-2.5">
+            <div className="flex items-center gap-2 border-b border-(--border) p-2.5">
                 <Search size={16} className="text-secondary shrink-0 ml-1" />
                 <input
                     type="text"
@@ -278,7 +278,7 @@ export default function EmojiPicker({ onSelect, onClose }) {
 
             {/* Category tabs (hidden when searching) */}
             {!filteredEmojis && (
-                <div className="flex border-b border-(--border)/40 px-2 py-1 text-xs">
+                <div className="flex border-b border-(--border) px-2 py-1 text-xs">
                     {EMOJI_CATEGORIES.map((cat, idx) => (
                         <button
                             key={cat.name}

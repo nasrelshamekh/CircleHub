@@ -153,7 +153,7 @@ export function EditPostModal({ open, onOpenChange, post }) {
                     type="button"
                     onClick={handleSubmit}
                     disabled={updatePost.isPending}
-                    className="button-primary rounded-full flex justify-center items-center gap-2 py-3 px-6 cursor-pointer disabled:opacity-60"
+                    className="button-primary flex justify-center items-center gap-2 py-3 disabled:opacity-60"
                 >
                     <Save size={20} />
                     {updatePost.isPending ? "Saving…" : "Save"}
