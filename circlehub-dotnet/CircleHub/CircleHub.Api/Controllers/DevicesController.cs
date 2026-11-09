@@ -73,8 +73,31 @@ namespace CircleHub.Api.Controllers
             return inner.Length > 0 && !inner.Contains('[') && !inner.Contains(']');
         }
 
+        public static bool IsValidDeviceToken(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Length > MaxTokenLength)
+                return false;
+
+            if (IsExpoPushToken(value))
+                return true;
+
+            // Direct FCM registration token or APNs hex token:
+            // Alphanumeric + standard token delimiters, at least 32 characters, no whitespace or control characters
+            var span = value.AsSpan().Trim();
+            if (span.Length < 32)
+                return false;
+
+            foreach (var ch in span)
+            {
+                if (char.IsWhiteSpace(ch) || char.IsControl(ch))
+                    return false;
+            }
+
+            return true;
+        }
+
         /// <summary>
-        /// Registers (or refreshes) the calling user's Expo push token for their current mobile device.
+        /// Registers (or refreshes) the calling user's push token (direct FCM / APNs or legacy Expo) for their current mobile device.
         /// </summary>
         [HttpPost]
         public async Task<IActionResult> Register([FromBody] RegisterDeviceTokenRequest request, CancellationToken cancellationToken)
@@ -82,8 +105,8 @@ namespace CircleHub.Api.Controllers
             var currentUserId = CurrentUserId!.Value;
             var token = request.Token?.Trim() ?? string.Empty;
 
-            if (!IsExpoPushToken(token))
-                return Fail(StatusCodes.Status400BadRequest, "A valid Expo push token (ExponentPushToken[...]) is required");
+            if (!IsValidDeviceToken(token))
+                return Fail(StatusCodes.Status400BadRequest, "A valid device push token is required");
 
             var platform = string.IsNullOrWhiteSpace(request.Platform)
                 ? "unknown"
