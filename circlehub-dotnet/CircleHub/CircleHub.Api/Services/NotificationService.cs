@@ -218,7 +218,7 @@ namespace CircleHub.Api.Services
                         text = bodyText,
                         body = bodyText
                     },
-                    channelId: "activity",
+                    channelId: "messages",
                     tag: notificationTag,
                     imageUrl: null,
                     dataOnly: true);
