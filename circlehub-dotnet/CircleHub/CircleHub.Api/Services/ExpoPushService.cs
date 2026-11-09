@@ -86,9 +86,9 @@ namespace CircleHub.Api.Services
                         Title = dataOnly ? null : title,
                         Body = dataOnly ? null : body,
                         Data = data,
-                        ChannelId = channelId,
+                        ChannelId = dataOnly ? null : channelId,
                         Priority = "high",
-                        Tag = tag,
+                        Tag = dataOnly ? null : tag,
                         RichContent = (!dataOnly && !string.IsNullOrEmpty(imageUrl)) ? new ExpoRichContent { Image = imageUrl } : null,
                         ContentAvailable = dataOnly ? true : null
                     })
@@ -177,7 +177,7 @@ namespace CircleHub.Api.Services
             public string? Title { get; init; }
             public string? Body { get; init; }
             public object? Data { get; init; }
-            public string ChannelId { get; init; } = "default";
+            public string? ChannelId { get; init; }
             public string Priority { get; init; } = "high";
             public string? Tag { get; init; }
             public ExpoRichContent? RichContent { get; init; }
